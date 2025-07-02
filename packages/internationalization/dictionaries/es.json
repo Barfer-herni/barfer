@@ -1,7 +1,7 @@
 {
   "app": {
     "admin": {
-      "title": "LupaPyme - Panel de Administración",
+      "title": "Barfer - Panel de Administración",
       "navigation": {
         "dashboard": "Inicio",
         "users": "Usuarios",
@@ -234,8 +234,8 @@
         }
       },
       "layout": {
-        "title": "Panel de Administración LupaPyme",
-        "description": "Accede a las herramientas administrativas de LupaPyme para gestionar tu negocio de manera eficiente."
+        "title": "Panel de Administración Barfer",
+        "description": "Accede a las herramientas administrativas de Barfer para gestionar tu negocio de manera eficiente."
       },
       "account": {
         "title": "Gestión de Cuenta",
@@ -434,18 +434,18 @@
     },
     "home": {
       "meta": {
-        "title": "LupaPyme - Métricas de Negocio para Retención de Clientes",
+        "title": "Barfer - Métricas de Negocio para Retención de Clientes",
         "description": "La plataforma para entender a tus clientes e impulsar tu negocio. Métricas a fondo, retención de clientes y control total de tu empresa."
       },
       "hero": {
         "heading": "Entiende a tus clientes, haz crecer tu negocio",
-        "paragraph": "LupaPyme te da las herramientas necesarias para analizar las métricas de tu negocio, entender el comportamiento de tus clientes y tomar decisiones estratégicas para aumentar la retención y las ventas.",
+        "paragraph": "Barfer te da las herramientas necesarias para analizar las métricas de tu negocio, entender el comportamiento de tus clientes y tomar decisiones estratégicas para aumentar la retención y las ventas.",
         "primaryCta": "Comienza ahora",
         "secondaryCta": "Saber más"
       },
       "features": {
         "title": "Todas las herramientas que necesitas en un solo lugar",
-        "paragraph": "Desde analíticas detalladas hasta herramientas de comunicación, LupaPyme tiene todo lo que necesitas para llevar tu negocio al siguiente nivel.",
+        "paragraph": "Desde analíticas detalladas hasta herramientas de comunicación, Barfer tiene todo lo que necesitas para llevar tu negocio al siguiente nivel.",
         "featureOne": {
           "title": "Analíticas Avanzadas",
           "paragraph": "Visualiza tus ventas, clientes y productos como nunca antes. Identifica patrones y oportunidades de crecimiento."
@@ -460,7 +460,7 @@
         }
       },
       "stats": {
-        "title": "Cómo funciona LupaPyme",
+        "title": "Cómo funciona Barfer",
         "description": "Sigue estos sencillos pasos para empezar a entender a tus clientes y potenciar tu negocio.",
         "process": [
           {
@@ -483,11 +483,11 @@
       },
       "testimonials": {
         "title": "Lo que dicen nuestros usuarios",
-        "description": "Descubre cómo LupaPyme está ayudando a negocios como el tuyo a crecer.",
+        "description": "Descubre cómo Barfer está ayudando a negocios como el tuyo a crecer.",
         "items": [
           {
             "title": "¡Mis ventas han aumentado un 20%!",
-            "description": "Desde que uso LupaPyme, entiendo mucho mejor a mis clientes. He podido crear campañas de marketing personalizadas que han aumentado mis ventas y la fidelidad de mis clientes.",
+            "description": "Desde que uso Barfer, entiendo mucho mejor a mis clientes. He podido crear campañas de marketing personalizadas que han aumentado mis ventas y la fidelidad de mis clientes.",
             "author": {
               "name": "Ana Pérez",
               "location": "Emprendedora"
@@ -495,7 +495,7 @@
           },
           {
             "title": "Ahora tomo decisiones basadas en datos",
-            "description": "LupaPyme me ha dado la visibilidad que necesitaba sobre mi negocio. Ahora puedo tomar decisiones estratégicas basadas en datos reales, no en intuiciones.",
+            "description": "Barfer me ha dado la visibilidad que necesitaba sobre mi negocio. Ahora puedo tomar decisiones estratégicas basadas en datos reales, no en intuiciones.",
             "author": {
               "name": "Juan López",
               "location": "Dueño de Pyme"
@@ -503,7 +503,7 @@
           },
           {
             "title": "La mejor herramienta para retener clientes",
-            "description": "Con la segmentación de clientes de LupaPyme, he podido identificar a mis clientes más valiosos y crear programas de fidelización que funcionan. ¡Mi tasa de retención ha mejorado muchísimo!",
+            "description": "Con la segmentación de clientes de Barfer, he podido identificar a mis clientes más valiosos y crear programas de fidelización que funcionan. ¡Mi tasa de retención ha mejorado muchísimo!",
             "author": {
               "name": "Sofía Gómez",
               "location": "Gerente de Marketing"
@@ -511,7 +511,7 @@
           },
           {
             "title": "Fácil de usar y muy potente",
-            "description": "Me sorprendió lo fácil que es de usar LupaPyme. En pocos minutos ya tenía mis dashboards configurados y empecé a ver información súper valiosa. ¡La recomiendo!",
+            "description": "Me sorprendió lo fácil que es de usar Barfer. En pocos minutos ya tenía mis dashboards configurados y empecé a ver información súper valiosa. ¡La recomiendo!",
             "author": {
               "name": "Carlos Fernández",
               "location": "Consultor de Negocios"
@@ -521,7 +521,7 @@
       },
       "cta": {
         "heading": "¿Listo para potenciar tu negocio?",
-        "paragraph": "Empieza a usar LupaPyme hoy mismo y descubre todo lo que puedes lograr.",
+        "paragraph": "Empieza a usar Barfer hoy mismo y descubre todo lo que puedes lograr.",
         "primaryCta": "Comienza gratis"
       },
       "faq": {
@@ -529,12 +529,12 @@
         "description": "¿Tienes preguntas? Tenemos respuestas. Si no encuentras lo que buscas, contáctanos.",
         "questions": [
           {
-            "question": "¿Qué es LupaPyme?",
-            "answer": "LupaPyme es una plataforma que ayuda a pequeñas y medianas empresas a analizar sus datos de negocio para tomar mejores decisiones, con foco en la retención de clientes."
+            "question": "¿Qué es Barfer?",
+            "answer": "Barfer es una plataforma que ayuda a pequeñas y medianas empresas a analizar sus datos de negocio para tomar mejores decisiones, con foco en la retención de clientes."
           },
           {
             "question": "¿Cómo funciona?",
-            "answer": "Conectas tu sistema de ventas (o subes tus datos) y LupaPyme los procesa automáticamente para generar métricas e informes clave."
+            "answer": "Conectas tu sistema de ventas (o subes tus datos) y Barfer los procesa automáticamente para generar métricas e informes clave."
           },
           {
             "question": "¿Es seguro?",
@@ -564,8 +564,8 @@
       },
       "cases": {
         "title": "Casos de Éxito",
-        "description": "Descubre cómo LupaPyme ha ayudado a negocios como el tuyo a crecer.",
-        "quote": "Los datos son el nuevo petróleo. LupaPyme te ayuda a refinarlo.",
+        "description": "Descubre cómo Barfer ha ayudado a negocios como el tuyo a crecer.",
+        "quote": "Los datos son el nuevo petróleo. Barfer te ayuda a refinarlo.",
         "projectsTitle": "Resultados de Nuestros Clientes",
         "subtitle": "Estamos orgullosos del impacto que tenemos en los negocios de nuestros clientes. Aquí te presentamos algunas de sus historias.",
         "projectStatus": {
@@ -581,11 +581,11 @@
     },
     "pricing": {
       "meta": {
-        "title": "Precios - LupaPyme",
+        "title": "Precios - Barfer",
         "description": "Encuentra el plan perfecto para tu negocio. Comienza gratis."
       },
       "title": "Planes flexibles para negocios de todos los tamaños",
-      "paragraph": "Elige el plan que mejor se adapte a tus necesidades y empieza a crecer con LupaPyme.",
+      "paragraph": "Elige el plan que mejor se adapte a tus necesidades y empieza a crecer con Barfer.",
       "primaryCta": "Comienza ahora",
       "plans": {
         "monthly": "Mensual",
@@ -636,7 +636,7 @@
     },
     "contact": {
       "meta": {
-        "title": "Contacto - LupaPyme",
+        "title": "Contacto - Barfer",
         "description": "Ponte en contacto con nosotros. Estamos aquí para ayudarte."
       },
       "title": "Contáctanos",
@@ -696,7 +696,7 @@
         "privacy": "Política de Privacidad"
       },
       "copy": "Todos los derechos reservados.",
-      "companyDescription": "LupaPyme es la plataforma que te ayuda a entender a tus clientes e impulsar tu negocio. Métricas a fondo, retención de clientes y control total de tu empresa.",
+      "companyDescription": "Barfer es la plataforma que te ayuda a entender a tus clientes e impulsar tu negocio. Métricas a fondo, retención de clientes y control total de tu empresa.",
       "navigation": "Navegación",
       "menuCreation": "Creación de Menús Digitales",
       "mobileFirst": "Diseño Mobile-First",

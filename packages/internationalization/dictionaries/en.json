@@ -1,7 +1,7 @@
 {
   "app": {
     "admin": {
-      "title": "LupaPyme - Admin Panel",
+      "title": "Barfer - Admin Panel",
       "navigation": {
         "dashboard": "Dashboard",
         "users": "Users",
@@ -133,8 +133,8 @@
         }
       },
       "layout": {
-        "title": "LupaPyme Administration Panel",
-        "description": "Access LupaPyme's administrative tools to manage your business efficiently."
+        "title": "Barfer Administration Panel",
+        "description": "Access Barfer's administrative tools to manage your business efficiently."
       }
     },
     "client": {
@@ -249,18 +249,18 @@
     },
     "home": {
       "meta": {
-        "title": "LupaPyme - Business Metrics for Client Retention",
+        "title": "Barfer - Business Metrics for Client Retention",
         "description": "The platform to understand your clients and boost your business. In-depth metrics, client retention and total control of your company."
       },
       "hero": {
         "heading": "Understand your clients, grow your business",
-        "paragraph": "LupaPyme gives you the necessary tools to analyze your business metrics, understand your clients' behavior and make strategic decisions to increase retention and sales.",
+        "paragraph": "Barfer gives you the necessary tools to analyze your business metrics, understand your clients' behavior and make strategic decisions to increase retention and sales.",
         "primaryCta": "Get started now",
         "secondaryCta": "Learn more"
       },
       "features": {
         "title": "All the tools you need in one place",
-        "paragraph": "From detailed analytics to communication tools, LupaPyme has everything you need to take your business to the next level.",
+        "paragraph": "From detailed analytics to communication tools, Barfer has everything you need to take your business to the next level.",
         "featureOne": {
           "title": "Advanced Analytics",
           "paragraph": "Visualize your sales, clients and products like never before. Identify patterns and opportunities for growth."
@@ -275,7 +275,7 @@
         }
       },
       "stats": {
-        "title": "How LupaPyme works",
+        "title": "How Barfer works",
         "description": "Follow these simple steps to start understanding your customers and boosting your business.",
         "process": [
           {
@@ -298,11 +298,11 @@
       },
       "testimonials": {
         "title": "What our users say",
-        "description": "Discover how LupaPyme is helping businesses like yours to grow.",
+        "description": "Discover how Barfer is helping businesses like yours to grow.",
         "items": [
           {
             "title": "My sales have increased by 20%!",
-            "description": "Since I started using LupaPyme, I understand my customers much better. I have been able to create personalized marketing campaigns that have increased my sales and customer loyalty.",
+            "description": "Since I started using Barfer, I understand my customers much better. I have been able to create personalized marketing campaigns that have increased my sales and customer loyalty.",
             "author": {
               "name": "Ana Pérez",
               "location": "Entrepreneur"
@@ -310,7 +310,7 @@
           },
           {
             "title": "Now I make data-driven decisions",
-            "description": "LupaPyme has given me the visibility I needed over my business. Now I can make strategic decisions based on real data, not intuition.",
+            "description": "Barfer has given me the visibility I needed over my business. Now I can make strategic decisions based on real data, not intuition.",
             "author": {
               "name": "Juan López",
               "location": "SME Owner"
@@ -318,7 +318,7 @@
           },
           {
             "title": "The best tool to retain customers",
-            "description": "With LupaPyme's customer segmentation, I have been able to identify my most valuable customers and create loyalty programs that work. My retention rate has improved a lot!",
+            "description": "With Barfer's customer segmentation, I have been able to identify my most valuable customers and create loyalty programs that work. My retention rate has improved a lot!",
             "author": {
               "name": "Sofía Gómez",
               "location": "Marketing Manager"
@@ -326,7 +326,7 @@
           },
           {
             "title": "Easy to use and very powerful",
-            "description": "I was surprised how easy it is to use LupaPyme. In a few minutes I had my dashboards configured and I began to see super valuable information. I recommend it!",
+            "description": "I was surprised how easy it is to use Barfer. In a few minutes I had my dashboards configured and I began to see super valuable information. I recommend it!",
             "author": {
               "name": "Carlos Fernández",
               "location": "Business Consultant"
@@ -336,7 +336,7 @@
       },
       "cta": {
         "heading": "Ready to boost your business?",
-        "paragraph": "Start using LupaPyme today and discover everything you can achieve.",
+        "paragraph": "Start using Barfer today and discover everything you can achieve.",
         "primaryCta": "Get started for free"
       },
       "faq": {
@@ -344,12 +344,12 @@
         "description": "Have questions? We have answers. If you can't find what you are looking for, please contact us.",
         "questions": [
           {
-            "question": "What is LupaPyme?",
-            "answer": "LupaPyme is a platform that helps small and medium-sized businesses analyze their business data to make better decisions, with a focus on client retention."
+            "question": "What is Barfer?",
+            "answer": "Barfer is a platform that helps small and medium-sized businesses analyze their business data to make better decisions, with a focus on client retention."
           },
           {
             "question": "How does it work?",
-            "answer": "You connect your sales system (or upload your data) and LupaPyme automatically processes it to generate key metrics and reports."
+            "answer": "You connect your sales system (or upload your data) and Barfer automatically processes it to generate key metrics and reports."
           },
           {
             "question": "Is it secure?",
@@ -379,8 +379,8 @@
       },
       "cases": {
         "title": "Success Stories",
-        "description": "Discover how LupaPyme has helped businesses like yours to grow.",
-        "quote": "Data is the new oil. LupaPyme helps you refine it.",
+        "description": "Discover how Barfer has helped businesses like yours to grow.",
+        "quote": "Data is the new oil. Barfer helps you refine it.",
         "projectsTitle": "Our Clients' Results",
         "subtitle": "We are proud of the impact we have on our clients' businesses. Here are some of their stories.",
         "projectStatus": {
@@ -396,11 +396,11 @@
     },
     "pricing": {
       "meta": {
-        "title": "Pricing - LupaPyme",
+        "title": "Pricing - Barfer",
         "description": "Find the perfect plan for your business. Start for free."
       },
       "title": "Flexible plans for businesses of all sizes",
-      "paragraph": "Choose the plan that best suits your needs and start growing with LupaPyme.",
+      "paragraph": "Choose the plan that best suits your needs and start growing with Barfer.",
       "primaryCta": "Get started now",
       "plans": {
         "monthly": "Monthly",
@@ -451,7 +451,7 @@
     },
     "contact": {
       "meta": {
-        "title": "Contact - LupaPyme",
+        "title": "Contact - Barfer",
         "description": "Get in touch with us. We are here to help you."
       },
       "title": "Contact us",
@@ -511,7 +511,7 @@
         "privacy": "Privacy Policy"
       },
       "copy": "All rights reserved.",
-      "companyDescription": "LupaPyme is the platform that helps you understand your customers and boost your business. In-depth metrics, customer retention, and total control of your company.",
+      "companyDescription": "Barfer is the platform that helps you understand your customers and boost your business. In-depth metrics, customer retention, and total control of your company.",
       "menuCreation": "Digital Menu Creation",
       "mobileFirst": "Mobile-First Design",
       "analytics": "Analytics and Insights",

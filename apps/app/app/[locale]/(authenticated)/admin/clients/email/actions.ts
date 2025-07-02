@@ -32,7 +32,7 @@ export async function sendBulkEmailAction(
         const emailKeys = keys();
         // Para el plan gratuito de Resend y sin un dominio verificado,
         // es necesario usar el dominio `resend.dev`.
-        const fromEmail = 'Barfer <onboarding@resend.dev>';
+        const fromEmail = 'Barfer <ventas@barferalimento.com>';
 
         // Obtener datos de clientes (reales o testing)
         let clientsData: ClientData[];

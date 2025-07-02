@@ -3,7 +3,6 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import Image from 'next/image';
 import logo from '@/app/public/logo.png';
-import { LanguageSwitcher } from '../(authenticated)/components/language-switcher';
 import { getDictionary } from '@repo/internationalization';
 
 type AuthLayoutProps = {
@@ -61,7 +60,6 @@ const AuthLayout = async ({ children, params }: AuthLayoutProps) => {
           </Link>
           <div className="flex items-center gap-2">
             <ModeToggle />
-            {/* <LanguageSwitcher /> */}
           </div>
         </div>
 
