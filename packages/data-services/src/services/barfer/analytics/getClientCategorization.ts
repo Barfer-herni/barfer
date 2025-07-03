@@ -20,6 +20,17 @@ export async function getClientCategorization(): Promise<ClientAnalytics> {
             { $match: { status: { $in: ['confirmed', 'delivered'] } } },
             { $sort: { createdAt: 1 } }, // Ordenar por fecha para obtener el último domicilio
             {
+                $addFields: {
+                    createdAt: {
+                        $cond: [
+                            { $eq: [{ $type: "$createdAt" }, "string"] },
+                            { $toDate: "$createdAt" },
+                            "$createdAt"
+                        ]
+                    }
+                }
+            },
+            {
                 $group: {
                     _id: { $ifNull: ['$user.id', '$user.email'] }, // Prioritize user.id, fallback to email
                     user: { $first: '$user' },
@@ -36,13 +47,13 @@ export async function getClientCategorization(): Promise<ClientAnalytics> {
                     averageOrderValue: { $divide: ['$totalSpent', '$totalOrders'] },
                     daysSinceFirstOrder: {
                         $divide: [
-                            { $subtract: [new Date(), '$firstOrderDate'] },
+                            { $subtract: ['$$NOW', '$firstOrderDate'] },
                             1000 * 60 * 60 * 24
                         ]
                     },
                     daysSinceLastOrder: {
                         $divide: [
-                            { $subtract: [new Date(), '$lastOrderDate'] },
+                            { $subtract: ['$$NOW', '$lastOrderDate'] },
                             1000 * 60 * 60 * 24
                         ]
                     }
