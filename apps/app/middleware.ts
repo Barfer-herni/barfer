@@ -62,6 +62,7 @@ const PUBLIC_ROUTES = [
   '/sign-in',
   '/sign-up',
   '/api/webhooks',
+  '/api/cron',
   '/access-denied',
 ];
 
