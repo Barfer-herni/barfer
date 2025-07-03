@@ -28,8 +28,17 @@ export async function GET() {
                 // Check if the campaign was due in the last 5 minutes.
                 // This tolerance handles slight delays in the n8n trigger.
                 const fiveMinutes = 5 * 60 * 1000;
-                if (now.getTime() - previousRun.getTime() < fiveMinutes) {
-                    console.log(`[Campaign Cron] Campaign "${campaign.name}" is due. Preparing to send.`);
+                const timeDifference = now.getTime() - previousRun.getTime();
+
+                console.log(`\n[Campaign Cron] Checking campaign "${campaign.name}"...`);
+                console.log(` -> Current time:           ${now.toISOString()}`);
+                console.log(` -> Cron expression:        ${campaign.scheduleCron}`);
+                console.log(` -> Previous scheduled run: ${previousRun.toISOString()}`);
+                console.log(` -> Time since last run:    ${Math.round(timeDifference / 1000)} seconds`);
+                console.log(` -> Is due (under 5 min):   ${timeDifference < fiveMinutes}`);
+
+                if (timeDifference < fiveMinutes) {
+                    console.log(`[Campaign Cron] ✔️ Campaign "${campaign.name}" is due. Preparing to send.`);
 
                     const audience = campaign.targetAudience as { type: 'behavior' | 'spending'; category: string };
                     let clients = await getClientsByCategory(audience.category, audience.type);
@@ -54,9 +63,11 @@ export async function GET() {
                     } else {
                         console.log(`[Campaign Cron] No clients found for audience: ${JSON.stringify(audience)}`);
                     }
+                } else {
+                    console.log(`[Campaign Cron] ✖️ Campaign "${campaign.name}" is not due yet. Skipping.`);
                 }
             } catch (err: any) {
-                console.error(`[Campaign Cron] Error parsing cron string for campaign "${campaign.name}": ${err.message}`);
+                console.error(`[Campaign Cron] Error processing campaign "${campaign.name}": ${err.message}`);
             }
         }
 
