@@ -3,7 +3,7 @@
 import { getCurrentUser } from '@repo/auth/server';
 import resend, { BulkEmailTemplate } from '@repo/email';
 import { keys } from '@repo/email/keys';
-import { createScheduledEmailCampaign, createEmailTemplate, deleteEmailTemplate } from '@repo/data-services';
+import { createScheduledEmailCampaign, createEmailTemplate, deleteEmailTemplate, getClientsByCategory } from '@repo/data-services';
 import { revalidatePath } from 'next/cache';
 // import { getClientsByCategory } from '@repo/data-services';
 
@@ -31,36 +31,29 @@ export async function sendBulkEmailAction(
             };
         }
 
-        const emailKeys = keys();
+        if (!selectedClients || selectedClients.length === 0) {
+            return {
+                success: false,
+                error: 'No se ha seleccionado ningún cliente.'
+            };
+        }
+
         // Para el plan gratuito de Resend y sin un dominio verificado,
         // es necesario usar el dominio `resend.dev`.
         const fromEmail = 'Barfer <ventas@barferalimento.com>';
 
-        // MODO DE PRUEBA FORZADO:
-        // Ignoramos los clientes seleccionados y enviamos siempre a los emails de prueba.
-        console.log(' MODO DE PRUEBA ACTIVO: El envío se redirigirá a los emails de simulación.');
-        const clientsData: ClientData[] = [
-            { id: 'test-email-1', name: 'Lucas (Prueba)', email: 'heredialucasfac22@gmail.com' },
-            { id: 'test-email-2', name: 'Nicolás (Prueba)', email: 'nicolascaliari28@gmail.com' }
-        ];
-
-        if (clientsData.length === 0) {
-            return {
-                success: false,
-                error: 'No se encontraron clientes válidos'
-            };
-        }
-
         // 1. Construir los payloads para el envío por lotes
-        const emailPayloads = clientsData.map((client) => ({
-            from: fromEmail,
-            to: [client.email],
-            subject: subject,
-            react: BulkEmailTemplate({
-                clientName: client.name,
-                content: content,
-            }),
-        }));
+        const emailPayloads = selectedClients.map((client) => {
+            return {
+                from: fromEmail,
+                to: [client],
+                subject: subject,
+                react: BulkEmailTemplate({
+                    clientName: client,
+                    content: content,
+                }),
+            }
+        });
 
         // 2. Enviar el lote de emails con un solo llamado a la API
         const { data, error } = await resend.batch.send(emailPayloads);

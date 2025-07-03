@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getActiveScheduledEmailCampaigns, getClientsByCategory } from '@repo/data-services';
-import resend from '@repo/email';
+import resend, { BulkEmailTemplate } from '@repo/email';
 import { CronExpressionParser } from 'cron-parser';
 
 export const dynamic = 'force-dynamic';
@@ -26,11 +26,11 @@ export async function GET() {
                 const previousRun = interval.prev().toDate();
                 const nextRun = interval.next().toDate();
 
-                const fiveMinutes = 5 * 60 * 1000;
+                const twoMinutes = 2 * 60 * 1000;
                 const timeSincePrev = now.getTime() - previousRun.getTime();
                 const timeToNext = nextRun.getTime() - now.getTime();
 
-                const isDue = timeSincePrev < fiveMinutes || (timeToNext > 0 && timeToNext < fiveMinutes);
+                const isDue = timeSincePrev < twoMinutes || (timeToNext > 0 && timeToNext < twoMinutes);
 
                 console.log(`\n[Campaign Cron] Checking campaign "${campaign.name}"...`);
                 console.log(` -> Current time:           ${now.toISOString()}`);
@@ -39,30 +39,27 @@ export async function GET() {
                 console.log(` -> Next scheduled run:     ${nextRun.toISOString()}`);
                 console.log(` -> Time since last run:    ${Math.round(timeSincePrev / 1000)} seconds`);
                 console.log(` -> Time to next run:       ${Math.round(timeToNext / 1000)} seconds`);
-                console.log(` -> Is due (within 5 min):   ${isDue}`);
+                console.log(` -> Is due (within 2 min):   ${isDue}`);
 
                 if (isDue) {
                     console.log(`[Campaign Cron] ✔️ Campaign "${campaign.name}" is due. Preparing to send.`);
 
                     const audience = campaign.targetAudience as { type: 'behavior' | 'spending'; category: string };
-                    let clients = await getClientsByCategory(audience.category, audience.type);
+                    const clients = await getClientsByCategory(audience.category, audience.type);
 
                     if (clients && clients.length > 0) {
                         console.log(`[Campaign Cron] Audience matched. Found ${clients.length} real clients for campaign "${campaign.name}".`);
-
-                        // MODO DE PRUEBA FORZADO PARA EL CRON JOB
-                        console.log(' MODO DE PRUEBA ACTIVO: El envío del cron job se redirigirá a los emails de simulación.');
-                        clients = [
-                            { id: 'test-cron-1', name: 'Lucas (Prueba Cron)', email: 'heredialucasfac22@gmail.com', phone: '', lastOrder: '', totalSpent: 0, totalOrders: 0, behaviorCategory: 'active', spendingCategory: 'standard' },
-                            { id: 'test-cron-2', name: 'Nicolás (Prueba Cron)', email: 'nicolascaliari28@gmail.com', phone: '', lastOrder: '', totalSpent: 0, totalOrders: 0, behaviorCategory: 'active', spendingCategory: 'standard' }
-                        ];
 
                         const emailPayloads = clients.map(client => ({
                             to: client.email,
                             from: 'Barfer <ventas@barferalimento.com>',
                             subject: campaign.emailTemplate.subject,
-                            html: campaign.emailTemplate.content, // Assuming content is HTML
+                            react: BulkEmailTemplate({
+                                clientName: client.name,
+                                content: campaign.emailTemplate.content,
+                            }),
                         }));
+
                         emailsToSend.push(...emailPayloads);
                     } else {
                         console.log(`[Campaign Cron] No clients found for audience: ${JSON.stringify(audience)}`);
