@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getActiveScheduledEmailCampaigns, getClientsByCategory } from '@repo/data-services';
 import resend from '@repo/email';
-import parseExpression from 'cron-parser';
+import { CronExpressionParser } from 'cron-parser';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,8 +22,7 @@ export async function GET() {
 
         for (const campaign of campaigns) {
             try {
-                // @ts-ignore - The types for cron-parser seem to be incorrect or misleading.
-                const interval = parseExpression(campaign.scheduleCron);
+                const interval = CronExpressionParser.parse(campaign.scheduleCron);
                 const previousRun = interval.prev().toDate();
 
                 // Check if the campaign was due in the last 5 minutes.
