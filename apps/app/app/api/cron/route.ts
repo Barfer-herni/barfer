@@ -24,20 +24,24 @@ export async function GET() {
             try {
                 const interval = CronExpressionParser.parse(campaign.scheduleCron);
                 const previousRun = interval.prev().toDate();
+                const nextRun = interval.next().toDate();
 
-                // Check if the campaign was due in the last 5 minutes.
-                // This tolerance handles slight delays in the n8n trigger.
                 const fiveMinutes = 5 * 60 * 1000;
-                const timeDifference = now.getTime() - previousRun.getTime();
+                const timeSincePrev = now.getTime() - previousRun.getTime();
+                const timeToNext = nextRun.getTime() - now.getTime();
+
+                const isDue = timeSincePrev < fiveMinutes || (timeToNext > 0 && timeToNext < fiveMinutes);
 
                 console.log(`\n[Campaign Cron] Checking campaign "${campaign.name}"...`);
                 console.log(` -> Current time:           ${now.toISOString()}`);
                 console.log(` -> Cron expression:        ${campaign.scheduleCron}`);
                 console.log(` -> Previous scheduled run: ${previousRun.toISOString()}`);
-                console.log(` -> Time since last run:    ${Math.round(timeDifference / 1000)} seconds`);
-                console.log(` -> Is due (under 5 min):   ${timeDifference < fiveMinutes}`);
+                console.log(` -> Next scheduled run:     ${nextRun.toISOString()}`);
+                console.log(` -> Time since last run:    ${Math.round(timeSincePrev / 1000)} seconds`);
+                console.log(` -> Time to next run:       ${Math.round(timeToNext / 1000)} seconds`);
+                console.log(` -> Is due (within 5 min):   ${isDue}`);
 
-                if (timeDifference < fiveMinutes) {
+                if (isDue) {
                     console.log(`[Campaign Cron] ✔️ Campaign "${campaign.name}" is due. Preparing to send.`);
 
                     const audience = campaign.targetAudience as { type: 'behavior' | 'spending'; category: string };
