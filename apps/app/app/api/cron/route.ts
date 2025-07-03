@@ -6,7 +6,8 @@ import { CronExpressionParser } from 'cron-parser';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-    console.log('🚀 [Campaign Cron] Job started.');
+    const now = new Date();
+    console.log(`🚀 [Campaign Cron] Job started at ${now.toISOString()} (UTC)`);
 
     if (!resend) {
         console.error('🚨 [Campaign Cron] Resend service not configured. Missing RESEND_TOKEN.');
@@ -14,7 +15,6 @@ export async function GET() {
     }
 
     try {
-        const now = new Date();
         const campaigns = await getActiveScheduledEmailCampaigns();
         console.log(`[Campaign Cron] Found ${campaigns.length} active email campaigns to check.`);
 
@@ -22,7 +22,7 @@ export async function GET() {
 
         for (const campaign of campaigns) {
             try {
-                const interval = CronExpressionParser.parse(campaign.scheduleCron);
+                const interval = CronExpressionParser.parse(campaign.scheduleCron, { currentDate: now });
                 const previousRun = interval.prev().toDate();
                 const nextRun = interval.next().toDate();
 
