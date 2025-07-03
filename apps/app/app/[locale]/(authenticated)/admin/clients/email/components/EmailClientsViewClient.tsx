@@ -124,18 +124,47 @@ export function EmailClientsViewClient({
     };
 
     const buildCronString = (): string => {
-        const [hour, minute] = scheduleTime.split(':');
+        const [hour, minute] = scheduleTime.split(':').map(Number);
 
+        if (scheduleFrequency === 'once') {
+            if (!scheduleOnceDate) return '';
+
+            // Create a new Date object with the user's selected date and time in their local timezone.
+            const localDateTime = new Date(scheduleOnceDate);
+            localDateTime.setHours(hour);
+            localDateTime.setMinutes(minute);
+            localDateTime.setSeconds(0);
+            localDateTime.setMilliseconds(0);
+
+            // Now, get the components in UTC.
+            const cronMinute = localDateTime.getUTCMinutes();
+            const cronHour = localDateTime.getUTCHours();
+            const cronDayOfMonth = localDateTime.getUTCDate();
+            const cronMonth = localDateTime.getUTCMonth() + 1; // JS month is 0-11
+
+            return `${cronMinute} ${cronHour} ${cronDayOfMonth} ${cronMonth} *`;
+        }
+
+        // For recurring schedules, convert the time to UTC based on today's date.
+        // Note: This may not perfectly account for future Daylight Saving Time changes.
+        const localTimeToday = new Date();
+        localTimeToday.setHours(hour);
+        localTimeToday.setMinutes(minute);
+        localTimeToday.setSeconds(0);
+        localTimeToday.setMilliseconds(0);
+
+        const cronMinute = localTimeToday.getUTCMinutes();
+        const cronHour = localTimeToday.getUTCHours();
+
+        // Note: The day of week/month is not adjusted for UTC.
+        // This can be an issue if the time conversion crosses a day boundary (e.g. early morning in America is previous day in UTC).
         switch (scheduleFrequency) {
             case 'daily':
-                return `${minute} ${hour} * * *`;
+                return `${cronMinute} ${cronHour} * * *`;
             case 'weekly':
-                return `${minute} ${hour} * * ${scheduleWeeklyDays.join(',')}`;
+                return `${cronMinute} ${cronHour} * * ${scheduleWeeklyDays.join(',')}`;
             case 'monthly':
-                return `${minute} ${hour} ${scheduleMonthlyDay} * *`;
-            case 'once':
-                if (!scheduleOnceDate) return '';
-                return `${scheduleOnceDate.getMinutes()} ${scheduleOnceDate.getHours()} ${scheduleOnceDate.getDate()} ${scheduleOnceDate.getMonth() + 1} *`;
+                return `${cronMinute} ${cronHour} ${scheduleMonthlyDay} * *`;
             default:
                 return '';
         }
