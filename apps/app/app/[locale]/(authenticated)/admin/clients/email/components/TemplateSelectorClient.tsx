@@ -6,8 +6,7 @@ import { Button } from '@repo/design-system/components/ui/button';
 import { Input } from '@repo/design-system/components/ui/input';
 import { Textarea } from '@repo/design-system/components/ui/textarea';
 import { Label } from '@repo/design-system/components/ui/label';
-import { EmailTemplateData } from '@repo/data-services';
-import { useInitStore } from '@/store/initStore';
+import type { EmailTemplateData } from '@repo/data-services';
 import {
     Select,
     SelectContent,
@@ -24,82 +23,50 @@ import {
     DialogTitle,
 } from '@repo/design-system/components/ui/dialog';
 import { Save, Trash2 } from 'lucide-react';
+import { createEmailTemplateAction, deleteEmailTemplateAction } from '../actions';
 
 interface TemplateSelectorClientProps {
     templates: EmailTemplateData[];
-    onTemplateSelect: (template: {
-        subject: string;
-        content: string;
-    }) => void;
-    selectedTemplate?: {
-        subject: string;
-        content: string;
-    } | null;
-    onCreateTemplate: (name: string, subject: string, content: string, description?: string) => Promise<{ success: boolean; error?: string }>;
-    onDeleteTemplate: (templateId: string) => Promise<{ success: boolean; error?: string }>;
-    onTemplateCreated?: () => void;
+    selectedTemplateId: string;
+    customSubject: string;
+    customContent: string;
+    onTemplateChange: (templateId: string) => void;
+    onSubjectChange: (subject: string) => void;
+    onContentChange: (content: string) => void;
+    onTemplateCreated: () => void;
 }
 
 export function TemplateSelectorClient({
     templates,
-    onTemplateSelect,
-    selectedTemplate,
-    onCreateTemplate,
-    onDeleteTemplate,
+    selectedTemplateId,
+    customSubject,
+    customContent,
+    onTemplateChange,
+    onSubjectChange,
+    onContentChange,
     onTemplateCreated
 }: TemplateSelectorClientProps) {
-    const { emailTemplates, setEmailTemplates, setEmailTemplateSelection, setEmailCustomContent } = useInitStore();
-
-    // Estados para el modal de guardar template
+    // State for the save dialog
     const [showSaveDialog, setShowSaveDialog] = useState(false);
     const [templateName, setTemplateName] = useState('');
     const [templateDescription, setTemplateDescription] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
-    // Estados para eliminar template
+    // State for deleting a template
     const [isDeleting, setIsDeleting] = useState(false);
 
-    // Inicializar templates en el store si no están cargados
-    if (emailTemplates.templates.length === 0 && templates.length > 0) {
-        setEmailTemplates(templates);
-    }
-
-    const handleTemplateChange = (templateId: string) => {
-        const template = emailTemplates.templates.find(t => t.id === templateId);
-        setEmailTemplateSelection(templateId, template);
-
-        if (template) {
-            onTemplateSelect({
-                subject: template.subject,
-                content: template.content
-            });
-        } else if (templateId === 'custom') {
-            onTemplateSelect({ subject: '', content: '' });
-        }
-    };
-
-    const handleSubjectChange = (value: string) => {
-        setEmailCustomContent(value, emailTemplates.customContent);
-        onTemplateSelect({ subject: value, content: emailTemplates.customContent });
-    };
-
-    const handleContentChange = (value: string) => {
-        setEmailCustomContent(emailTemplates.customSubject, value);
-        onTemplateSelect({ subject: emailTemplates.customSubject, content: value });
-    };
-
     const handleSaveTemplate = async () => {
-        if (!templateName.trim() || !emailTemplates.customSubject.trim() || !emailTemplates.customContent.trim()) {
+        if (!templateName.trim() || !customSubject.trim() || !customContent.trim()) {
             alert('Completa todos los campos requeridos');
             return;
         }
 
         setIsSaving(true);
         try {
-            const result = await onCreateTemplate(
+            const result = await createEmailTemplateAction(
                 templateName.trim(),
-                emailTemplates.customSubject.trim(),
-                emailTemplates.customContent.trim(),
+                customSubject.trim(),
+                customContent.trim(),
                 templateDescription.trim() || undefined
             );
 
@@ -108,7 +75,7 @@ export function TemplateSelectorClient({
                 setShowSaveDialog(false);
                 setTemplateName('');
                 setTemplateDescription('');
-                onTemplateCreated?.();
+                onTemplateCreated(); // Trigger revalidation
             } else {
                 alert(`Error al guardar el template: ${result.error}`);
             }
@@ -127,20 +94,11 @@ export function TemplateSelectorClient({
 
         setIsDeleting(true);
         try {
-            const result = await onDeleteTemplate(templateId);
+            const result = await deleteEmailTemplateAction(templateId);
 
             if (result.success) {
                 alert('Template eliminado exitosamente');
-                // Actualizar el store removiendo el template eliminado
-                const updatedTemplates = emailTemplates.templates.filter(t => t.id !== templateId);
-                setEmailTemplates(updatedTemplates);
-
-                // Si estaba seleccionado, resetear la selección
-                if (emailTemplates.selectedTemplateId === templateId) {
-                    setEmailTemplateSelection('custom');
-                }
-
-                onTemplateCreated?.();
+                onTemplateCreated(); // Trigger revalidation
             } else {
                 alert(`Error al eliminar el template: ${result.error}`);
             }
@@ -152,8 +110,8 @@ export function TemplateSelectorClient({
         }
     };
 
-    const canSaveAsTemplate = emailTemplates.customSubject.trim() && emailTemplates.customContent.trim() &&
-        (emailTemplates.selectedTemplateId === 'custom' || emailTemplates.selectedTemplateId === '');
+    const canSaveAsTemplate = customSubject.trim() && customContent.trim() &&
+        (selectedTemplateId === 'custom' || selectedTemplateId === '');
 
     return (
         <Card>
@@ -166,13 +124,13 @@ export function TemplateSelectorClient({
             <CardContent className="space-y-4">
                 <div>
                     <Label htmlFor="template-select">Template</Label>
-                    <Select value={emailTemplates.selectedTemplateId || 'custom'} onValueChange={handleTemplateChange}>
+                    <Select value={selectedTemplateId || 'custom'} onValueChange={onTemplateChange}>
                         <SelectTrigger>
                             <SelectValue placeholder="Selecciona un template..." />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="custom">✍️ Mensaje personalizado</SelectItem>
-                            {emailTemplates.templates.map((template) => (
+                            {templates.map((template) => (
                                 <SelectItem key={template.id} value={template.id}>
                                     {template.isDefault ? '⭐ ' : ''}{template.name}
                                 </SelectItem>
@@ -185,8 +143,8 @@ export function TemplateSelectorClient({
                     <Label htmlFor="subject">Asunto del Email</Label>
                     <Input
                         id="subject"
-                        value={emailTemplates.customSubject}
-                        onChange={(e) => handleSubjectChange(e.target.value)}
+                        value={customSubject}
+                        onChange={(e) => onSubjectChange(e.target.value)}
                         placeholder="Escribe el asunto del email..."
                     />
                 </div>
@@ -195,23 +153,22 @@ export function TemplateSelectorClient({
                     <Label htmlFor="content">Contenido del Email</Label>
                     <Textarea
                         id="content"
-                        value={emailTemplates.customContent}
-                        onChange={(e) => handleContentChange(e.target.value)}
+                        value={customContent}
+                        onChange={(e) => onContentChange(e.target.value)}
                         placeholder="Escribe el contenido del email..."
                         rows={8}
                     />
                 </div>
 
-                {emailTemplates.selectedTemplateId && emailTemplates.selectedTemplateId !== 'custom' && (
+                {selectedTemplateId && selectedTemplateId !== 'custom' && (
                     <div className="text-sm text-muted-foreground">
                         💡 Puedes editar el contenido arriba para personalizar este template
                     </div>
                 )}
 
-                {/* Template seleccionado - mostrar info y botón eliminar */}
-                {emailTemplates.selectedTemplateId && emailTemplates.selectedTemplateId !== 'custom' && (
+                {selectedTemplateId && selectedTemplateId !== 'custom' && (
                     (() => {
-                        const selectedTemplate = emailTemplates.templates.find(t => t.id === emailTemplates.selectedTemplateId);
+                        const selectedTemplate = templates.find(t => t.id === selectedTemplateId);
                         if (!selectedTemplate) return null;
 
                         return (
@@ -248,6 +205,7 @@ export function TemplateSelectorClient({
                         <div className="text-sm text-muted-foreground">
                             ¿Te gusta este contenido? Guárdalo como template para reutilizarlo
                         </div>
+
                         <Button
                             variant="outline"
                             size="sm"
@@ -296,8 +254,8 @@ export function TemplateSelectorClient({
                         <div className="text-sm text-muted-foreground bg-muted p-3 rounded">
                             <strong>Vista previa:</strong>
                             <div className="mt-2">
-                                <div><strong>Asunto:</strong> {emailTemplates.customSubject}</div>
-                                <div className="mt-1"><strong>Contenido:</strong> {emailTemplates.customContent.substring(0, 100)}...</div>
+                                <div><strong>Asunto:</strong> {customSubject}</div>
+                                <div className="mt-1"><strong>Contenido:</strong> {customContent.substring(0, 100)}...</div>
                             </div>
                         </div>
                     </div>

@@ -3,6 +3,8 @@
 import { getCurrentUser } from '@repo/auth/server';
 import resend, { BulkEmailTemplate } from '@repo/email';
 import { keys } from '@repo/email/keys';
+import { createScheduledEmailCampaign, createEmailTemplate, deleteEmailTemplate } from '@repo/data-services';
+import { revalidatePath } from 'next/cache';
 // import { getClientsByCategory } from '@repo/data-services';
 
 interface ClientData {
@@ -34,20 +36,13 @@ export async function sendBulkEmailAction(
         // es necesario usar el dominio `resend.dev`.
         const fromEmail = 'Barfer <ventas@barferalimento.com>';
 
-        // Obtener datos de clientes (reales o testing)
-        let clientsData: ClientData[];
-
-        if (selectedClients.includes('test-email-1') || selectedClients.includes('test-email-2')) {
-            // Modo testing - usar emails específicos
-            const testClients = [
-                { id: 'test-email-1', name: 'Lucas', email: 'heredialucasfac22@gmail.com' },
-                { id: 'test-email-2', name: 'Nicolás', email: 'nicolascaliari28@gmail.com' }
-            ];
-            clientsData = testClients.filter(client => selectedClients.includes(client.id));
-        } else {
-            // MODO DE PRUEBA: Se ha desactivado temporalmente el envío a clientes reales.
-            clientsData = [];
-        }
+        // MODO DE PRUEBA FORZADO:
+        // Ignoramos los clientes seleccionados y enviamos siempre a los emails de prueba.
+        console.log(' MODO DE PRUEBA ACTIVO: El envío se redirigirá a los emails de simulación.');
+        const clientsData: ClientData[] = [
+            { id: 'test-email-1', name: 'Lucas (Prueba)', email: 'heredialucasfac22@gmail.com' },
+            { id: 'test-email-2', name: 'Nicolás (Prueba)', email: 'nicolascaliari28@gmail.com' }
+        ];
 
         if (clientsData.length === 0) {
             return {
@@ -88,6 +83,97 @@ export async function sendBulkEmailAction(
 
     } catch (error) {
         console.error('Error al enviar emails:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error desconocido'
+        };
+    }
+}
+
+export async function scheduleEmailCampaignAction(
+    campaignName: string,
+    scheduleCron: string,
+    targetAudience: { type: 'behavior' | 'spending'; category: string },
+    emailTemplateId: string
+) {
+    try {
+        const user = await getCurrentUser();
+        if (!user) {
+            return { success: false, error: 'Usuario no autenticado' };
+        }
+
+        await createScheduledEmailCampaign(user.id, {
+            name: campaignName,
+            scheduleCron: scheduleCron,
+            targetAudience: targetAudience,
+            status: 'ACTIVE',
+            emailTemplate: {
+                connect: {
+                    id: emailTemplateId,
+                },
+            },
+        });
+
+        // Revalidar la ruta para que en el futuro se puedan ver las campañas creadas
+        revalidatePath('/admin/clients/email');
+
+        return { success: true, message: 'Campaña programada exitosamente.' };
+
+    } catch (error) {
+        console.error('Error al programar la campaña:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error desconocido',
+        };
+    }
+}
+
+export async function createEmailTemplateAction(
+    name: string,
+    subject: string,
+    content: string,
+    description?: string
+) {
+    "use server"
+    try {
+        const user = await getCurrentUser();
+        if (!user) {
+            return { success: false, error: 'Usuario no autenticado' };
+        }
+
+        await createEmailTemplate(user.id, {
+            name,
+            subject,
+            content,
+            description,
+            isDefault: false
+        });
+
+        revalidatePath('/admin/clients/email');
+        return { success: true };
+    } catch (error) {
+        console.error('Error al crear template de email:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error desconocido'
+        };
+    }
+}
+
+export async function deleteEmailTemplateAction(templateId: string) {
+    "use server"
+    try {
+        const user = await getCurrentUser();
+        if (!user) {
+            return { success: false, error: 'Usuario no autenticado' };
+        }
+
+        await deleteEmailTemplate(templateId, user.id);
+
+        revalidatePath('/admin/clients/email');
+        return { success: true };
+    } catch (error) {
+        console.error('Error al eliminar template de email:', error);
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Error desconocido'

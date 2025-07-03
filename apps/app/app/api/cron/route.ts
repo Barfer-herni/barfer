@@ -1,87 +1,88 @@
 import { NextResponse } from 'next/server';
-import resend, { BulkEmailTemplate } from '@repo/email';
-import { getRevenueByDay } from '@repo/data-services';
+import { getActiveScheduledEmailCampaigns, getClientsByCategory } from '@repo/data-services';
+import resend from '@repo/email';
+import parseExpression from 'cron-parser';
 
-const TEST_EMAILS = [
-    { name: 'Lucas', email: 'heredialucasfac22@gmail.com' },
-    { name: 'Nicolás', email: 'nicolascaliari28@gmail.com' },
-];
-
-export const dynamic = 'force-dynamic'; // Asegura que la ruta no sea cacheada estáticamente
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
-    console.log("🚀 [Cron Job] Starting daily report task.");
+    console.log('🚀 [Campaign Cron] Job started.');
+
+    if (!resend) {
+        console.error('🚨 [Campaign Cron] Resend service not configured. Missing RESEND_TOKEN.');
+        return NextResponse.json({ error: 'Email service not configured' }, { status: 500 });
+    }
+
     try {
-        if (!resend) {
-            console.error("🚨 [Cron Job] Resend service not configured. Missing RESEND_TOKEN.");
-            return NextResponse.json({
-                error: 'Servicio de email no configurado. Configura RESEND_TOKEN.'
-            }, { status: 500 });
+        const now = new Date();
+        const campaigns = await getActiveScheduledEmailCampaigns();
+        console.log(`[Campaign Cron] Found ${campaigns.length} active email campaigns to check.`);
+
+        const emailsToSend: any[] = [];
+
+        for (const campaign of campaigns) {
+            try {
+                // @ts-ignore - The types for cron-parser seem to be incorrect or misleading.
+                const interval = parseExpression(campaign.scheduleCron);
+                const previousRun = interval.prev().toDate();
+
+                // Check if the campaign was due in the last 5 minutes.
+                // This tolerance handles slight delays in the n8n trigger.
+                const fiveMinutes = 5 * 60 * 1000;
+                if (now.getTime() - previousRun.getTime() < fiveMinutes) {
+                    console.log(`[Campaign Cron] Campaign "${campaign.name}" is due. Preparing to send.`);
+
+                    const audience = campaign.targetAudience as { type: 'behavior' | 'spending'; category: string };
+                    let clients = await getClientsByCategory(audience.category, audience.type);
+
+                    if (clients && clients.length > 0) {
+                        console.log(`[Campaign Cron] Audience matched. Found ${clients.length} real clients for campaign "${campaign.name}".`);
+
+                        // MODO DE PRUEBA FORZADO PARA EL CRON JOB
+                        console.log(' MODO DE PRUEBA ACTIVO: El envío del cron job se redirigirá a los emails de simulación.');
+                        clients = [
+                            { id: 'test-cron-1', name: 'Lucas (Prueba Cron)', email: 'heredialucasfac22@gmail.com', phone: '', lastOrder: '', totalSpent: 0, totalOrders: 0, behaviorCategory: 'active', spendingCategory: 'standard' },
+                            { id: 'test-cron-2', name: 'Nicolás (Prueba Cron)', email: 'nicolascaliari28@gmail.com', phone: '', lastOrder: '', totalSpent: 0, totalOrders: 0, behaviorCategory: 'active', spendingCategory: 'standard' }
+                        ];
+
+                        const emailPayloads = clients.map(client => ({
+                            to: client.email,
+                            from: 'Barfer <ventas@barferalimento.com>',
+                            subject: campaign.emailTemplate.subject,
+                            html: campaign.emailTemplate.content, // Assuming content is HTML
+                        }));
+                        emailsToSend.push(...emailPayloads);
+                    } else {
+                        console.log(`[Campaign Cron] No clients found for audience: ${JSON.stringify(audience)}`);
+                    }
+                }
+            } catch (err: any) {
+                console.error(`[Campaign Cron] Error parsing cron string for campaign "${campaign.name}": ${err.message}`);
+            }
         }
 
-        // 1. Calcular las fechas para "ayer"
-        const endDate = new Date();
-        endDate.setHours(0, 0, 0, 0); // Inicio del día de hoy
-        const startDate = new Date(endDate);
-        startDate.setDate(startDate.getDate() - 1); // Inicio del día de ayer
+        if (emailsToSend.length > 0) {
+            console.log(`[Campaign Cron] Sending ${emailsToSend.length} emails in a batch.`);
+            const { data, error } = await resend.batch.send(emailsToSend);
 
-        console.log(`🗓️  [Cron Job] Calculating report for period: ${startDate.toISOString()} to ${endDate.toISOString()}`);
-
-        // 2. Obtener datos de ingresos y órdenes de ayer
-        console.log("📊 [Cron Job] Fetching daily data...");
-        const dailyData = await getRevenueByDay(startDate, endDate);
-        console.log("✅ [Cron Job] Daily data fetched:", JSON.stringify(dailyData, null, 2));
-
-        let reportData;
-
-        if (dailyData && dailyData.length > 0) {
-            const yesterdayData = dailyData[0];
-            reportData = {
-                dailyRevenue: yesterdayData.revenue,
-                orderCount: yesterdayData.orders,
-                newClients: 5, // Valor estático por ahora
-            };
+            if (error) {
+                console.error('[Campaign Cron] Error sending batch emails:', error);
+            } else {
+                console.log(`[Campaign Cron] Batch email job accepted by Resend. ${emailsToSend.length} emails are being processed.`);
+            }
         } else {
-            // Si no hay datos, enviar un reporte en ceros
-            reportData = {
-                dailyRevenue: 0,
-                orderCount: 0,
-                newClients: 0,
-            };
+            console.log('[Campaign Cron] No emails to send at this time.');
         }
 
-        console.log("📝 [Cron Job] Report data prepared:", JSON.stringify(reportData, null, 2));
+        // TODO: Implement WhatsApp campaigns logic here following the same pattern.
 
-        const fromEmail = 'Barfer <ventas@barferalimento.com>';
+        console.log('✅ [Campaign Cron] Job finished successfully.');
+        return NextResponse.json({ message: 'Cron job executed successfully.' });
 
-        const emailPayloads = TEST_EMAILS.map((client) => ({
-            from: fromEmail,
-            to: [client.email],
-            subject: `📈 Reporte Diario - ${startDate.toLocaleDateString('es-AR')}`,
-            react: BulkEmailTemplate({
-                clientName: client.name,
-                content: `Reporte diario de ${startDate.toLocaleDateString('es-AR')}:
-- Ingresos: ${reportData.dailyRevenue}
-- Órdenes: ${reportData.orderCount}
-- Clientes nuevos: ${reportData.newClients}`,
-            }),
-        }));
-
-        console.log(`📧 [Cron Job] Preparing to send ${emailPayloads.length} emails.`);
-        const { data, error } = await resend.batch.send(emailPayloads);
-
-        if (error) {
-            console.error('❌ [Cron Job] Error sending daily report:', error);
-            return NextResponse.json({ error: `Error al enviar el reporte: ${error.message}` }, { status: 500 });
-        }
-
-        console.log(`✅ [Cron Job] ${data?.data?.length ?? 0} daily reports sent successfully.`);
-        return NextResponse.json({ message: `${data?.data?.length ?? 0} reportes diarios enviados.` });
-
-    } catch (error) {
-        console.error('🚨 [Cron Job] Unhandled error in daily report cron job:', error);
+    } catch (error: any) {
+        console.error('🚨 [Campaign Cron] Unhandled error in cron job:', error);
         return NextResponse.json({
-            error: error instanceof Error ? error.message : 'Error desconocido'
+            error: error?.message || 'Unknown error'
         }, { status: 500 });
     }
 } 

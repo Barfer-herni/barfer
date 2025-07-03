@@ -187,6 +187,9 @@ importers:
       '@types/qrcode':
         specifier: ^1.5.5
         version: 1.5.5
+      cron-parser:
+        specifier: ^5.3.0
+        version: 5.3.0
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
@@ -4620,8 +4623,8 @@ packages:
       express-rate-limit: 7.5.1(express@5.1.0)
       pkce-challenge: 5.0.0
       raw-body: 3.0.0
-      zod: 3.24.2
-      zod-to-json-schema: 3.24.6(zod@3.24.2)
+      zod: 3.25.67
+      zod-to-json-schema: 3.24.6(zod@3.25.67)
     transitivePeerDependencies:
       - supports-color
     dev: false
@@ -11486,6 +11489,13 @@ packages:
     resolution: {integrity: sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==}
     dev: true
 
+  /cron-parser@5.3.0:
+    resolution: {integrity: sha512-IS4mnFu6n3CFgEmXjr+B2zzGHsjJmHEdN+BViKvYSiEn3KWss9ICRDETDX/VZldiW82B94OyAZm4LIT4vcKK0g==}
+    engines: {node: '>=18'}
+    dependencies:
+      luxon: 3.6.1
+    dev: false
+
   /cross-spawn@7.0.6:
     resolution: {integrity: sha512-uV2QOWP2nWzsy2aMp8aRibhi9dlzF5Hgh5SHaB9OiTGEyDTiJJyx0uy51QXdyWbtAHNua4XJzUKca3OzKUd3vA==}
     engines: {node: '>= 8'}
@@ -14533,6 +14543,11 @@ packages:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
     dependencies:
       react: 19.0.0
+    dev: false
+
+  /luxon@3.6.1:
+    resolution: {integrity: sha512-tJLxrKJhO2ukZ5z0gyjY1zPh3Rh88Ej9P7jNrZiHMUXHae1yvI2imgOZtL1TO8TW6biMMKfTtAOoEJANgtWBMQ==}
+    engines: {node: '>=12'}
     dev: false
 
   /lz-string@1.5.0:

@@ -28,8 +28,10 @@ model User {
   updatedAt   DateTime @updatedAt
 
   // Relaciones
-  emailTemplates    EmailTemplate[]
-  whatsappTemplates WhatsAppTemplate[]
+  emailTemplates             EmailTemplate[]
+  whatsappTemplates          WhatsAppTemplate[]
+  scheduledEmailCampaigns    ScheduledEmailCampaign[]
+  scheduledWhatsAppCampaigns ScheduledWhatsAppCampaign[]
 }
 
 model EmailTemplate {
@@ -46,7 +48,8 @@ model EmailTemplate {
   updatedAt DateTime @updatedAt
 
   // Relaciones
-  user User @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  user               User                     @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  scheduledCampaigns ScheduledEmailCampaign[]
 
   @@map("email_templates")
 }
@@ -64,7 +67,52 @@ model WhatsAppTemplate {
   updatedAt DateTime @updatedAt
 
   // Relaciones
-  user User @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  user               User                        @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  scheduledCampaigns ScheduledWhatsAppCampaign[]
 
   @@map("whatsapp_templates")
+}
+
+enum CampaignStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+model ScheduledEmailCampaign {
+  id             String         @id @default(uuid())
+  name           String
+  status         CampaignStatus @default(ACTIVE)
+  targetAudience Json // { type: 'behavior' | 'spending', category: string }
+  scheduleCron   String // Cron string for schedule, e.g., '0 9 * * 1'
+
+  // Relations
+  emailTemplateId String
+  emailTemplate   EmailTemplate @relation(fields: [emailTemplateId], references: [id], onDelete: Cascade)
+  createdBy       String
+  user            User          @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("scheduled_email_campaigns")
+}
+
+model ScheduledWhatsAppCampaign {
+  id             String         @id @default(uuid())
+  name           String
+  status         CampaignStatus @default(ACTIVE)
+  targetAudience Json // { type: 'behavior' | 'spending', category: string }
+  scheduleCron   String // Cron string for schedule, e.g., '0 9 * * *'
+
+  // Relations
+  whatsAppTemplateId String
+  whatsAppTemplate   WhatsAppTemplate @relation(fields: [whatsAppTemplateId], references: [id], onDelete: Cascade)
+  createdBy          String
+  user               User             @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("scheduled_whatsapp_campaigns")
 }
