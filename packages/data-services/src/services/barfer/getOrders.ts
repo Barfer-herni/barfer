@@ -196,26 +196,22 @@ export async function getOrders({
         const skip = pageIndex * pageSize;
         const limit = pageSize;
 
-        // Usar agregación para soportar $expr y operadores de fecha
-        const pipeline = [
+        // Query 1: Datos paginados
+        const dataPipeline = [
             { $match: matchQuery },
             { $sort: sortQuery },
-            {
-                $facet: {
-                    data: [
-                        { $skip: skip },
-                        { $limit: limit },
-                    ],
-                    totalCount: [
-                        { $count: 'count' }
-                    ]
-                }
-            }
+            { $skip: skip },
+            { $limit: limit }
         ];
+        const ordersFromDB = await collection.aggregate(dataPipeline, { allowDiskUse: true }).toArray();
 
-        const aggResult = await collection.aggregate(pipeline).toArray();
-        const ordersFromDB = aggResult[0]?.data || [];
-        const total = aggResult[0]?.totalCount?.[0]?.count || 0;
+        // Query 2: Total de documentos
+        const countPipeline = [
+            { $match: matchQuery },
+            { $count: 'count' }
+        ];
+        const countResult = await collection.aggregate(countPipeline).toArray();
+        const total = countResult[0]?.count || 0;
         const pageCount = Math.ceil(total / pageSize);
 
         // Medida de seguridad: Eliminar duplicados por _id antes de serializar.
