@@ -37,8 +37,9 @@ export const columns: ColumnDef<Order>[] = [
         }
     },
     {
-        id: 'deliveryDay',
+        accessorKey: 'deliveryDay',
         header: 'Fecha',
+        enableSorting: true,
         cell: ({ row }: CellContext<Order, unknown>) => {
             const deliveryDay = row.original.deliveryDay;
             if (!deliveryDay) {
@@ -178,7 +179,7 @@ export const columns: ColumnDef<Order>[] = [
             const translatedStatus = statusTranslations[status] || status;
             const paymentMethod = row.original.paymentMethod;
             let colorClass = '';
-            if (status === 'pending' && paymentMethod !== 'cash') colorClass = 'bg-red-100 force-dark-black text-red-900';
+            if (status === 'pending' && paymentMethod !== 'cash') colorClass = 'bg-red-500 force-dark-black text-white';
             if (status === 'confirmed') colorClass = 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300';
             return (
                 <span className={`text-xs px-2 py-1 rounded ${colorClass}`}>

@@ -13,12 +13,12 @@ export default async function TablePage({
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
     const { locale } = await params;
-    const { page, pageSize, search, sort, from, to, orderType } = await searchParams || { page: '1', pageSize: '50', search: '', sort: 'createdAt.desc', from: '', to: '', clientType: '' };
+    const { page, pageSize, search, sort, from, to, orderType } = await searchParams || { page: '1', pageSize: '50', search: '', sort: 'deliveryDay.desc', from: '', to: '', clientType: '' };
 
     const currentPage = Number(page) || 1;
     const currentPageSize = Number(pageSize) || 50;
     const currentSearch = (search as string) || '';
-    const currentSort = (sort as string) || 'createdAt.desc';
+    const currentSort = (sort as string) || 'deliveryDay.desc';
     const [sortId, sortOrder] = currentSort.split('.');
     const fromDate = from as string | undefined;
     const toDate = to as string | undefined;

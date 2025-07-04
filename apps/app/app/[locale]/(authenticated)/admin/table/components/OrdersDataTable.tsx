@@ -217,7 +217,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     // Función para determinar el color de fondo de la celda de estado
     const getStatusCellBackgroundColor = (status: string, paymentMethod: string) => {
         if (status === 'pending' && paymentMethod !== 'cash') {
-            return 'bg-red-100';
+            return 'bg-red-500';
         }
         return '';
     };
@@ -291,7 +291,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             shippingPrice: row.original.shippingPrice || 0,
             deliveryAreaSchedule: row.original.deliveryArea?.schedule || '',
             items: row.original.items || [],
-            deliveryDay: row.original.deliveryDay || '',
+            deliveryDay: row.original.deliveryDay ? new Date(row.original.deliveryDay).toISOString() : '',
         });
     };
 

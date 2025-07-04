@@ -39,6 +39,9 @@ export async function getOrders({
 
         const baseFilter: any = {};
 
+        // Excluir envíos del día (método de pago 'transfer' y 'bank-transfer')
+        baseFilter.paymentMethod = { $nin: ['transfer', 'bank-transfer'] };
+
         // Filtro por fecha si se proporciona
         if (from || to) {
             baseFilter.deliveryDay = {};
