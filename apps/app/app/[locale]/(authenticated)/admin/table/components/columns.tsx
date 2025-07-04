@@ -45,7 +45,10 @@ export const columns: ColumnDef<Order>[] = [
             if (!deliveryDay) {
                 return <div className="w-full text-center text-sm">--</div>;
             }
+            // Crear fecha y ajustar para zona horaria de Argentina (UTC-3)
             const date = new Date(deliveryDay);
+            date.setHours(date.getHours() + 3); // Ajustar a zona horaria de Argentina
+
             const formatted = date.toLocaleDateString('es-AR', {
                 day: '2-digit',
                 month: 'short',
