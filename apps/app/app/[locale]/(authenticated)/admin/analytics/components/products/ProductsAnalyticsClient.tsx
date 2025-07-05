@@ -162,54 +162,7 @@ export function ProductsAnalyticsClient({
                 </CardContent>
             </Card>
 
-            {/* Gráficos de Línea de Tiempo */}
-            <div className="space-y-8">
-                <div>
-                    <h3 className="text-2xl font-bold tracking-tight mb-4">Evolución de Unidades Vendidas</h3>
-                    <div className={`grid gap-4 ${isComparing ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Período Actual</CardTitle>
-                                <CardDescription>{formatDateRange(dateFilter.from, dateFilter.to)}</CardDescription>
-                            </CardHeader>
-                            <CardContent><ProductTimelineChart data={filteredTimelineData} yKey1="totalQuantity" name1="Total" yKey2="confirmedQuantity" name2="Confirmadas" /></CardContent>
-                        </Card>
-                        {isComparing && filteredCompareTimelineData && (
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Período de Comparación</CardTitle>
-                                    <CardDescription>{compareFilter && formatDateRange(compareFilter.from, compareFilter.to)}</CardDescription>
-                                </CardHeader>
-                                <CardContent><ProductTimelineChart data={filteredCompareTimelineData} yKey1="totalQuantity" name1="Total" yKey2="confirmedQuantity" name2="Confirmadas" /></CardContent>
-                            </Card>
-                        )}
-                    </div>
-                </div>
-
-                <div>
-                    <h3 className="text-2xl font-bold tracking-tight mb-4">Evolución de Ingresos</h3>
-                    <div className={`grid gap-4 ${isComparing ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Período Actual</CardTitle>
-                                <CardDescription>{formatDateRange(dateFilter.from, dateFilter.to)}</CardDescription>
-                            </CardHeader>
-                            <CardContent><ProductTimelineChart data={filteredTimelineData} yKey1="totalRevenue" name1="Total" yKey2="confirmedRevenue" name2="Confirmados" yAxisFormatter={currencyFormatter} /></CardContent>
-                        </Card>
-                        {isComparing && filteredCompareTimelineData && (
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Período de Comparación</CardTitle>
-                                    <CardDescription>{compareFilter && formatDateRange(compareFilter.from, compareFilter.to)}</CardDescription>
-                                </CardHeader>
-                                <CardContent><ProductTimelineChart data={filteredCompareTimelineData} yKey1="totalRevenue" name1="Total" yKey2="confirmedRevenue" name2="Confirmados" yAxisFormatter={currencyFormatter} /></CardContent>
-                            </Card>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Filtros y Listas de Productos */}
+            {/* Filtros y Listas de Productos - MOVIDO ARRIBA */}
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2"><Filter className="h-5 w-5" /> Filtro de Rankings de Productos</CardTitle>
@@ -224,6 +177,7 @@ export function ProductsAnalyticsClient({
                 </CardContent>
             </Card>
 
+            {/* Ranking de Productos - MOVIDO ARRIBA */}
             <div className="grid gap-6 md:grid-cols-2">
                 <Card>
                     <CardHeader><CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" /> Ranking (Período Actual)</CardTitle></CardHeader>
@@ -245,6 +199,53 @@ export function ProductsAnalyticsClient({
                         </CardContent>
                     </Card>
                 )}
+            </div>
+
+            {/* Gráficos de Línea de Tiempo - SOLO TOTALES */}
+            <div className="space-y-8">
+                <div>
+                    <h3 className="text-2xl font-bold tracking-tight mb-4">Evolución de Unidades Vendidas</h3>
+                    <div className={`grid gap-4 ${isComparing ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Período Actual</CardTitle>
+                                <CardDescription>{formatDateRange(dateFilter.from, dateFilter.to)}</CardDescription>
+                            </CardHeader>
+                            <CardContent><ProductTimelineChart data={filteredTimelineData} yKey1="totalQuantity" name1="Total" /></CardContent>
+                        </Card>
+                        {isComparing && filteredCompareTimelineData && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Período de Comparación</CardTitle>
+                                    <CardDescription>{compareFilter && formatDateRange(compareFilter.from, compareFilter.to)}</CardDescription>
+                                </CardHeader>
+                                <CardContent><ProductTimelineChart data={filteredCompareTimelineData} yKey1="totalQuantity" name1="Total" /></CardContent>
+                            </Card>
+                        )}
+                    </div>
+                </div>
+
+                <div>
+                    <h3 className="text-2xl font-bold tracking-tight mb-4">Evolución de Ingresos</h3>
+                    <div className={`grid gap-4 ${isComparing ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Período Actual</CardTitle>
+                                <CardDescription>{formatDateRange(dateFilter.from, dateFilter.to)}</CardDescription>
+                            </CardHeader>
+                            <CardContent><ProductTimelineChart data={filteredTimelineData} yKey1="totalRevenue" name1="Total" yAxisFormatter={currencyFormatter} /></CardContent>
+                        </Card>
+                        {isComparing && filteredCompareTimelineData && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Período de Comparación</CardTitle>
+                                    <CardDescription>{compareFilter && formatDateRange(compareFilter.from, compareFilter.to)}</CardDescription>
+                                </CardHeader>
+                                <CardContent><ProductTimelineChart data={filteredCompareTimelineData} yKey1="totalRevenue" name1="Total" yAxisFormatter={currencyFormatter} /></CardContent>
+                            </Card>
+                        )}
+                    </div>
+                </div>
             </div>
         </div>
     );

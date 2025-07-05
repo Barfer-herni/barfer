@@ -10,9 +10,9 @@ interface ProductTimelinePoint {
 interface ProductTimelineChartProps {
     data: ProductTimelinePoint[];
     yKey1: string;
-    yKey2: string;
+    yKey2?: string;
     name1: string;
-    name2: string;
+    name2?: string;
     yAxisFormatter?: (value: any) => string;
 }
 
@@ -32,7 +32,9 @@ export function ProductTimelineChart({ data, yKey1, yKey2, name1, name2, yAxisFo
                 />
                 <Legend />
                 <Line type="monotone" dataKey={yKey1} name={name1} stroke="#22c55e" strokeWidth={2} />
-                <Line type="monotone" dataKey={yKey2} name={name2} stroke="#f97316" strokeWidth={2} />
+                {yKey2 && name2 && (
+                    <Line type="monotone" dataKey={yKey2} name={name2} stroke="#f97316" strokeWidth={2} />
+                )}
             </LineChart>
         </ResponsiveContainer>
     );
