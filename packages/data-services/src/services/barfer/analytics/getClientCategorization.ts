@@ -15,10 +15,9 @@ export async function getClientCategorization(): Promise<ClientAnalytics> {
     try {
         const collection = await getCollection('orders');
 
-        // Pipeline para obtener datos de clientes con sus estadísticas
+        // Pipeline simplificado para evitar problemas de memoria
         const pipeline = [
-            { $match: { status: { $in: ['confirmed', 'delivered'] } } },
-            { $sort: { createdAt: 1 } }, // Ordenar por fecha para obtener el último domicilio
+            { $match: { status: { $in: ['pending', 'confirmed', 'delivered', 'cancelled'] } } },
             {
                 $addFields: {
                     createdAt: {
@@ -32,14 +31,16 @@ export async function getClientCategorization(): Promise<ClientAnalytics> {
             },
             {
                 $group: {
-                    _id: { $ifNull: ['$user.id', '$user.email'] }, // Prioritize user.id, fallback to email
+                    _id: { $ifNull: ['$user.id', '$user.email'] },
                     user: { $first: '$user' },
-                    lastAddress: { $last: '$address' }, // Obtener la dirección del último pedido
+                    lastAddress: { $last: '$address' },
                     totalOrders: { $sum: 1 },
                     totalSpent: { $sum: '$total' },
                     firstOrderDate: { $min: '$createdAt' },
                     lastOrderDate: { $max: '$createdAt' },
-                    orders: { $push: { items: '$items', date: '$createdAt' } }
+                    // Solo guardar información esencial de órdenes para reducir memoria
+                    orderDates: { $push: '$createdAt' },
+                    orderItems: { $push: '$items' }
                 }
             },
             {
@@ -61,17 +62,24 @@ export async function getClientCategorization(): Promise<ClientAnalytics> {
             }
         ];
 
-        const clientsData = await collection.aggregate(pipeline).toArray();
+        const clientsData = await collection.aggregate(pipeline, { allowDiskUse: true }).toArray();
 
         // Procesar cada cliente para asignar categorías
         const categorizedClients: ClientCategorization[] = clientsData.map(client => {
             const behaviorCategory = categorizeBehavior(client);
-            const totalWeight = calculateTotalWeightFromOrders(client.orders);
+
+            // Reconstruir órdenes para compatibilidad con funciones existentes
+            const orders = client.orderDates.map((date: Date, index: number) => ({
+                date: date,
+                items: client.orderItems[index] || []
+            }));
+
+            const totalWeight = calculateTotalWeightFromOrders(orders);
 
             // Calcular el peso del último mes
             const oneMonthAgo = new Date();
             oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-            const lastMonthOrders = client.orders.filter((order: any) => new Date(order.date) > oneMonthAgo);
+            const lastMonthOrders = orders.filter((order: any) => new Date(order.date) > oneMonthAgo);
             const monthlyWeight = calculateTotalWeightFromOrders(lastMonthOrders);
 
             const spendingCategory = categorizeSpending(monthlyWeight);
@@ -130,13 +138,13 @@ export async function getClientCategorization(): Promise<ClientAnalytics> {
  * Categoriza el comportamiento de compra del cliente
  */
 function categorizeBehavior(client: any): ClientBehaviorCategory {
-    const { daysSinceLastOrder, daysSinceFirstOrder, orders, totalOrders } = client;
+    const { daysSinceLastOrder, daysSinceFirstOrder, orderDates, totalOrders } = client;
 
     // 1. Cliente recuperado: Prioridad alta. Volvió a comprar después de 4 meses de inactividad.
     if (totalOrders > 1) {
-        const sortedOrders = [...orders].sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        const lastOrderDate = new Date(sortedOrders[0].date);
-        const secondLastOrderDate = new Date(sortedOrders[1].date);
+        const sortedDates = [...orderDates].sort((a: Date, b: Date) => new Date(b).getTime() - new Date(a).getTime());
+        const lastOrderDate = new Date(sortedDates[0]);
+        const secondLastOrderDate = new Date(sortedDates[1]);
         const diffTime = lastOrderDate.getTime() - secondLastOrderDate.getTime();
         const diffDays = diffTime / (1000 * 60 * 60 * 24);
 
