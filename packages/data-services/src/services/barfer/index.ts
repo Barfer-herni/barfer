@@ -26,3 +26,4 @@ export { createOrder } from './createOrder';
 export { migrateClientType } from './migrateClientType';
 
 // ===== CLIENT MANAGEMENT =====
+export { markWhatsAppContacted, getWhatsAppContactStatus } from './markWhatsAppContacted';

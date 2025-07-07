@@ -51,6 +51,7 @@ export interface Order {
     deliveryArea: DeliveryArea;
     orderType: 'minorista' | 'mayorista';
     deliveryDay: string;
+    whatsappContactedAt?: string;
     createdAt: string;
     updatedAt: string;
 }

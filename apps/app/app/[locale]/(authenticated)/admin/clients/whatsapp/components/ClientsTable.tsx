@@ -13,7 +13,7 @@ import {
     TableHeader,
     TableRow,
 } from '@repo/design-system/components/ui/table';
-import { Search, Mail, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle } from 'lucide-react';
+import { Search, MessageCircle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import type { Dictionary } from '@repo/internationalization';
 import type { ClientForTable } from '@repo/data-services/src/services/barfer/analytics/getClientsByCategory';
 import { markClientsAsWhatsAppContacted, getClientsWhatsAppContactStatus } from '../../actions';
@@ -316,7 +316,7 @@ export function ClientsTable({
                                         <TableCell className="font-medium">{client.name}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <Mail className="h-4 w-4 text-muted-foreground" />
+                                                <MessageCircle className="h-4 w-4 text-muted-foreground" />
                                                 {client.email}
                                             </div>
                                         </TableCell>

@@ -31,4 +31,7 @@ export {
     getClientCategorization,
     getClientsByCategory,
     getPurchaseFrequency,
+    // WhatsApp Contact Management
+    markWhatsAppContacted,
+    getWhatsAppContactStatus,
 } from './barfer';
