@@ -21,7 +21,7 @@ import { useToast } from '@repo/design-system/hooks/use-toast';
 
 interface Client extends ClientForTable { }
 
-type SortField = 'totalSpent' | 'lastOrder' | 'name' | 'email';
+type SortField = 'totalSpent' | 'lastOrder' | 'name' | 'email' | 'whatsappContactedAt';
 type SortDirection = 'asc' | 'desc';
 
 interface ClientsTableProps {
@@ -57,7 +57,7 @@ export function ClientsTable({
     const [searchTerm, setSearchTerm] = useState('');
     const [sortField, setSortField] = useState<SortField>('totalSpent');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-    const [wppSentClients, setWppSentClients] = useState<Set<string>>(new Set());
+    const [wppContactDates, setWppContactDates] = useState<Map<string, string>>(new Map());
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
 
@@ -71,11 +71,13 @@ export function ClientsTable({
                 const result = await getClientsWhatsAppContactStatus(clientEmails);
 
                 if (result.success && result.data) {
-                    const contactedEmails = result.data
-                        .filter(item => item.whatsappContactedAt)
-                        .map(item => item.clientEmail);
-
-                    setWppSentClients(new Set(contactedEmails));
+                    const contactDatesMap = new Map<string, string>();
+                    result.data.forEach(item => {
+                        if (item.whatsappContactedAt) {
+                            contactDatesMap.set(item.clientEmail, item.whatsappContactedAt.toISOString());
+                        }
+                    });
+                    setWppContactDates(contactDatesMap);
                 }
             } catch (error) {
                 console.error('Error loading WhatsApp contact status:', error);
@@ -108,8 +110,12 @@ export function ClientsTable({
 
             if (result.success) {
                 // Actualizar el estado local
-                const newWppSentClients = new Set([...wppSentClients, ...selectedClientEmails]);
-                setWppSentClients(newWppSentClients);
+                const newContactDates = new Map(wppContactDates);
+                const currentDate = new Date().toISOString();
+                selectedClientEmails.forEach(email => {
+                    newContactDates.set(email, currentDate);
+                });
+                setWppContactDates(newContactDates);
 
                 // Limpiar selección después de marcar
                 onSelectionChange([]);
@@ -159,6 +165,13 @@ export function ClientsTable({
                     aValue = a.email.toLowerCase();
                     bValue = b.email.toLowerCase();
                     break;
+                case 'whatsappContactedAt':
+                    // Ordenar por fecha de contacto de WhatsApp (los no contactados van al final)
+                    const aContacted = wppContactDates.has(a.email);
+                    const bContacted = wppContactDates.has(b.email);
+                    if (aContacted && !bContacted) return -1;
+                    if (!aContacted && bContacted) return 1;
+                    return 0;
                 default:
                     return 0;
             }
@@ -277,7 +290,7 @@ export function ClientsTable({
                                     {getSortIcon('lastOrder')}
                                 </Button>
                             </TableHead>
-                            <TableHead className="text-right">
+                            <TableHead>
                                 <Button
                                     variant="ghost"
                                     onClick={() => handleSort('totalSpent')}
@@ -287,18 +300,29 @@ export function ClientsTable({
                                     {getSortIcon('totalSpent')}
                                 </Button>
                             </TableHead>
+                            <TableHead>
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => handleSort('whatsappContactedAt')}
+                                    className="h-auto p-0 font-medium"
+                                >
+                                    WPP Contactado
+                                    {getSortIcon('whatsappContactedAt')}
+                                </Button>
+                            </TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {sortedClients.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                                     No se encontraron clientes
                                 </TableCell>
                             </TableRow>
                         ) : (
                             sortedClients.map((client) => {
-                                const isWppSent = wppSentClients.has(client.email);
+                                const contactDate = wppContactDates.get(client.email);
+                                const isWppSent = !!contactDate;
                                 return (
                                     <TableRow
                                         key={client.id}
@@ -322,8 +346,19 @@ export function ClientsTable({
                                         </TableCell>
                                         <TableCell>{client.phone}</TableCell>
                                         <TableCell>{formatDate(client.lastOrder)}</TableCell>
-                                        <TableCell className="text-right font-medium">
+                                        <TableCell className="font-medium">
                                             {formatCurrency(client.totalSpent)}
+                                        </TableCell>
+                                        <TableCell>
+                                            {contactDate ? (
+                                                <div className="text-xs">
+                                                    {formatDate(contactDate)}
+                                                </div>
+                                            ) : (
+                                                <div className="text-xs text-gray-500">
+                                                    No contactado
+                                                </div>
+                                            )}
                                         </TableCell>
                                     </TableRow>
                                 );

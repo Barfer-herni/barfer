@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Checkbox } from '@repo/design-system/components/ui/checkbox';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Input } from '@repo/design-system/components/ui/input';
@@ -13,9 +13,11 @@ import {
     TableHeader,
     TableRow,
 } from '@repo/design-system/components/ui/table';
-import { Search, MessageCircle, Phone } from 'lucide-react';
+import { Search, MessageCircle, Phone, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import type { Dictionary } from '@repo/internationalization';
 import type { ClientForTable } from '@repo/data-services/src/services/barfer/analytics/getClientsByCategory';
+import { markClientsAsWhatsAppContacted, getClientsWhatsAppContactStatus } from '../../actions';
+import { useToast } from '@repo/design-system/hooks/use-toast';
 
 interface Client extends ClientForTable { }
 
@@ -50,6 +52,82 @@ export function WhatsAppClientsTable({
     dictionary
 }: WhatsAppClientsTableProps) {
     const [searchTerm, setSearchTerm] = useState('');
+    const [wppContactDates, setWppContactDates] = useState<Map<string, string>>(new Map());
+    const [loading, setLoading] = useState(false);
+    const { toast } = useToast();
+
+    // Cargar el estado de contacto por WhatsApp al montar el componente
+    useEffect(() => {
+        const loadWhatsAppContactStatus = async () => {
+            if (clients.length === 0) return;
+
+            try {
+                const clientEmails = clients.map(client => client.email);
+                const result = await getClientsWhatsAppContactStatus(clientEmails);
+
+                if (result.success && result.data) {
+                    const contactDatesMap = new Map<string, string>();
+                    result.data.forEach(item => {
+                        if (item.whatsappContactedAt) {
+                            contactDatesMap.set(item.clientEmail, item.whatsappContactedAt.toISOString());
+                        }
+                    });
+                    setWppContactDates(contactDatesMap);
+                }
+            } catch (error) {
+                console.error('Error loading WhatsApp contact status:', error);
+            }
+        };
+
+        loadWhatsAppContactStatus();
+    }, [clients]);
+
+    const handleMarkAsWhatsAppContacted = async () => {
+        if (selectedClients.length === 0) return;
+
+        setLoading(true);
+        try {
+            // Obtener los emails de los clientes seleccionados
+            const selectedClientEmails = clients
+                .filter(client => selectedClients.includes(client.id))
+                .map(client => client.email);
+
+            const result = await markClientsAsWhatsAppContacted(selectedClientEmails);
+
+            if (result.success) {
+                // Actualizar el estado local
+                const newContactDates = new Map(wppContactDates);
+                const currentDate = new Date().toISOString();
+                selectedClientEmails.forEach(email => {
+                    newContactDates.set(email, currentDate);
+                });
+                setWppContactDates(newContactDates);
+
+                // Limpiar selección después de marcar
+                onSelectionChange([]);
+
+                toast({
+                    title: "Éxito",
+                    description: result.message || `${selectedClientEmails.length} clientes marcados como contactados por WhatsApp`,
+                });
+            } else {
+                toast({
+                    title: "Error",
+                    description: result.error || "Error al marcar clientes como contactados",
+                    variant: "destructive",
+                });
+            }
+        } catch (error) {
+            console.error('Error marking clients as WhatsApp contacted:', error);
+            toast({
+                title: "Error",
+                description: "Error interno del servidor",
+                variant: "destructive",
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const filteredClients = clients.filter(client =>
         client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -91,6 +169,16 @@ export function WhatsAppClientsTable({
                 <Badge variant="secondary">
                     {filteredClients.length} clientes
                 </Badge>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleMarkAsWhatsAppContacted}
+                    disabled={selectedClients.length === 0 || loading}
+                    className="flex items-center gap-2"
+                >
+                    <MessageCircle className="h-4 w-4" />
+                    {loading ? 'Marcando...' : `Marcar seleccionados como WPP Enviado (${selectedClients.length})`}
+                </Button>
             </div>
 
             {/* Table */}
@@ -109,47 +197,66 @@ export function WhatsAppClientsTable({
                             <TableHead>Teléfono</TableHead>
                             <TableHead>Email</TableHead>
                             <TableHead>Último Pedido</TableHead>
-                            <TableHead className="text-right">Total Gastado</TableHead>
+                            <TableHead>Total Gastado</TableHead>
+                            <TableHead>WPP Contactado</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filteredClients.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                                     No se encontraron clientes
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            filteredClients.map((client) => (
-                                <TableRow key={client.id}>
-                                    <TableCell>
-                                        <Checkbox
-                                            checked={selectedClients.includes(client.id)}
-                                            onCheckedChange={(checked) =>
-                                                handleSelectClient(client.id, checked as boolean)
-                                            }
-                                            aria-label={`Seleccionar ${client.name}`}
-                                        />
-                                    </TableCell>
-                                    <TableCell className="font-medium">{client.name}</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <MessageCircle className="h-4 w-4 text-green-600" />
-                                            <span className="font-mono text-sm">{client.phone}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <Phone className="h-4 w-4 text-muted-foreground" />
-                                            {client.email}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>{formatDate(client.lastOrder)}</TableCell>
-                                    <TableCell className="text-right font-medium">
-                                        {formatCurrency(client.totalSpent)}
-                                    </TableCell>
-                                </TableRow>
-                            ))
+                            filteredClients.map((client) => {
+                                const contactDate = wppContactDates.get(client.email);
+                                const isWppSent = !!contactDate;
+                                return (
+                                    <TableRow
+                                        key={client.id}
+                                        className={isWppSent ? 'bg-yellow-100 hover:bg-yellow-200' : ''}
+                                    >
+                                        <TableCell>
+                                            <Checkbox
+                                                checked={selectedClients.includes(client.id)}
+                                                onCheckedChange={(checked) =>
+                                                    handleSelectClient(client.id, checked as boolean)
+                                                }
+                                                aria-label={`Seleccionar ${client.name}`}
+                                            />
+                                        </TableCell>
+                                        <TableCell className="font-medium">{client.name}</TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-2">
+                                                <MessageCircle className="h-4 w-4 text-green-600" />
+                                                <span className="font-mono text-sm">{client.phone}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-2">
+                                                <Phone className="h-4 w-4 text-muted-foreground" />
+                                                {client.email}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>{formatDate(client.lastOrder)}</TableCell>
+                                        <TableCell className="font-medium">
+                                            {formatCurrency(client.totalSpent)}
+                                        </TableCell>
+                                        <TableCell>
+                                            {contactDate ? (
+                                                <div className="text-xs">
+                                                    {formatDate(contactDate)}
+                                                </div>
+                                            ) : (
+                                                <div className="text-xs text-gray-500">
+                                                    No contactado
+                                                </div>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })
                         )}
                     </TableBody>
                 </Table>
