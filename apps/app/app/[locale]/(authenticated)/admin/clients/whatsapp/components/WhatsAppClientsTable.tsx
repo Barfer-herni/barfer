@@ -28,6 +28,9 @@ interface WhatsAppClientsTableProps {
     dictionary: Dictionary;
 }
 
+type SortField = 'totalSpent' | 'lastOrder' | 'whatsappContacted' | null;
+type SortDirection = 'asc' | 'desc';
+
 const formatCurrency = (amount: number): string => {
     return new Intl.NumberFormat('es-AR', {
         style: 'currency',
@@ -54,6 +57,8 @@ export function WhatsAppClientsTable({
     const [searchTerm, setSearchTerm] = useState('');
     const [wppContactDates, setWppContactDates] = useState<Map<string, string>>(new Map());
     const [loading, setLoading] = useState(false);
+    const [sortField, setSortField] = useState<SortField>(null);
+    const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
     const { toast } = useToast();
 
     // Cargar el estado de contacto por WhatsApp al montar el componente
@@ -129,14 +134,63 @@ export function WhatsAppClientsTable({
         }
     };
 
+    const handleSort = (field: SortField) => {
+        if (sortField === field) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortDirection('desc');
+        }
+    };
+
+    const getSortIcon = (field: SortField) => {
+        if (sortField !== field) {
+            return <ArrowUpDown className="h-4 w-4" />;
+        }
+        return sortDirection === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />;
+    };
+
     const filteredClients = clients.filter(client =>
         client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         client.phone.includes(searchTerm)
     );
 
+    // Aplicar ordenamiento
+    const sortedClients = [...filteredClients].sort((a, b) => {
+        if (!sortField) return 0;
+
+        let comparison = 0;
+        if (sortField === 'totalSpent') {
+            comparison = a.totalSpent - b.totalSpent;
+        } else if (sortField === 'lastOrder') {
+            comparison = new Date(a.lastOrder).getTime() - new Date(b.lastOrder).getTime();
+        } else if (sortField === 'whatsappContacted') {
+            const aContactDate = wppContactDates.get(a.email);
+            const bContactDate = wppContactDates.get(b.email);
+
+            // Si ambos están contactados, ordenar por fecha
+            if (aContactDate && bContactDate) {
+                comparison = new Date(aContactDate).getTime() - new Date(bContactDate).getTime();
+            }
+            // Si solo uno está contactado, el contactado va primero
+            else if (aContactDate && !bContactDate) {
+                comparison = -1;
+            }
+            else if (!aContactDate && bContactDate) {
+                comparison = 1;
+            }
+            // Si ninguno está contactado, mantener orden original
+            else {
+                comparison = 0;
+            }
+        }
+
+        return sortDirection === 'asc' ? comparison : -comparison;
+    });
+
     const handleSelectAll = (checked: boolean) => {
         if (checked) {
-            onSelectionChange(filteredClients.map(client => client.id));
+            onSelectionChange(sortedClients.map(client => client.id));
         } else {
             onSelectionChange([]);
         }
@@ -150,8 +204,8 @@ export function WhatsAppClientsTable({
         }
     };
 
-    const isAllSelected = filteredClients.length > 0 &&
-        filteredClients.every(client => selectedClients.includes(client.id));
+    const isAllSelected = sortedClients.length > 0 &&
+        sortedClients.every(client => selectedClients.includes(client.id));
 
     return (
         <div className="space-y-4">
@@ -167,7 +221,7 @@ export function WhatsAppClientsTable({
                     />
                 </div>
                 <Badge variant="secondary">
-                    {filteredClients.length} clientes
+                    {sortedClients.length} clientes
                 </Badge>
                 <Button
                     variant="outline"
@@ -196,20 +250,47 @@ export function WhatsAppClientsTable({
                             <TableHead>Nombre</TableHead>
                             <TableHead>Teléfono</TableHead>
                             <TableHead>Email</TableHead>
-                            <TableHead>Último Pedido</TableHead>
-                            <TableHead>Total Gastado</TableHead>
-                            <TableHead>WPP Contactado</TableHead>
+                            <TableHead>
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => handleSort('lastOrder')}
+                                    className="h-auto p-0 font-normal"
+                                >
+                                    Último Pedido
+                                    {getSortIcon('lastOrder')}
+                                </Button>
+                            </TableHead>
+                            <TableHead>
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => handleSort('totalSpent')}
+                                    className="h-auto p-0 font-normal"
+                                >
+                                    Total Gastado
+                                    {getSortIcon('totalSpent')}
+                                </Button>
+                            </TableHead>
+                            <TableHead>
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => handleSort('whatsappContacted')}
+                                    className="h-auto p-0 font-normal"
+                                >
+                                    WPP Contactado
+                                    {getSortIcon('whatsappContacted')}
+                                </Button>
+                            </TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {filteredClients.length === 0 ? (
+                        {sortedClients.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                                     No se encontraron clientes
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            filteredClients.map((client) => {
+                            sortedClients.map((client) => {
                                 const contactDate = wppContactDates.get(client.email);
                                 const isWppSent = !!contactDate;
                                 return (
@@ -240,7 +321,7 @@ export function WhatsAppClientsTable({
                                             </div>
                                         </TableCell>
                                         <TableCell>{formatDate(client.lastOrder)}</TableCell>
-                                        <TableCell className="font-medium">
+                                        <TableCell className="font-medium text-left">
                                             {formatCurrency(client.totalSpent)}
                                         </TableCell>
                                         <TableCell>
@@ -266,7 +347,7 @@ export function WhatsAppClientsTable({
             {selectedClients.length > 0 && (
                 <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
                     <div className="text-sm text-green-700">
-                        {selectedClients.length} de {filteredClients.length} clientes seleccionados para WhatsApp
+                        {selectedClients.length} de {sortedClients.length} clientes seleccionados para WhatsApp
                     </div>
                     <Button
                         variant="outline"
