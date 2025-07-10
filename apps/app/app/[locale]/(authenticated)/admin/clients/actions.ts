@@ -1,6 +1,6 @@
 'use server';
 
-import { markWhatsAppContacted, getWhatsAppContactStatus } from '@repo/data-services/src/services/barfer/markWhatsAppContacted';
+import { markWhatsAppContacted, unmarkWhatsAppContacted, getWhatsAppContactStatus } from '@repo/data-services/src/services/barfer/markWhatsAppContacted';
 
 /**
  * Marca clientes como contactados por WhatsApp
@@ -19,6 +19,30 @@ export async function markClientsAsWhatsAppContacted(clientEmails: string[]) {
 
     } catch (error) {
         console.error('Error in markClientsAsWhatsAppContacted action:', error);
+        return {
+            success: false,
+            error: 'Error interno del servidor'
+        };
+    }
+}
+
+/**
+ * Desmarca clientes como contactados por WhatsApp
+ */
+export async function unmarkClientsAsWhatsAppContacted(clientEmails: string[]) {
+    try {
+        if (!clientEmails || clientEmails.length === 0) {
+            return {
+                success: false,
+                error: 'No se proporcionaron emails de clientes'
+            };
+        }
+
+        const result = await unmarkWhatsAppContacted({ clientEmails });
+        return result;
+
+    } catch (error) {
+        console.error('Error in unmarkClientsAsWhatsAppContacted action:', error);
         return {
             success: false,
             error: 'Error interno del servidor'

@@ -1,9 +1,18 @@
 import 'server-only';
-import { getCollection, ObjectId } from '@repo/database';
+import { getCollection } from '@repo/database';
 import { format } from 'date-fns';
 
 interface MarkWhatsAppContactedParams {
     clientEmails: string[];
+}
+
+interface UnmarkWhatsAppContactedParams {
+    clientEmails: string[];
+}
+
+export interface WhatsAppContactStatus {
+    clientEmail: string;
+    whatsappContactedAt: Date | null;
 }
 
 /**
@@ -48,6 +57,40 @@ export async function markWhatsAppContacted({ clientEmails }: MarkWhatsAppContac
 }
 
 /**
+ * Desmarca clientes como contactados por WhatsApp (pone whatsappContactedAt en null)
+ * @param clientEmails Array de emails de clientes a desmarcar
+ * @returns Resultado de la operación
+ */
+export async function unmarkWhatsAppContacted({ clientEmails }: UnmarkWhatsAppContactedParams): Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+    updatedCount?: number;
+}> {
+    try {
+        const collection = await getCollection('orders');
+
+        // Actualizar todas las órdenes de los clientes especificados
+        const result = await collection.updateMany(
+            { 'user.email': { $in: clientEmails } },
+            { $unset: { whatsappContactedAt: "" } }
+        );
+
+        return {
+            success: true,
+            message: `${result.modifiedCount} órdenes actualizadas`,
+            updatedCount: result.modifiedCount
+        };
+    } catch (error) {
+        console.error('Error unmarking clients as WhatsApp contacted:', error);
+        return {
+            success: false,
+            error: 'Error al desmarcar clientes como contactados por WhatsApp'
+        };
+    }
+}
+
+/**
  * Obtiene el estado de contacto por WhatsApp para una lista de clientes
  * Consulta la colección orders para obtener el campo whatsappContactedAt
  * @param clientEmails Array de emails de clientes
@@ -55,46 +98,38 @@ export async function markWhatsAppContacted({ clientEmails }: MarkWhatsAppContac
  */
 export async function getWhatsAppContactStatus(clientEmails: string[]): Promise<{
     success: boolean;
-    data?: Array<{ clientEmail: string; whatsappContactedAt: Date | null }>;
+    data?: WhatsAppContactStatus[];
     error?: string;
 }> {
     try {
         const collection = await getCollection('orders');
 
-        // Obtener la fecha más reciente de contacto por WhatsApp para cada cliente
         const pipeline = [
-            {
-                $match: {
-                    'user.email': { $in: clientEmails }
-                }
-            },
+            { $match: { 'user.email': { $in: clientEmails } } },
             {
                 $group: {
                     _id: '$user.email',
-                    whatsappContactedAt: { $max: '$whatsappContactedAt' }
+                    whatsappContactedAt: { $first: '$whatsappContactedAt' }
+                }
+            },
+            {
+                $project: {
+                    clientEmail: '$_id',
+                    whatsappContactedAt: 1,
+                    _id: 0
                 }
             }
         ];
 
-        const contacts = await collection.aggregate(pipeline).toArray();
-
-        // Crear un mapa para acceso rápido
-        const contactMap = new Map();
-        contacts.forEach(contact => {
-            contactMap.set(contact._id, contact.whatsappContactedAt);
-        });
-
-        // Crear resultado para todos los emails solicitados
-        const result = clientEmails.map(email => ({
-            clientEmail: email,
-            whatsappContactedAt: contactMap.get(email) || null
-        }));
+        const result = await collection.aggregate(pipeline).toArray();
 
         return {
             success: true,
-            data: result
+            data: result.map(item => ({
+                clientEmail: item.clientEmail,
+                whatsappContactedAt: item.whatsappContactedAt ? new Date(item.whatsappContactedAt) : null
+            }))
         };
-
     } catch (error) {
         console.error('Error getting WhatsApp contact status:', error);
         return {

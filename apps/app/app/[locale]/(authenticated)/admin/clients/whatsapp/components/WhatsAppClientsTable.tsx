@@ -16,7 +16,7 @@ import {
 import { Search, MessageCircle, Phone, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import type { Dictionary } from '@repo/internationalization';
 import type { ClientForTable } from '@repo/data-services/src/services/barfer/analytics/getClientsByCategory';
-import { markClientsAsWhatsAppContacted, getClientsWhatsAppContactStatus } from '../../actions';
+import { markClientsAsWhatsAppContacted, unmarkClientsAsWhatsAppContacted, getClientsWhatsAppContactStatus } from '../../actions';
 import { useToast } from '@repo/design-system/hooks/use-toast';
 
 interface Client extends ClientForTable { }
@@ -134,6 +134,52 @@ export function WhatsAppClientsTable({
         }
     };
 
+    const handleUnmarkAsWhatsAppContacted = async () => {
+        if (selectedClients.length === 0) return;
+
+        setLoading(true);
+        try {
+            // Obtener los emails de los clientes seleccionados
+            const selectedClientEmails = clients
+                .filter(client => selectedClients.includes(client.id))
+                .map(client => client.email);
+
+            const result = await unmarkClientsAsWhatsAppContacted(selectedClientEmails);
+
+            if (result.success) {
+                // Actualizar el estado local
+                const newContactDates = new Map(wppContactDates);
+                selectedClientEmails.forEach(email => {
+                    newContactDates.delete(email);
+                });
+                setWppContactDates(newContactDates);
+
+                // Limpiar selección después de desmarcar
+                onSelectionChange([]);
+
+                toast({
+                    title: "Éxito",
+                    description: result.message || `${selectedClientEmails.length} clientes desmarcados como contactados por WhatsApp`,
+                });
+            } else {
+                toast({
+                    title: "Error",
+                    description: result.error || "Error al desmarcar clientes como contactados",
+                    variant: "destructive",
+                });
+            }
+        } catch (error) {
+            console.error('Error unmarking clients as WhatsApp contacted:', error);
+            toast({
+                title: "Error",
+                description: "Error interno del servidor",
+                variant: "destructive",
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleSort = (field: SortField) => {
         if (sortField === field) {
             setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -232,6 +278,16 @@ export function WhatsAppClientsTable({
                 >
                     <MessageCircle className="h-4 w-4" />
                     {loading ? 'Marcando...' : `Marcar seleccionados como WPP Enviado (${selectedClients.length})`}
+                </Button>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleUnmarkAsWhatsAppContacted}
+                    disabled={selectedClients.length === 0 || loading}
+                    className="flex items-center gap-2 bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                >
+                    <MessageCircle className="h-4 w-4" />
+                    {loading ? 'Desmarcando...' : `Desmarcar seleccionados (${selectedClients.length})`}
                 </Button>
             </div>
 
