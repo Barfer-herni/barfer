@@ -2,12 +2,14 @@ import { NextResponse } from 'next/server';
 import { getActiveScheduledEmailCampaigns, getClientsByCategory } from '@repo/data-services';
 import resend, { BulkEmailTemplate } from '@repo/email';
 import { CronExpressionParser } from 'cron-parser';
+import { format } from 'date-fns';
+import { differenceInMilliseconds } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
     const now = new Date();
-    console.log(`🚀 [Campaign Cron] Job started at ${now.toISOString()} (UTC)`);
+    console.log(`🚀 [Campaign Cron] Job started at ${format(now, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx")} (UTC)`);
 
     if (!resend) {
         console.error('🚨 [Campaign Cron] Resend service not configured. Missing RESEND_TOKEN.');
@@ -27,16 +29,16 @@ export async function GET() {
                 const nextRun = interval.next().toDate();
 
                 const twoMinutes = 2 * 60 * 1000;
-                const timeSincePrev = now.getTime() - previousRun.getTime();
-                const timeToNext = nextRun.getTime() - now.getTime();
+                const timeSincePrev = differenceInMilliseconds(now, previousRun);
+                const timeToNext = differenceInMilliseconds(nextRun, now);
 
                 const isDue = timeSincePrev < twoMinutes || (timeToNext > 0 && timeToNext < twoMinutes);
 
                 console.log(`\n[Campaign Cron] Checking campaign "${campaign.name}"...`);
-                console.log(` -> Current time:           ${now.toISOString()}`);
+                console.log(` -> Current time:           ${format(now, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx")}`);
                 console.log(` -> Cron expression:        ${campaign.scheduleCron}`);
-                console.log(` -> Previous scheduled run: ${previousRun.toISOString()}`);
-                console.log(` -> Next scheduled run:     ${nextRun.toISOString()}`);
+                console.log(` -> Previous scheduled run: ${format(previousRun, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx")}`);
+                console.log(` -> Next scheduled run:     ${format(nextRun, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx")}`);
                 console.log(` -> Time since last run:    ${Math.round(timeSincePrev / 1000)} seconds`);
                 console.log(` -> Time to next run:       ${Math.round(timeToNext / 1000)} seconds`);
                 console.log(` -> Is due (within 2 min):   ${isDue}`);

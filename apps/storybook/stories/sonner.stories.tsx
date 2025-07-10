@@ -1,6 +1,7 @@
 import { action } from '@storybook/addon-actions';
 import type { Meta, StoryObj } from '@storybook/react';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 
 import { Toaster } from '@repo/design-system/components/ui/sonner';
 
@@ -34,7 +35,7 @@ export const Default: Story = {
         type="button"
         onClick={() =>
           toast('Event has been created', {
-            description: new Date().toLocaleString(),
+            description: format(new Date(), 'dd/MM/yyyy HH:mm:ss'),
             action: {
               label: 'Undo',
               onClick: action('Undo clicked'),

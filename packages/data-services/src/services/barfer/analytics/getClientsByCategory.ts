@@ -2,6 +2,9 @@
 
 import { getClientCategorization } from './getClientCategorization';
 import type { ClientBehaviorCategory, ClientSpendingCategory, ClientCategorization } from '../../../types/barfer';
+import 'server-only';
+import { getCollection } from '@repo/database';
+import { format } from 'date-fns';
 
 export interface ClientForTable {
     id: string;
@@ -45,7 +48,7 @@ export async function getClientsByCategory(
             name: client.user.name + (client.user.lastName ? ` ${client.user.lastName}` : ''),
             email: client.user.email,
             phone: client.lastAddress?.phone || 'No disponible', // Usar phoneNumber del usuario
-            lastOrder: new Date(client.lastOrderDate).toISOString().split('T')[0], // Formato YYYY-MM-DD
+            lastOrder: format(new Date(client.lastOrderDate), 'yyyy-MM-dd'), // Formato YYYY-MM-DD
             totalSpent: Math.round(client.totalSpent),
             totalOrders: client.totalOrders,
             behaviorCategory: client.behaviorCategory,

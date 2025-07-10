@@ -1,5 +1,6 @@
 import 'server-only';
 import { getCollection } from '@repo/database';
+import { subMonths, differenceInDays, compareDesc } from 'date-fns';
 import type {
     ClientCategorization,
     ClientBehaviorCategory,
@@ -77,8 +78,7 @@ export async function getClientCategorization(): Promise<ClientAnalytics> {
             const totalWeight = calculateTotalWeightFromOrders(orders);
 
             // Calcular el peso del último mes
-            const oneMonthAgo = new Date();
-            oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+            const oneMonthAgo = subMonths(new Date(), 1);
             const lastMonthOrders = orders.filter((order: any) => new Date(order.date) > oneMonthAgo);
             const monthlyWeight = calculateTotalWeightFromOrders(lastMonthOrders);
 
@@ -142,11 +142,10 @@ function categorizeBehavior(client: any): ClientBehaviorCategory {
 
     // 1. Cliente recuperado: Prioridad alta. Volvió a comprar después de 4 meses de inactividad.
     if (totalOrders > 1) {
-        const sortedDates = [...orderDates].sort((a: Date, b: Date) => new Date(b).getTime() - new Date(a).getTime());
+        const sortedDates = [...orderDates].sort((a: Date, b: Date) => compareDesc(a, b));
         const lastOrderDate = new Date(sortedDates[0]);
         const secondLastOrderDate = new Date(sortedDates[1]);
-        const diffTime = lastOrderDate.getTime() - secondLastOrderDate.getTime();
-        const diffDays = diffTime / (1000 * 60 * 60 * 24);
+        const diffDays = differenceInDays(lastOrderDate, secondLastOrderDate);
 
         if (diffDays > 120 && daysSinceLastOrder <= 90) {
             return 'recovered';

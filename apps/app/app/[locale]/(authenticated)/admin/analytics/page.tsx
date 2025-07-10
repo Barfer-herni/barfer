@@ -6,6 +6,7 @@ import { PaymentsAnalyticsTab } from './components/payments/PaymentsAnalyticsTab
 import { FrequencyAnalyticsTab } from './components/frequency/FrequencyAnalyticsTab';
 import { AnalyticsTabsWrapper } from './components/AnalyticsTabsWrapper';
 import { AnalyticsDateFilter } from './components/AnalyticsDateFilter';
+import { subDays, startOfDay, endOfDay } from 'date-fns';
 
 interface AnalyticsPageProps {
     searchParams: Promise<{
@@ -30,7 +31,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         // Por defecto: últimos 30 días en UTC
         from: (() => {
             const now = new Date();
-            const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+            const thirtyDaysAgo = subDays(now, 30);
             return new Date(Date.UTC(
                 thirtyDaysAgo.getUTCFullYear(),
                 thirtyDaysAgo.getUTCMonth(),

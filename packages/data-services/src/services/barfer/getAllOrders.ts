@@ -1,6 +1,7 @@
 import 'server-only';
 import { getCollection, ObjectId } from '@repo/database';
 import type { Order } from '../../types/barfer';
+import { addDays } from 'date-fns';
 
 interface GetAllOrdersParams {
     search?: string;
@@ -40,8 +41,7 @@ export async function getAllOrders({
                 baseFilter.createdAt.$gte = new Date(from);
             }
             if (to) {
-                const toDate = new Date(to);
-                toDate.setDate(toDate.getDate() + 1);
+                const toDate = addDays(new Date(to), 1);
                 baseFilter.createdAt.$lt = toDate;
             }
         }

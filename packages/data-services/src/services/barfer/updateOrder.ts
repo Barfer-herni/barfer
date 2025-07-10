@@ -1,5 +1,8 @@
+import 'server-only';
 import { getCollection, ObjectId } from '@repo/database';
 import { z } from 'zod';
+import { format } from 'date-fns';
+import type { Order } from '../../types/barfer';
 
 const updateOrderSchema = z.object({
     status: z.string().optional(),
@@ -24,7 +27,7 @@ export async function updateOrder(id: string, data: any) {
     console.log('data', data);
     console.log('id', id);
     const updateData = updateOrderSchema.parse(data);
-    updateData.updatedAt = new Date().toISOString();
+    updateData.updatedAt = format(new Date(), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
     const collection = await getCollection('orders');
     console.log('updateData', updateData);
     const result = await collection.findOneAndUpdate(
@@ -42,7 +45,7 @@ export async function updateOrdersStatusBulk(ids: string[], status: string) {
     const objectIds = ids.map(id => new ObjectId(id));
     const result = await collection.updateMany(
         { _id: { $in: objectIds } },
-        { $set: { status, updatedAt: new Date().toISOString() } }
+        { $set: { status, updatedAt: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx") } }
     );
     return { success: true, modifiedCount: result.modifiedCount };
 } 

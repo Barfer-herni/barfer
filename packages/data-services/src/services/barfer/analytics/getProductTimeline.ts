@@ -1,5 +1,6 @@
 import 'server-only';
 import { getCollection } from '@repo/database';
+import { differenceInDays } from 'date-fns';
 
 interface ProductEvolution {
     productId: string;
@@ -28,8 +29,8 @@ export async function getProductTimeline(
     try {
         const collection = await getCollection('orders');
 
-        const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const diffTime = differenceInDays(endDate, startDate);
+        const diffDays = Math.ceil(diffTime);
 
         let periodFormat: string;
         if (diffDays <= 31) periodFormat = '%Y-%m-%d';

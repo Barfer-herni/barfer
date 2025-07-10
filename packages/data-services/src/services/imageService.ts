@@ -1,6 +1,8 @@
 'use server'
 
-// import { database as db } from '@repo/database';
+import 'server-only';
+import { getCollection } from '@repo/database';
+import { format } from 'date-fns';
 import { revalidatePath } from 'next/cache';
 import { ImageFormData } from '../types/image';
 
@@ -10,7 +12,7 @@ import { ImageFormData } from '../types/image';
 export async function getAllImages() {
     try {
         // MOCKUP: Replace with actual database call
-        return [
+        let images = [
             { id: '1', name: 'Image 1', alt: 'Description 1', url: 'https://example.com/image1.jpg', type: 'IMAGE', createdAt: new Date() },
             { id: '2', name: 'Image 2', alt: 'Description 2', url: 'https://example.com/image2.jpg', type: 'IMAGE', createdAt: new Date() }
         ];
@@ -59,9 +61,8 @@ export async function createImage(data: ImageFormData) {
     "use server";
     try {
         // MOCKUP: Replace with actual database call
-        console.log('Creating image with data:', data);
-        return {
-            id: '123',
+        const newImage = {
+            id: Date.now().toString(),
             name: data.name,
             alt: data.alt || null,
             url: data.url,
@@ -79,7 +80,7 @@ export async function createImage(data: ImageFormData) {
         //     },
         // });
         revalidatePath('/admin/dashboard');
-        // return image;
+        return newImage;
     } catch (error) {
         console.error("Error creating image:", error);
         throw new Error("Failed to create image");
@@ -93,9 +94,8 @@ export async function updateImage(imageId: string, data: ImageFormData) {
     "use server";
     try {
         // MOCKUP: Replace with actual database call
-        console.log('Updating image', imageId, 'with data:', data);
-        return {
-            id: imageId,
+        const newImage = {
+            id: Date.now().toString(),
             name: data.name,
             alt: data.alt || null,
             url: data.url,
@@ -113,7 +113,7 @@ export async function updateImage(imageId: string, data: ImageFormData) {
         //     },
         // });
         revalidatePath('/admin/dashboard');
-        // return image;
+        return newImage;
     } catch (error) {
         console.error("Error updating image:", error);
         throw new Error("Failed to update image");

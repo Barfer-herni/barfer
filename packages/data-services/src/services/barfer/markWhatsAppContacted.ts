@@ -1,5 +1,6 @@
 import 'server-only';
-import { getCollection } from '@repo/database';
+import { getCollection, ObjectId } from '@repo/database';
+import { format } from 'date-fns';
 
 interface MarkWhatsAppContactedParams {
     clientEmails: string[];
@@ -19,7 +20,7 @@ export async function markWhatsAppContacted({ clientEmails }: MarkWhatsAppContac
 }> {
     try {
         const collection = await getCollection('orders');
-        const now = new Date();
+        const now = format(new Date(), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
 
         // Actualizar todas las órdenes de los clientes especificados
         const result = await collection.updateMany(

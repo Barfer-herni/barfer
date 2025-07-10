@@ -1,7 +1,7 @@
 import 'server-only';
 import { getCollection, ObjectId } from '@repo/database';
 import type { Order } from '../../types/barfer';
-import { parse, isValid, startOfDay, endOfDay } from 'date-fns';
+import { parse, isValid, startOfDay, endOfDay, addDays, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface GetOrdersParams {
@@ -46,12 +46,11 @@ export async function getOrders({
         if (from || to) {
             baseFilter.deliveryDay = {};
             if (from) {
-                baseFilter.deliveryDay.$gte = new Date(from).toISOString();
+                baseFilter.deliveryDay.$gte = format(new Date(from), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
             }
             if (to) {
-                const toDate = new Date(to);
-                toDate.setDate(toDate.getDate() + 1);
-                baseFilter.deliveryDay.$lt = toDate.toISOString();
+                const toDate = addDays(new Date(to), 1);
+                baseFilter.deliveryDay.$lt = format(toDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
             }
         }
 
@@ -83,7 +82,7 @@ export async function getOrders({
                 // Si es una fecha válida, buscar por rango de ese día en deliveryDay
                 const fromDate = startOfDay(parsedDate);
                 const toDate = endOfDay(parsedDate);
-                searchFilter['deliveryDay'] = { $gte: fromDate.toISOString(), $lte: toDate.toISOString() };
+                searchFilter['deliveryDay'] = { $gte: format(fromDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"), $lte: format(toDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx") };
             } else {
                 const searchWords = search.split(' ').filter(Boolean).map(escapeRegex);
 

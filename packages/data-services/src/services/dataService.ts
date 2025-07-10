@@ -2,6 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { GenericData, DataFormData } from '../types/data';
+import 'server-only';
+import { getCollection } from '@repo/database';
+import { format } from 'date-fns';
 
 /**
  * Obtener todos los datos
@@ -130,7 +133,7 @@ export async function updateData(dataId: string, data: DataFormData) {
     try {
         // MOCKUP: Replace with actual database call
         console.log('Updating data', dataId, 'with:', data);
-        return {
+        const updatedData = {
             id: dataId,
             key: data.key,
             value: data.value,
@@ -149,7 +152,7 @@ export async function updateData(dataId: string, data: DataFormData) {
         //     },
         // });
         revalidatePath('/admin/dashboard');
-        // return result;
+        return updatedData;
     } catch (error) {
         console.error("Error updating data:", error);
         throw new Error("Failed to update data");

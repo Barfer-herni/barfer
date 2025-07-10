@@ -1,6 +1,7 @@
 import 'server-only';
 import { getCollection, ObjectId } from '@repo/database';
 import { z } from 'zod';
+import { format } from 'date-fns';
 import type { Order } from '../../types/barfer';
 
 const createOrderSchema = z.object({
@@ -69,8 +70,8 @@ export async function createOrder(data: z.infer<typeof createOrderSchema>): Prom
         // Crear la nueva orden con timestamps
         const newOrder = {
             ...validatedData,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            createdAt: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
+            updatedAt: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
         };
 
         // Insertar la orden en la base de datos

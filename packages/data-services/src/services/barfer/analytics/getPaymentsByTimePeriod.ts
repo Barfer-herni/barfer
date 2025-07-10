@@ -1,5 +1,7 @@
 import 'server-only';
 import { getCollection } from '@repo/database';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface PaymentByTimePeriod {
     period: string;
@@ -62,8 +64,6 @@ export async function getPaymentsByTimePeriod(
                 break;
         }
 
-
-
         pipeline.push({
             $group: {
                 _id: groupId,
@@ -111,7 +111,7 @@ export async function getPaymentsByTimePeriod(
             switch (periodType) {
                 case 'daily':
                     period = `${item._id.year}-${String(item._id.month).padStart(2, '0')}-${String(item._id.day).padStart(2, '0')}`;
-                    date = new Date(item._id.year, item._id.month - 1, item._id.day).toLocaleDateString('es-ES');
+                    date = format(new Date(item._id.year, item._id.month - 1, item._id.day), 'dd/MM/yyyy', { locale: es });
                     break;
                 case 'weekly':
                     period = `${item._id.year}-W${String(item._id.week).padStart(2, '0')}`;
@@ -119,10 +119,7 @@ export async function getPaymentsByTimePeriod(
                     break;
                 case 'monthly':
                     period = `${item._id.year}-${String(item._id.month).padStart(2, '0')}`;
-                    date = new Date(item._id.year, item._id.month - 1).toLocaleDateString('es-ES', {
-                        year: 'numeric',
-                        month: 'long'
-                    });
+                    date = format(new Date(item._id.year, item._id.month - 1), 'MMMM yyyy', { locale: es });
                     break;
                 default:
                     period = '';

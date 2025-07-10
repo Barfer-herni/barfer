@@ -1,5 +1,6 @@
 import 'server-only';
 import { getCollection } from '@repo/database';
+import { differenceInDays } from 'date-fns';
 
 export interface ProductByTimePeriod {
     period: string;
@@ -24,7 +25,7 @@ export async function getProductsByTimePeriod(
         const collection = await getCollection('orders');
 
         // Calcular la diferencia en días para determinar el tipo de agrupación
-        const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        const daysDiff = Math.ceil(differenceInDays(endDate, startDate));
 
         let groupBy: any;
 

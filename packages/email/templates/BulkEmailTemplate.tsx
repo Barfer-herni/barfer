@@ -10,6 +10,7 @@ import {
     Text,
 } from '@react-email/components';
 import * as React from 'react';
+import { format } from 'date-fns';
 
 interface BulkEmailTemplateProps {
     clientName: string;
@@ -36,7 +37,7 @@ export const BulkEmailTemplate = ({
                     <div dangerouslySetInnerHTML={{ __html: personalizedContent }} />
                     <Hr style={hr} />
                     <Text style={footer}>
-                        Barfer - {new Date().getFullYear()}
+                        Barfer - {format(new Date(), 'yyyy')}
                     </Text>
                 </Container>
             </Body>

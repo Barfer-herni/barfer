@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { EmailTemplateData, WhatsAppTemplateData } from '@repo/data-services';
+import { subDays, differenceInMilliseconds } from 'date-fns';
 
 interface DateRange {
     from: Date;
@@ -57,8 +58,7 @@ interface InitStore {
 // Helper function to get default date range (last 30 days)
 const getDefaultDateRange = (): DateRange => {
     const today = new Date();
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(today.getDate() - 29);
+    const thirtyDaysAgo = subDays(today, 29);
 
     return {
         from: thirtyDaysAgo,
@@ -69,7 +69,7 @@ const getDefaultDateRange = (): DateRange => {
 
 // Helper function to get previous period for comparison
 const getPreviousPeriod = (current: DateRange): DateRange => {
-    const duration = current.to.getTime() - current.from.getTime();
+    const duration = differenceInMilliseconds(current.to, current.from);
     const previousEnd = new Date(current.from.getTime() - 1);
     const previousStart = new Date(previousEnd.getTime() - duration);
 

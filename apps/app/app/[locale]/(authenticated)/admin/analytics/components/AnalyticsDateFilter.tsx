@@ -11,6 +11,7 @@ import { Separator } from '@repo/design-system/components/ui/separator';
 import { Switch } from '@repo/design-system/components/ui/switch';
 import { Label } from '@repo/design-system/components/ui/label';
 import { Calendar, Filter, RotateCcw, X } from 'lucide-react';
+import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 
 type DateRange = {
     from: Date;
@@ -106,11 +107,11 @@ function formatDateRange(range: DateRange): string {
         if (preset) return preset.label;
     }
 
-    return `${range.from.toLocaleDateString('es-ES')} - ${range.to.toLocaleDateString('es-ES')}`;
+    return `${format(range.from, 'dd/MM/yyyy')} - ${format(range.to, 'dd/MM/yyyy')}`;
 }
 
 function formatDateForInput(date: Date): string {
-    return date.toISOString().split('T')[0];
+    return format(date, 'yyyy-MM-dd');
 }
 
 export function AnalyticsDateFilter({ compact = false, showCompare = true }: AnalyticsDateFilterProps) {

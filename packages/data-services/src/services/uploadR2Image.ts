@@ -3,6 +3,7 @@
 import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
 import { ImageFormData } from "../types/image";
+import { format } from 'date-fns';
 
 // Configuración para Cloudflare R2
 const s3Client = new S3Client({
@@ -48,7 +49,7 @@ export async function uploadR2Image(formData: ImageFormData): Promise<S3UploadRe
         }
 
         // Generar key único con timestamp
-        const timestamp = Date.now();
+        const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
         const key = `${formData.folder}/${timestamp}-${fileName}`;
 
         const upload = new Upload({

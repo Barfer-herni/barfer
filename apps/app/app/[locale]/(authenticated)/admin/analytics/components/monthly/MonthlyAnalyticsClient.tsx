@@ -9,6 +9,8 @@ import { MonthlyChart } from '../charts/MonthlyChart';
 import { DeliveryOrdersChart } from '../charts/DeliveryOrdersChart';
 import { DeliveryRevenueChart } from '../charts/DeliveryRevenueChart';
 import { DeliveryWeightChart } from '../charts/DeliveryWeightChart';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface MonthlyData {
     month: string;
@@ -85,7 +87,7 @@ export function MonthlyAnalyticsClient({
         if (!from || !to) {
             return 'Período no válido';
         }
-        return `${from.toLocaleDateString('es-ES')} - ${to.toLocaleDateString('es-ES')}`;
+        return `${format(from, 'dd/MM/yyyy', { locale: es })} - ${format(to, 'dd/MM/yyyy', { locale: es })}`;
     };
 
     // Determinar cuál período es más reciente para las etiquetas
@@ -97,10 +99,7 @@ export function MonthlyAnalyticsClient({
     const formatMonthName = (monthStr: string) => {
         const [year, month] = monthStr.split('-');
         const date = new Date(parseInt(year), parseInt(month) - 1);
-        return date.toLocaleDateString('es-ES', {
-            year: 'numeric',
-            month: 'long'
-        });
+        return format(date, 'MMMM yyyy', { locale: es });
     };
 
     return (

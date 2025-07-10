@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import Balancer from 'react-wrap-balancer';
+import { format } from 'date-fns';
 
 type LegalPageProperties = {
   readonly params: Promise<{
@@ -33,7 +34,7 @@ const LegalPage = async ({ params }: LegalPageProperties) => {
     _title: "Página Legal",
     description: "Contenido legal pendiente de implementación",
     readingTime: "5",
-    date: new Date().toISOString()
+    date: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx")
   };
 
   return (
