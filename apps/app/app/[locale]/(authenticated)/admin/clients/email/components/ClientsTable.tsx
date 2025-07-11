@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Checkbox } from '@repo/design-system/components/ui/checkbox';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Input } from '@repo/design-system/components/ui/input';
@@ -59,6 +59,7 @@ export function ClientsTable({
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
     const [wppContactDates, setWppContactDates] = useState<Map<string, string>>(new Map());
     const [loading, setLoading] = useState(false);
+    const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
     const { toast } = useToast();
 
     // Cargar el estado de contacto por WhatsApp al montar el componente
@@ -251,7 +252,58 @@ export function ClientsTable({
         } else {
             onSelectionChange(selectedClients.filter(id => id !== clientId));
         }
+
+        // Actualizar el lastSelectedIndex para el checkbox también
+        const clientIndex = sortedClients.findIndex(client => client.id === clientId);
+        if (clientIndex !== -1) {
+            setLastSelectedIndex(clientIndex);
+        }
     };
+
+    // Nueva función para manejar clicks en filas con selección avanzada
+    const handleRowClick = useCallback((clientId: string, index: number, event: React.MouseEvent) => {
+        // Prevenir la propagación si se hace click en el checkbox
+        if ((event.target as HTMLElement).closest('[role="checkbox"]')) {
+            return;
+        }
+
+        event.preventDefault();
+
+        if (event.shiftKey && lastSelectedIndex !== null) {
+            // Selección de rango con Shift+Click (comportamiento Excel)
+            const startIndex = Math.min(lastSelectedIndex, index);
+            const endIndex = Math.max(lastSelectedIndex, index);
+
+            // Seleccionar todos los clientes en el rango
+            const rangeClientIds: string[] = [];
+            for (let i = startIndex; i <= endIndex; i++) {
+                if (sortedClients[i]) {
+                    rangeClientIds.push(sortedClients[i].id);
+                }
+            }
+
+            console.log('Shift+Click rango:', { startIndex, endIndex, rangeClientIds, lastSelectedIndex, currentIndex: index });
+
+            // Reemplazar la selección actual con solo el rango seleccionado
+            onSelectionChange(rangeClientIds);
+        } else if (event.ctrlKey || event.metaKey) {
+            // Selección múltiple con Ctrl+Click
+            if (selectedClients.includes(clientId)) {
+                onSelectionChange(selectedClients.filter(id => id !== clientId));
+            } else {
+                onSelectionChange([...selectedClients, clientId]);
+            }
+            setLastSelectedIndex(index);
+        } else {
+            // Click normal - toggle individual (más seguro)
+            if (selectedClients.includes(clientId)) {
+                onSelectionChange(selectedClients.filter(id => id !== clientId));
+            } else {
+                onSelectionChange([...selectedClients, clientId]);
+            }
+            setLastSelectedIndex(index);
+        }
+    }, [selectedClients, onSelectionChange, lastSelectedIndex, sortedClients]);
 
     const isAllSelected = sortedClients.length > 0 &&
         sortedClients.every(client => selectedClients.includes(client.id));
@@ -301,6 +353,15 @@ export function ClientsTable({
                     <MessageCircle className="h-4 w-4" />
                     {loading ? 'Desmarcando...' : `Desmarcar seleccionados (${selectedClients.length})`}
                 </Button>
+            </div>
+
+            {/* Help text */}
+            <div className="text-xs text-muted-foreground bg-blue-50 p-3 rounded-lg">
+                💡 <strong>Consejos de selección:</strong> Click en cualquier parte de la fila para agregar/quitar de la selección.
+                Usa <kbd className="px-1 py-0.5 bg-white rounded text-xs">Shift+Click</kbd> para seleccionar rangos completos,
+                <kbd className="px-1 py-0.5 bg-white rounded text-xs">Ctrl+Click</kbd> para agregar/quitar elementos individuales.
+                <br />
+                <strong>Debug:</strong> lastSelectedIndex = {lastSelectedIndex}, selected = {selectedClients.length}
             </div>
 
             {/* Table */}
@@ -376,17 +437,27 @@ export function ClientsTable({
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            sortedClients.map((client) => {
+                            sortedClients.map((client, index) => {
                                 const contactDate = wppContactDates.get(client.email);
                                 const isWppSent = !!contactDate;
+                                const isSelected = selectedClients.includes(client.id);
+
                                 return (
                                     <TableRow
                                         key={client.id}
-                                        className={isWppSent ? 'bg-yellow-100 hover:bg-yellow-200' : ''}
+                                        className={`
+                                            ${isWppSent ? 'bg-yellow-100 hover:bg-yellow-200' : ''}
+                                            ${isSelected ? 'bg-blue-50 hover:bg-blue-100' : ''}
+                                            cursor-pointer select-none
+                                        `}
+                                        onClick={(event) => {
+                                            console.log('Row clicked:', { clientId: client.id, index, clientName: client.name });
+                                            handleRowClick(client.id, index, event);
+                                        }}
                                     >
-                                        <TableCell>
+                                        <TableCell onClick={(e) => e.stopPropagation()}>
                                             <Checkbox
-                                                checked={selectedClients.includes(client.id)}
+                                                checked={isSelected}
                                                 onCheckedChange={(checked) =>
                                                     handleSelectClient(client.id, checked as boolean)
                                                 }
