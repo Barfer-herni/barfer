@@ -80,7 +80,17 @@ export async function getClientCategorization(): Promise<ClientAnalytics> {
             // Calcular el peso del último mes
             const oneMonthAgo = subMonths(new Date(), 1);
             const lastMonthOrders = orders.filter((order: any) => new Date(order.date) > oneMonthAgo);
-            const monthlyWeight = calculateTotalWeightFromOrders(lastMonthOrders);
+
+            // Si no hay órdenes en el último mes, usar el peso promedio mensual de todo el historial
+            let monthlyWeight = calculateTotalWeightFromOrders(lastMonthOrders);
+
+            if (monthlyWeight === 0 && orders.length > 0) {
+                // FIX: Muchos clientes no compraron en el último mes → peso = 0 → todos van a Basic (C)
+                // Ahora usamos el peso promedio mensual de todo el historial para una categorización más justa
+                const totalHistoryWeight = calculateTotalWeightFromOrders(orders);
+                const monthsSinceFirstOrder = Math.max(client.daysSinceFirstOrder / 30, 1);
+                monthlyWeight = totalHistoryWeight / monthsSinceFirstOrder;
+            }
 
             const spendingCategory = categorizeSpending(monthlyWeight);
             const monthlySpending = calculateMonthlySpending(client.totalSpent, client.daysSinceFirstOrder);
@@ -169,16 +179,21 @@ function categorizeBehavior(client: any): ClientBehaviorCategory {
 }
 
 /**
- * Categoriza el nivel de gasto del cliente basado en el peso total comprado en el último mes
+ * Categoriza el nivel de gasto del cliente basado en el peso total comprado
+ * 
+ * CATEGORÍAS SIN SUPERPOSICIÓN:
+ * - Premium (A): > 15kg
+ * - Standard (B): > 5kg y ≤ 15kg  
+ * - Basic (C): ≤ 5kg
  */
 function categorizeSpending(monthlyWeight: number): ClientSpendingCategory {
-    // Premium: >15kg en el último mes
+    // Premium (A): Mayor a 15kg
     if (monthlyWeight > 15) return 'premium';
 
-    // Standard: >5kg y <=15kg en el último mes
+    // Standard (B): Mayor a 5kg (pero menor o igual a 15kg por la condición anterior)
     if (monthlyWeight > 5) return 'standard';
 
-    // Basic: <=5kg en el último mes
+    // Basic (C): Menor o igual a 5kg (incluyendo exactamente 5kg)
     return 'basic';
 }
 
@@ -211,9 +226,9 @@ function calculateTotalWeightFromOrders(orders: any[]): number {
 
             for (const option of item.options) {
                 if (option.name) {
-                    const match = option.name.match(/(\d+)\s*KG/i);
+                    const match = option.name.match(/(\d+(?:\.\d+)?)\s*KG/i);
                     if (match && match[1]) {
-                        totalWeight += parseInt(match[1], 10);
+                        totalWeight += parseFloat(match[1]);
                     }
                 }
             }
