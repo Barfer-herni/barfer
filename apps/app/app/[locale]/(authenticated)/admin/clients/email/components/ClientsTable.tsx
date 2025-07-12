@@ -19,6 +19,7 @@ import type { ClientForTable } from '@repo/data-services/src/services/barfer/ana
 import { markClientsAsWhatsAppContacted, unmarkClientsAsWhatsAppContacted, getClientsWhatsAppContactStatus, hideSelectedClients, showSelectedClients, getClientsVisibilityStatus } from '../../actions';
 import { useToast } from '@repo/design-system/hooks/use-toast';
 import { VisibilityFilter, type VisibilityFilterType } from '../../components/VisibilityFilter';
+import { Pagination } from '../../components/Pagination';
 
 interface Client extends ClientForTable { }
 
@@ -68,7 +69,10 @@ export function ClientsTable({
     const [hiddenClients, setHiddenClients] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(false);
     const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
     const { toast } = useToast();
+
+    const pageSize = 50;
 
     // Cargar el estado de contacto por WhatsApp y visibilidad al montar el componente
     useEffect(() => {
@@ -355,9 +359,26 @@ export function ClientsTable({
 
     const sortedClients = sortClients(filteredClients);
 
+    // Paginación
+    const totalItems = sortedClients.length;
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginatedClients = sortedClients.slice(startIndex, endIndex);
+
+    // Reset a página 1 cuando cambian los filtros
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, visibilityFilter]);
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
+        // Limpiar selecciones al cambiar de página
+        onSelectionChange([]);
+    };
+
     const handleSelectAll = (checked: boolean) => {
         if (checked) {
-            onSelectionChange(sortedClients.map(client => client.id));
+            onSelectionChange(paginatedClients.map(client => client.id));
         } else {
             onSelectionChange([]);
         }
@@ -391,11 +412,11 @@ export function ClientsTable({
             const startIndex = Math.min(lastSelectedIndex, index);
             const endIndex = Math.max(lastSelectedIndex, index);
 
-            // Seleccionar todos los clientes en el rango
+            // Seleccionar todos los clientes en el rango (en la página actual)
             const rangeClientIds: string[] = [];
             for (let i = startIndex; i <= endIndex; i++) {
-                if (sortedClients[i]) {
-                    rangeClientIds.push(sortedClients[i].id);
+                if (paginatedClients[i]) {
+                    rangeClientIds.push(paginatedClients[i].id);
                 }
             }
 
@@ -420,10 +441,10 @@ export function ClientsTable({
             }
             setLastSelectedIndex(index);
         }
-    }, [selectedClients, onSelectionChange, lastSelectedIndex, sortedClients]);
+    }, [selectedClients, onSelectionChange, lastSelectedIndex, paginatedClients]);
 
-    const isAllSelected = sortedClients.length > 0 &&
-        sortedClients.every(client => selectedClients.includes(client.id));
+    const isAllSelected = paginatedClients.length > 0 &&
+        paginatedClients.every(client => selectedClients.includes(client.id));
 
     const isIndeterminate = selectedClients.length > 0 && !isAllSelected;
 
@@ -448,7 +469,7 @@ export function ClientsTable({
                     />
                 </div>
                 <Badge variant="secondary">
-                    {sortedClients.length} clientes
+                    {totalItems} clientes totales
                 </Badge>
                 <VisibilityFilter
                     currentFilter={visibilityFilter}
@@ -571,14 +592,14 @@ export function ClientsTable({
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {sortedClients.length === 0 ? (
+                        {paginatedClients.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                                     No se encontraron clientes
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            sortedClients.map((client, index) => {
+                            paginatedClients.map((client, index) => {
                                 const contactDate = wppContactDates.get(client.email);
                                 const isWppSent = !!contactDate;
                                 const isSelected = selectedClients.includes(client.id);
@@ -591,11 +612,14 @@ export function ClientsTable({
                                             ${isWppSent ? 'bg-yellow-100 hover:bg-yellow-200' : ''}
                                             ${isHidden ? 'bg-gray-100 hover:bg-gray-200' : ''}
                                             ${isSelected ? 'bg-blue-50 hover:bg-blue-100' : ''}
-                                            cursor-pointer select-none
+                                            cursor-pointer
                                         `}
                                         onClick={(event) => {
-                                            console.log('Row clicked:', { clientId: client.id, index, clientName: client.name });
-                                            handleRowClick(client.id, index, event);
+                                            // Solo seleccionar fila si no se está seleccionando texto
+                                            if (window.getSelection()?.toString().length === 0) {
+                                                console.log('Row clicked:', { clientId: client.id, index, clientName: client.name });
+                                                handleRowClick(client.id, index, event);
+                                            }
                                         }}
                                     >
                                         <TableCell onClick={(e) => e.stopPropagation()}>
@@ -643,11 +667,20 @@ export function ClientsTable({
                 </Table>
             </div>
 
+            {/* Pagination */}
+            <Pagination
+                currentPage={currentPage}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                onPageChange={handlePageChange}
+                className="mt-4"
+            />
+
             {/* Summary */}
             {selectedClients.length > 0 && (
                 <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
                     <div className="text-sm text-muted-foreground">
-                        {selectedClients.length} de {sortedClients.length} clientes seleccionados
+                        {selectedClients.length} de {totalItems} clientes seleccionados
                     </div>
                     <Button
                         variant="outline"
