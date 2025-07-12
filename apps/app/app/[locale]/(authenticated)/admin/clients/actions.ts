@@ -1,6 +1,6 @@
 'use server';
 
-import { markWhatsAppContacted, unmarkWhatsAppContacted, getWhatsAppContactStatus } from '@repo/data-services/src/services/barfer/markWhatsAppContacted';
+import { markWhatsAppContacted, unmarkWhatsAppContacted, getWhatsAppContactStatus, hideClients, showClients, getClientVisibilityStatus } from '@repo/data-services/src/services/barfer/markWhatsAppContacted';
 
 /**
  * Marca clientes como contactados por WhatsApp
@@ -67,6 +67,78 @@ export async function getClientsWhatsAppContactStatus(clientEmails: string[]) {
 
     } catch (error) {
         console.error('Error in getClientsWhatsAppContactStatus action:', error);
+        return {
+            success: false,
+            error: 'Error interno del servidor'
+        };
+    }
+}
+
+/**
+ * Oculta clientes seleccionados
+ */
+export async function hideSelectedClients(clientEmails: string[]) {
+    try {
+        if (!clientEmails || clientEmails.length === 0) {
+            return {
+                success: false,
+                error: 'No se proporcionaron emails de clientes'
+            };
+        }
+
+        const result = await hideClients({ clientEmails });
+        return result;
+
+    } catch (error) {
+        console.error('Error in hideSelectedClients action:', error);
+        return {
+            success: false,
+            error: 'Error interno del servidor'
+        };
+    }
+}
+
+/**
+ * Muestra clientes ocultados
+ */
+export async function showSelectedClients(clientEmails: string[]) {
+    try {
+        if (!clientEmails || clientEmails.length === 0) {
+            return {
+                success: false,
+                error: 'No se proporcionaron emails de clientes'
+            };
+        }
+
+        const result = await showClients({ clientEmails });
+        return result;
+
+    } catch (error) {
+        console.error('Error in showSelectedClients action:', error);
+        return {
+            success: false,
+            error: 'Error interno del servidor'
+        };
+    }
+}
+
+/**
+ * Obtiene el estado de visibilidad para una lista de clientes
+ */
+export async function getClientsVisibilityStatus(clientEmails: string[]) {
+    try {
+        if (!clientEmails || clientEmails.length === 0) {
+            return {
+                success: false,
+                error: 'No se proporcionaron emails de clientes'
+            };
+        }
+
+        const result = await getClientVisibilityStatus(clientEmails);
+        return result;
+
+    } catch (error) {
+        console.error('Error in getClientsVisibilityStatus action:', error);
         return {
             success: false,
             error: 'Error interno del servidor'

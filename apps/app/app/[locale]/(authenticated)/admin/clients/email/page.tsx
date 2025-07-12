@@ -10,12 +10,13 @@ interface EmailPageProps {
     searchParams: Promise<{
         category?: string;
         type?: string;
+        visibility?: 'all' | 'hidden' | 'visible';
     }>;
 }
 
 export default async function EmailPage({ params, searchParams }: EmailPageProps) {
     const { locale } = await params;
-    const { category, type } = await searchParams;
+    const { category, type, visibility } = await searchParams;
 
     const user = await getCurrentUser();
     if (!user) {
@@ -32,6 +33,7 @@ export default async function EmailPage({ params, searchParams }: EmailPageProps
         <EmailClientsViewServer
             category={category}
             type={type}
+            visibility={visibility}
             dictionary={dictionary}
             clients={clients}
             emailTemplates={emailTemplates}

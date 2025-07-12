@@ -13,11 +13,12 @@ import {
     TableHeader,
     TableRow,
 } from '@repo/design-system/components/ui/table';
-import { Search, MessageCircle, Phone, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Search, MessageCircle, Phone, ArrowUpDown, ArrowUp, ArrowDown, EyeOff, Eye } from 'lucide-react';
 import type { Dictionary } from '@repo/internationalization';
 import type { ClientForTable } from '@repo/data-services/src/services/barfer/analytics/getClientsByCategory';
-import { markClientsAsWhatsAppContacted, unmarkClientsAsWhatsAppContacted, getClientsWhatsAppContactStatus } from '../../actions';
+import { markClientsAsWhatsAppContacted, unmarkClientsAsWhatsAppContacted, getClientsWhatsAppContactStatus, hideSelectedClients, showSelectedClients, getClientsVisibilityStatus } from '../../actions';
 import { useToast } from '@repo/design-system/hooks/use-toast';
+import { VisibilityFilter, type VisibilityFilterType } from '../../components/VisibilityFilter';
 
 interface Client extends ClientForTable { }
 
@@ -26,6 +27,9 @@ interface WhatsAppClientsTableProps {
     selectedClients: string[];
     onSelectionChange: (selected: string[]) => void;
     dictionary: Dictionary;
+    visibilityFilter: VisibilityFilterType;
+    onVisibilityFilterChange: (filter: VisibilityFilterType) => void;
+    onHiddenClientsChange?: (hiddenClients: Set<string>) => void;
 }
 
 type SortField = 'totalSpent' | 'lastOrder' | 'whatsappContacted' | null;
@@ -52,40 +56,59 @@ export function WhatsAppClientsTable({
     clients,
     selectedClients,
     onSelectionChange,
-    dictionary
+    dictionary,
+    visibilityFilter,
+    onVisibilityFilterChange,
+    onHiddenClientsChange
 }: WhatsAppClientsTableProps) {
     const [searchTerm, setSearchTerm] = useState('');
     const [wppContactDates, setWppContactDates] = useState<Map<string, string>>(new Map());
+    const [hiddenClients, setHiddenClients] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(false);
     const [sortField, setSortField] = useState<SortField>(null);
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
     const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
     const { toast } = useToast();
 
-    // Cargar el estado de contacto por WhatsApp al montar el componente
+    // Cargar el estado de contacto por WhatsApp y visibilidad al montar el componente
     useEffect(() => {
-        const loadWhatsAppContactStatus = async () => {
+        const loadClientStatus = async () => {
             if (clients.length === 0) return;
 
             try {
                 const clientEmails = clients.map(client => client.email);
-                const result = await getClientsWhatsAppContactStatus(clientEmails);
+                const [contactResult, visibilityResult] = await Promise.all([
+                    getClientsWhatsAppContactStatus(clientEmails),
+                    getClientsVisibilityStatus(clientEmails)
+                ]);
 
-                if (result.success && result.data) {
+                if (contactResult.success && contactResult.data) {
                     const contactDatesMap = new Map<string, string>();
-                    result.data.forEach(item => {
+                    contactResult.data.forEach(item => {
                         if (item.whatsappContactedAt) {
                             contactDatesMap.set(item.clientEmail, item.whatsappContactedAt.toISOString());
                         }
                     });
                     setWppContactDates(contactDatesMap);
                 }
+
+                if (visibilityResult.success && visibilityResult.data) {
+                    const hiddenSet = new Set<string>();
+                    visibilityResult.data.forEach(item => {
+                        if (item.isHidden) {
+                            hiddenSet.add(item.clientEmail);
+                        }
+                    });
+                    setHiddenClients(hiddenSet);
+                    // Notificar al componente padre sobre los clientes ocultos
+                    onHiddenClientsChange?.(hiddenSet);
+                }
             } catch (error) {
-                console.error('Error loading WhatsApp contact status:', error);
+                console.error('Error loading client status:', error);
             }
         };
 
-        loadWhatsAppContactStatus();
+        loadClientStatus();
     }, [clients]);
 
     const handleMarkAsWhatsAppContacted = async () => {
@@ -171,6 +194,100 @@ export function WhatsAppClientsTable({
             }
         } catch (error) {
             console.error('Error unmarking clients as WhatsApp contacted:', error);
+            toast({
+                title: "Error",
+                description: "Error interno del servidor",
+                variant: "destructive",
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleHideSelectedClients = async () => {
+        if (selectedClients.length === 0) return;
+
+        setLoading(true);
+        try {
+            const selectedClientEmails = clients
+                .filter(client => selectedClients.includes(client.id))
+                .map(client => client.email);
+
+            const result = await hideSelectedClients(selectedClientEmails);
+
+            if (result.success) {
+                // Actualizar el estado local
+                const newHiddenClients = new Set(hiddenClients);
+                selectedClientEmails.forEach(email => {
+                    newHiddenClients.add(email);
+                });
+                setHiddenClients(newHiddenClients);
+                // Notificar al componente padre sobre los clientes ocultos
+                onHiddenClientsChange?.(newHiddenClients);
+
+                // Limpiar selección después de ocultar
+                onSelectionChange([]);
+
+                toast({
+                    title: "Éxito",
+                    description: result.message || `${selectedClientEmails.length} clientes ocultados`,
+                });
+            } else {
+                toast({
+                    title: "Error",
+                    description: result.error || "Error al ocultar clientes",
+                    variant: "destructive",
+                });
+            }
+        } catch (error) {
+            console.error('Error hiding clients:', error);
+            toast({
+                title: "Error",
+                description: "Error interno del servidor",
+                variant: "destructive",
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleShowSelectedClients = async () => {
+        if (selectedClients.length === 0) return;
+
+        setLoading(true);
+        try {
+            const selectedClientEmails = clients
+                .filter(client => selectedClients.includes(client.id))
+                .map(client => client.email);
+
+            const result = await showSelectedClients(selectedClientEmails);
+
+            if (result.success) {
+                // Actualizar el estado local
+                const newHiddenClients = new Set(hiddenClients);
+                selectedClientEmails.forEach(email => {
+                    newHiddenClients.delete(email);
+                });
+                setHiddenClients(newHiddenClients);
+                // Notificar al componente padre sobre los clientes ocultos
+                onHiddenClientsChange?.(newHiddenClients);
+
+                // Limpiar selección después de mostrar
+                onSelectionChange([]);
+
+                toast({
+                    title: "Éxito",
+                    description: result.message || `${selectedClientEmails.length} clientes mostrados`,
+                });
+            } else {
+                toast({
+                    title: "Error",
+                    description: result.error || "Error al mostrar clientes",
+                    variant: "destructive",
+                });
+            }
+        } catch (error) {
+            console.error('Error showing clients:', error);
             toast({
                 title: "Error",
                 description: "Error interno del servidor",
@@ -307,8 +424,8 @@ export function WhatsAppClientsTable({
 
     return (
         <div className="space-y-4">
-            {/* Search */}
-            <div className="flex items-center gap-2">
+            {/* Search and Actions */}
+            <div className="flex items-center gap-2 flex-wrap">
                 <div className="relative flex-1 max-w-sm">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -321,6 +438,10 @@ export function WhatsAppClientsTable({
                 <Badge variant="secondary">
                     {sortedClients.length} clientes
                 </Badge>
+                <VisibilityFilter
+                    currentFilter={visibilityFilter}
+                    onFilterChange={onVisibilityFilterChange}
+                />
                 <Button
                     variant="outline"
                     size="sm"
@@ -340,6 +461,26 @@ export function WhatsAppClientsTable({
                 >
                     <MessageCircle className="h-4 w-4" />
                     {loading ? 'Desmarcando...' : `Desmarcar seleccionados (${selectedClients.length})`}
+                </Button>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleHideSelectedClients}
+                    disabled={selectedClients.length === 0 || loading}
+                    className="flex items-center gap-2 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 border-yellow-200"
+                >
+                    <EyeOff className="h-4 w-4" />
+                    {loading ? 'Ocultando...' : `Ocultar seleccionados (${selectedClients.length})`}
+                </Button>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleShowSelectedClients}
+                    disabled={selectedClients.length === 0 || loading}
+                    className="flex items-center gap-2 bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                >
+                    <Eye className="h-4 w-4" />
+                    {loading ? 'Mostrando...' : `Mostrar seleccionados (${selectedClients.length})`}
                 </Button>
             </div>
 
@@ -411,12 +552,14 @@ export function WhatsAppClientsTable({
                                 const contactDate = wppContactDates.get(client.email);
                                 const isWppSent = !!contactDate;
                                 const isSelected = selectedClients.includes(client.id);
+                                const isHidden = hiddenClients.has(client.email);
 
                                 return (
                                     <TableRow
                                         key={client.id}
                                         className={`
                                             ${isWppSent ? 'bg-yellow-100 hover:bg-yellow-200' : ''}
+                                            ${isHidden ? 'bg-gray-100 hover:bg-gray-200' : ''}
                                             ${isSelected ? 'bg-blue-50 hover:bg-blue-100' : ''}
                                             cursor-pointer select-none
                                         `}
@@ -434,7 +577,12 @@ export function WhatsAppClientsTable({
                                                 aria-label={`Seleccionar ${client.name}`}
                                             />
                                         </TableCell>
-                                        <TableCell className="font-medium">{client.name}</TableCell>
+                                        <TableCell className="font-medium">
+                                            <div className="flex items-center gap-2">
+                                                {client.name}
+                                                {isHidden && <EyeOff className="h-4 w-4 text-gray-500" />}
+                                            </div>
+                                        </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
                                                 <MessageCircle className="h-4 w-4 text-green-600" />

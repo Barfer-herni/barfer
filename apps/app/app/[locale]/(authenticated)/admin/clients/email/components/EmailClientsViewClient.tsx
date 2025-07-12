@@ -34,10 +34,13 @@ import { Calendar } from '@repo/design-system/components/ui/calendar';
 import { ToggleGroup, ToggleGroupItem } from '@repo/design-system/components/ui/toggle-group';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { type VisibilityFilterType } from '../../components/VisibilityFilter';
 
 interface EmailClientsViewClientProps {
     category?: string;
     type?: string;
+    visibility?: 'all' | 'hidden' | 'visible';
     dictionary: Dictionary;
     clients: ClientForTable[];
     emailTemplates: EmailTemplateData[];
@@ -82,11 +85,14 @@ type ScheduleFrequency = 'once' | 'daily' | 'weekly' | 'monthly';
 export function EmailClientsViewClient({
     category,
     type,
+    visibility,
     dictionary,
     clients,
     emailTemplates
 }: EmailClientsViewClientProps) {
     const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const [selectedClients, setSelectedClients] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -104,10 +110,42 @@ export function EmailClientsViewClient({
     const [selectedTemplateId, setSelectedTemplateId] = useState('custom');
     const [customSubject, setCustomSubject] = useState('');
     const [customContent, setCustomContent] = useState('');
+    const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilterType>(visibility || 'all');
+    const [hiddenClients, setHiddenClients] = useState<Set<string>>(new Set());
 
 
     const categoryTitle = category ? (type === 'behavior' ? translateBehaviorCategory(category) : translateSpendingCategory(category)) : 'Todos';
     const typeTitle = type ? translateType(type) : '';
+
+    // Filter clients based on visibility filter
+    const filteredClients = clients.filter(client => {
+        const isHidden = hiddenClients.has(client.email);
+
+        switch (visibilityFilter) {
+            case 'all':
+                return true;
+            case 'hidden':
+                return isHidden;
+            case 'visible':
+                return !isHidden;
+            default:
+                return true;
+        }
+    });
+
+    const handleVisibilityFilterChange = (filter: VisibilityFilterType) => {
+        setVisibilityFilter(filter);
+
+        // Update URL with new filter
+        const newSearchParams = new URLSearchParams(searchParams);
+        if (filter === 'all') {
+            newSearchParams.delete('visibility');
+        } else {
+            newSearchParams.set('visibility', filter);
+        }
+
+        router.push(`${pathname}?${newSearchParams.toString()}`);
+    };
 
     const handleTemplateChange = (templateId: string) => {
         setSelectedTemplateId(templateId);
@@ -321,10 +359,13 @@ export function EmailClientsViewClient({
                 </CardHeader>
                 <CardContent>
                     <ClientsTable
-                        clients={clients}
+                        clients={filteredClients}
                         selectedClients={selectedClients}
                         onSelectionChange={setSelectedClients}
                         dictionary={dictionary}
+                        visibilityFilter={visibilityFilter}
+                        onVisibilityFilterChange={handleVisibilityFilterChange}
+                        onHiddenClientsChange={setHiddenClients}
                     />
                 </CardContent>
             </Card>

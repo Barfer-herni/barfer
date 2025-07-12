@@ -10,12 +10,13 @@ interface WhatsAppPageProps {
     searchParams: Promise<{
         category?: string;
         type?: string;
+        visibility?: 'all' | 'hidden' | 'visible';
     }>;
 }
 
 export default async function WhatsAppPage({ params, searchParams }: WhatsAppPageProps) {
     const { locale } = await params;
-    const { category, type } = await searchParams;
+    const { category, type, visibility } = await searchParams;
 
     const user = await getCurrentUser();
     if (!user) {
@@ -32,6 +33,7 @@ export default async function WhatsAppPage({ params, searchParams }: WhatsAppPag
         <WhatsAppClientsView
             category={category}
             type={type}
+            visibility={visibility}
             dictionary={dictionary}
             clients={clients}
             whatsappTemplates={whatsappTemplates}

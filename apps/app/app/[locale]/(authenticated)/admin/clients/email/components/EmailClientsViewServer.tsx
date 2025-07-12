@@ -11,6 +11,7 @@ const TEST_EMAILS = ['heredialucasfac22@gmail.com', 'nicolascaliari28@gmail.com'
 interface EmailClientsViewServerProps {
     category?: string;
     type?: string;
+    visibility?: 'all' | 'hidden' | 'visible';
     dictionary: Dictionary;
     clients: ClientForTable[];
     emailTemplates: EmailTemplateData[];
