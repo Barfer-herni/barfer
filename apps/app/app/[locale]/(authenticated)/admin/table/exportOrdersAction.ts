@@ -20,9 +20,9 @@ export async function exportOrdersAction({
         const orders = await getAllOrders({
             search: search || '',
             sorting: [{ id: 'createdAt', desc: true }],
-            from: from || undefined,
-            to: to || undefined,
-            orderType: orderType && orderType !== 'all' ? orderType : undefined,
+            from: from && from.trim() !== '' ? from : undefined,
+            to: to && to.trim() !== '' ? to : undefined,
+            orderType: orderType && orderType.trim() !== '' && orderType !== 'all' ? orderType : undefined,
         });
 
         if (orders.length === 0) {
@@ -31,7 +31,8 @@ export async function exportOrdersAction({
 
         // Mapeo y aplanamiento de los datos para el Excel
         const dataToExport = orders.map(order => ({
-            'Fecha': new Date(order.createdAt).toLocaleDateString('es-AR'),
+            'Fecha Entrega': order.deliveryDay ? new Date(order.deliveryDay).toLocaleDateString('es-AR') : 'Sin fecha',
+            'Fecha Creación': new Date(order.createdAt).toLocaleDateString('es-AR'),
             'Notas Propias': order.notesOwn || '',
             'Cliente': `${order.user?.name || ''} ${order.user?.lastName || ''}`.trim(),
             'Direccion': `${order.address?.address || ''}, ${order.address?.city || ''}`,
@@ -50,7 +51,8 @@ export async function exportOrdersAction({
 
         // Ajustar el ancho de las columnas
         const columnWidths = [
-            { wch: 12 }, // Fecha
+            { wch: 12 }, // Fecha Entrega
+            { wch: 12 }, // Fecha Creación
             { wch: 40 }, // Notas Propias
             { wch: 30 }, // Cliente
             { wch: 40 }, // Direccion

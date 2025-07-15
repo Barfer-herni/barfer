@@ -1,7 +1,7 @@
 import 'server-only';
 import { getCollection, ObjectId } from '@repo/database';
 import type { Order } from '../../types/barfer';
-import { addDays } from 'date-fns';
+import { addDays, format } from 'date-fns';
 
 interface GetAllOrdersParams {
     search?: string;
@@ -34,20 +34,22 @@ export async function getAllOrders({
 
         const baseFilter: any = {};
 
-        // Filtro por fecha si se proporciona
-        if (from || to) {
-            baseFilter.createdAt = {};
-            if (from) {
-                baseFilter.createdAt.$gte = new Date(from);
+        // Excluir envíos del día (método de pago 'transfer' y 'bank-transfer')
+        baseFilter.paymentMethod = { $nin: ['transfer', 'bank-transfer'] };
+
+        // Filtro por fecha si se proporciona - SOLO usar deliveryDay
+        if (from && from.trim() !== '' || to && to.trim() !== '') {
+            baseFilter.deliveryDay = {};
+            if (from && from.trim() !== '') {
+                baseFilter.deliveryDay.$gte = new Date(from + 'T00:00:00.000Z');
             }
-            if (to) {
-                const toDate = addDays(new Date(to), 1);
-                baseFilter.createdAt.$lt = toDate;
+            if (to && to.trim() !== '') {
+                baseFilter.deliveryDay.$lte = new Date(to + 'T23:59:59.999Z');
             }
         }
 
         // Filtro por tipo de orden si se proporciona
-        if (orderType && orderType !== 'all') {
+        if (orderType && orderType.trim() !== '' && orderType !== 'all') {
             baseFilter.orderType = orderType;
         }
 

@@ -4,20 +4,7 @@ import { type ColumnDef, type CellContext } from '@tanstack/react-table';
 import type { Order } from '@repo/data-services/src/types/barfer';
 import { Badge } from '@repo/design-system/components/ui/badge';
 import { Input } from '@repo/design-system/components/ui/input';
-
-const statusTranslations: Record<Order['status'], string> = {
-    pending: 'Pendiente',
-    confirmed: 'Confirmado',
-    delivered: 'Entregado',
-    cancelled: 'Cancelado',
-};
-
-const paymentMethodTranslations: Record<string, string> = {
-    cash: 'Efectivo',
-    transfer: 'Transferencia',
-    'bank-transfer': 'Transferencia Bancaria',
-    'mercado-pago': 'Mercado Pago',
-};
+import { STATUS_TRANSLATIONS, PAYMENT_METHOD_TRANSLATIONS } from '../constants';
 
 export const columns: ColumnDef<Order>[] = [
     {
@@ -45,9 +32,9 @@ export const columns: ColumnDef<Order>[] = [
             if (!deliveryDay) {
                 return <div className="w-full text-center text-sm">--</div>;
             }
-            // Crear fecha y ajustar para zona horaria de Argentina (UTC-3)
+
+            // Usar la zona horaria local del browser, no hardcodear Argentina
             const date = new Date(deliveryDay);
-            date.setHours(date.getHours() + 3); // Ajustar a zona horaria de Argentina
 
             const formatted = date.toLocaleDateString('es-AR', {
                 day: '2-digit',
@@ -170,7 +157,7 @@ export const columns: ColumnDef<Order>[] = [
         header: 'Medio de pago',
         cell: ({ row }: CellContext<Order, unknown>) => {
             const paymentMethod = row.original.paymentMethod || '';
-            const translatedPaymentMethod = paymentMethodTranslations[paymentMethod.toLowerCase()] || paymentMethod;
+            const translatedPaymentMethod = PAYMENT_METHOD_TRANSLATIONS[paymentMethod.toLowerCase()] || paymentMethod;
             return <div className="min-w-[100px] text-sm">{translatedPaymentMethod}</div>;
         }
     },
@@ -179,7 +166,7 @@ export const columns: ColumnDef<Order>[] = [
         header: 'Estado',
         cell: ({ row }: CellContext<Order, unknown>) => {
             const status = row.getValue('status') as Order['status'];
-            const translatedStatus = statusTranslations[status] || status;
+            const translatedStatus = STATUS_TRANSLATIONS[status] || status;
             const paymentMethod = row.original.paymentMethod;
             let colorClass = '';
             if (status === 'pending' && paymentMethod !== 'cash') colorClass = 'bg-red-500 force-dark-black text-white';

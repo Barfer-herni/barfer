@@ -33,6 +33,7 @@ export function DateRangeFilter({
 
     const [selectedDate, setSelectedDate] = React.useState<DateRange | undefined>(urlDate);
 
+    // Actualizar selectedDate cuando se abra el popover
     React.useEffect(() => {
         if (isOpen) {
             setSelectedDate(urlDate);

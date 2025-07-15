@@ -20,9 +20,10 @@ export default async function TablePage({
     const currentSearch = (search as string) || '';
     const currentSort = (sort as string) || 'deliveryDay.desc';
     const [sortId, sortOrder] = currentSort.split('.');
-    const fromDate = from as string | undefined;
-    const toDate = to as string | undefined;
-    const currentOrderType = (orderType as string) || '';
+    // Convertir cadenas vacías a undefined para que los filtros funcionen correctamente
+    const fromDate = (from as string) && (from as string).trim() !== '' ? (from as string) : undefined;
+    const toDate = (to as string) && (to as string).trim() !== '' ? (to as string) : undefined;
+    const currentOrderType = (orderType as string) && (orderType as string).trim() !== '' ? (orderType as string) : undefined;
 
     const pagination: PaginationState = {
         pageIndex: currentPage - 1,
@@ -34,6 +35,8 @@ export default async function TablePage({
         desc: sortOrder === 'desc',
     }];
 
+
+
     const { orders, pageCount, total } = await getOrders({
         pageIndex: pagination.pageIndex,
         pageSize: pagination.pageSize,
@@ -43,7 +46,7 @@ export default async function TablePage({
         to: toDate,
         orderType: currentOrderType,
     });
-    //mmm
+
     const dictionary = await getDictionary(locale);
 
     return (
