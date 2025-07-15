@@ -1,20 +1,17 @@
 'use client';
 
-import { EmailClientsViewClient } from './EmailClientsViewClient';
+import { WhatsAppClientsViewClient } from './WhatsAppClientsViewClient';
 import type { Dictionary } from '@repo/internationalization';
 import type { ClientForTableWithStatus } from '@repo/data-services';
-import type { EmailTemplateData } from '@repo/data-services';
+import type { WhatsAppTemplateData } from '@repo/data-services';
 
-// Test emails for development
-const TEST_EMAILS = ['heredialucasfac22@gmail.com', 'nicolascaliari28@gmail.com'];
-
-interface EmailClientsViewServerProps {
+interface WhatsAppClientsViewServerProps {
     category?: string;
     type?: string;
     visibility?: 'all' | 'hidden' | 'visible';
     dictionary: Dictionary;
     clients: ClientForTableWithStatus[];
-    emailTemplates: EmailTemplateData[];
+    whatsappTemplates: WhatsAppTemplateData[];
     paginationInfo?: {
         totalCount: number;
         totalPages: number;
@@ -23,9 +20,9 @@ interface EmailClientsViewServerProps {
     };
 }
 
-export function EmailClientsViewServer(props: EmailClientsViewServerProps) {
+export function WhatsAppClientsViewServer(props: WhatsAppClientsViewServerProps) {
     return (
-        <EmailClientsViewClient
+        <WhatsAppClientsViewClient
             {...props}
         />
     );

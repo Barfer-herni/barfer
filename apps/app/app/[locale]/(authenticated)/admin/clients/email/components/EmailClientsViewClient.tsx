@@ -7,7 +7,7 @@ import { Badge } from '@repo/design-system/components/ui/badge';
 import { ArrowLeft, Mail, Send, Users, Clock, CalendarIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { Dictionary } from '@repo/internationalization';
-import type { ClientForTable } from '@repo/data-services/src/services/barfer/analytics/getClientsByCategory';
+import type { ClientForTableWithStatus } from '@repo/data-services';
 import type { EmailTemplateData } from '@repo/data-services';
 import {
     Dialog,
@@ -42,8 +42,14 @@ interface EmailClientsViewClientProps {
     type?: string;
     visibility?: 'all' | 'hidden' | 'visible';
     dictionary: Dictionary;
-    clients: ClientForTable[];
+    clients: ClientForTableWithStatus[];
     emailTemplates: EmailTemplateData[];
+    paginationInfo?: {
+        totalCount: number;
+        totalPages: number;
+        currentPage: number;
+        hasMore: boolean;
+    };
 }
 
 // Función para traducir categorías de comportamiento
@@ -88,7 +94,8 @@ export function EmailClientsViewClient({
     visibility,
     dictionary,
     clients,
-    emailTemplates
+    emailTemplates,
+    paginationInfo
 }: EmailClientsViewClientProps) {
     const router = useRouter();
     const pathname = usePathname();
@@ -111,23 +118,19 @@ export function EmailClientsViewClient({
     const [customSubject, setCustomSubject] = useState('');
     const [customContent, setCustomContent] = useState('');
     const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilterType>(visibility || 'all');
-    const [hiddenClients, setHiddenClients] = useState<Set<string>>(new Set());
-
 
     const categoryTitle = category ? (type === 'behavior' ? translateBehaviorCategory(category) : translateSpendingCategory(category)) : 'Todos';
     const typeTitle = type ? translateType(type) : '';
 
-    // Filter clients based on visibility filter
+    // Filter clients based on visibility filter using server data
     const filteredClients = clients.filter(client => {
-        const isHidden = hiddenClients.has(client.email);
-
         switch (visibilityFilter) {
             case 'all':
                 return true;
             case 'hidden':
-                return isHidden;
+                return client.isHidden;
             case 'visible':
-                return !isHidden;
+                return !client.isHidden;
             default:
                 return true;
         }
@@ -365,7 +368,7 @@ export function EmailClientsViewClient({
                         dictionary={dictionary}
                         visibilityFilter={visibilityFilter}
                         onVisibilityFilterChange={handleVisibilityFilterChange}
-                        onHiddenClientsChange={setHiddenClients}
+                        paginationInfo={paginationInfo}
                     />
                 </CardContent>
             </Card>

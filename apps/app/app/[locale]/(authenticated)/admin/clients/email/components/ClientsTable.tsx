@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Checkbox } from '@repo/design-system/components/ui/checkbox';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Input } from '@repo/design-system/components/ui/input';
@@ -15,13 +16,13 @@ import {
 } from '@repo/design-system/components/ui/table';
 import { Search, Mail, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, EyeOff, Eye } from 'lucide-react';
 import type { Dictionary } from '@repo/internationalization';
-import type { ClientForTable } from '@repo/data-services/src/services/barfer/analytics/getClientsByCategory';
+import type { ClientForTableWithStatus } from '@repo/data-services';
 import { markClientsAsWhatsAppContacted, unmarkClientsAsWhatsAppContacted, getClientsWhatsAppContactStatus, hideSelectedClients, showSelectedClients, getClientsVisibilityStatus } from '../../actions';
 import { useToast } from '@repo/design-system/hooks/use-toast';
 import { VisibilityFilter, type VisibilityFilterType } from '../../components/VisibilityFilter';
 import { Pagination } from '../../components/Pagination';
 
-interface Client extends ClientForTable { }
+interface Client extends ClientForTableWithStatus { }
 
 type SortField = 'totalSpent' | 'lastOrder' | 'name' | 'email' | 'whatsappContactedAt';
 type SortDirection = 'asc' | 'desc';
@@ -33,7 +34,13 @@ interface ClientsTableProps {
     dictionary: Dictionary;
     visibilityFilter: VisibilityFilterType;
     onVisibilityFilterChange: (filter: VisibilityFilterType) => void;
-    onHiddenClientsChange?: (hiddenClients: Set<string>) => void;
+
+    paginationInfo?: {
+        totalCount: number;
+        totalPages: number;
+        currentPage: number;
+        hasMore: boolean;
+    };
 }
 
 const formatCurrency = (amount: number): string => {
@@ -60,60 +67,46 @@ export function ClientsTable({
     dictionary,
     visibilityFilter,
     onVisibilityFilterChange,
-    onHiddenClientsChange
+    paginationInfo
 }: ClientsTableProps) {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
     const [searchTerm, setSearchTerm] = useState('');
     const [sortField, setSortField] = useState<SortField>('totalSpent');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-    const [wppContactDates, setWppContactDates] = useState<Map<string, string>>(new Map());
-    const [hiddenClients, setHiddenClients] = useState<Set<string>>(new Set());
     const [loading, setLoading] = useState(false);
     const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
-    const [currentPage, setCurrentPage] = useState(1);
     const { toast } = useToast();
 
     const pageSize = 50;
+    const currentPage = paginationInfo?.currentPage || 1;
+    const serverTotalItems = paginationInfo?.totalCount || clients.length;
 
-    // Cargar el estado de contacto por WhatsApp y visibilidad al montar el componente
-    useEffect(() => {
-        const loadClientStatus = async () => {
-            if (clients.length === 0) return;
-
-            try {
-                const clientEmails = clients.map(client => client.email);
-                const [contactResult, visibilityResult] = await Promise.all([
-                    getClientsWhatsAppContactStatus(clientEmails),
-                    getClientsVisibilityStatus(clientEmails)
-                ]);
-
-                if (contactResult.success && contactResult.data) {
-                    const contactDatesMap = new Map<string, string>();
-                    contactResult.data.forEach(item => {
-                        if (item.whatsappContactedAt) {
-                            contactDatesMap.set(item.clientEmail, item.whatsappContactedAt.toISOString());
-                        }
-                    });
-                    setWppContactDates(contactDatesMap);
-                }
-
-                if (visibilityResult.success && visibilityResult.data) {
-                    const hiddenSet = new Set<string>();
-                    visibilityResult.data.forEach(item => {
-                        if (item.isHidden) {
-                            hiddenSet.add(item.clientEmail);
-                        }
-                    });
-                    setHiddenClients(hiddenSet);
-                    // Notificar al componente padre sobre los clientes ocultos
-                    onHiddenClientsChange?.(hiddenSet);
-                }
-            } catch (error) {
-                console.error('Error loading client status:', error);
+    // Inicializar estados con datos del servidor - SIN useEffect
+    const initialWppContactDates = useMemo(() => {
+        const contactDatesMap = new Map<string, string>();
+        clients.forEach(client => {
+            if (client.whatsappContactedAt) {
+                contactDatesMap.set(client.email, client.whatsappContactedAt.toISOString());
             }
-        };
-
-        loadClientStatus();
+        });
+        return contactDatesMap;
     }, [clients]);
+
+    const initialHiddenClients = useMemo(() => {
+        const hiddenSet = new Set<string>();
+        clients.forEach(client => {
+            if (client.isHidden) {
+                hiddenSet.add(client.email);
+            }
+        });
+        return hiddenSet;
+    }, [clients]);
+
+    // Inicializar estados con datos del servidor
+    const [wppContactDates, setWppContactDates] = useState(initialWppContactDates);
+    const [hiddenClients, setHiddenClients] = useState(initialHiddenClients);
 
     const handleSort = (field: SortField) => {
         if (sortField === field) {
@@ -235,8 +228,6 @@ export function ClientsTable({
                     newHiddenClients.add(email);
                 });
                 setHiddenClients(newHiddenClients);
-                // Notificar al componente padre sobre los clientes ocultos
-                onHiddenClientsChange?.(newHiddenClients);
 
                 // Limpiar selección después de ocultar
                 onSelectionChange([]);
@@ -282,8 +273,6 @@ export function ClientsTable({
                     newHiddenClients.delete(email);
                 });
                 setHiddenClients(newHiddenClients);
-                // Notificar al componente padre sobre los clientes ocultos
-                onHiddenClientsChange?.(newHiddenClients);
 
                 // Limpiar selección después de mostrar
                 onSelectionChange([]);
@@ -359,19 +348,18 @@ export function ClientsTable({
 
     const sortedClients = sortClients(filteredClients);
 
-    // Paginación
-    const totalItems = sortedClients.length;
-    const startIndex = (currentPage - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    const paginatedClients = sortedClients.slice(startIndex, endIndex);
-
-    // Reset a página 1 cuando cambian los filtros
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [searchTerm, visibilityFilter]);
+    // Como el servidor ya envía los clientes paginados, usamos todos los clientes que llegaron
+    const paginatedClients = sortedClients;
+    const totalItems = paginatedClients.length;
 
     const handlePageChange = (page: number) => {
-        setCurrentPage(page);
+        // Crear nuevos searchParams con la página actualizada
+        const newSearchParams = new URLSearchParams(searchParams.toString());
+        newSearchParams.set('page', page.toString());
+
+        // Navegar a la nueva URL usando la ruta completa
+        router.push(`${pathname}?${newSearchParams.toString()}`);
+
         // Limpiar selecciones al cambiar de página
         onSelectionChange([]);
     };
@@ -670,7 +658,7 @@ export function ClientsTable({
             {/* Pagination */}
             <Pagination
                 currentPage={currentPage}
-                totalItems={totalItems}
+                totalItems={serverTotalItems}
                 pageSize={pageSize}
                 onPageChange={handlePageChange}
                 className="mt-4"

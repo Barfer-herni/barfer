@@ -30,6 +30,18 @@ export {
     // Client Management (desde barfer/analytics/)
     getClientCategorization,
     getClientsByCategory,
+    getClientsByCategoryPaginated,
+    getClientGeneralStats,
+    type ClientGeneralStats,
+    getClientCategoriesStats,
+    type ClientCategoriesStats,
+    getClientsPaginated,
+    getClientsPaginatedWithStatus,
+    type ClientForTable,
+    type ClientForTableWithStatus,
+    type PaginatedClientsResponse,
+    type PaginatedClientsWithStatusResponse,
+    type ClientsPaginationOptions,
     getPurchaseFrequency,
     // WhatsApp Contact Management
     markWhatsAppContacted,

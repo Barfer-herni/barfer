@@ -20,10 +20,13 @@ export interface ClientForTable {
 
 /**
  * Obtiene clientes filtrados por categoría de comportamiento o gasto
+ * Ahora con soporte para paginación opcional (mantiene compatibilidad hacia atrás)
  */
 export async function getClientsByCategory(
     category?: string,
-    type?: 'behavior' | 'spending'
+    type?: 'behavior' | 'spending',
+    page?: number,
+    pageSize?: number
 ): Promise<ClientForTable[]> {
     try {
         // Obtener todos los datos de categorización de clientes
@@ -58,10 +61,59 @@ export async function getClientsByCategory(
         // Ordenar por total gastado (descendente)
         clientsForTable.sort((a, b) => b.totalSpent - a.totalSpent);
 
+        // Aplicar paginación si se especifica (mantiene compatibilidad hacia atrás)
+        if (page && pageSize) {
+            const startIndex = (page - 1) * pageSize;
+            const endIndex = startIndex + pageSize;
+            return clientsForTable.slice(startIndex, endIndex);
+        }
+
         return clientsForTable;
 
     } catch (error) {
         console.error('Error getting clients by category:', error);
+        throw error;
+    }
+}
+
+/**
+ * Versión con información completa de paginación
+ */
+export async function getClientsByCategoryPaginated(
+    category?: string,
+    type?: 'behavior' | 'spending',
+    page: number = 1,
+    pageSize: number = 50
+): Promise<{
+    clients: ClientForTable[];
+    totalCount: number;
+    totalPages: number;
+    currentPage: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+}> {
+    try {
+        // Obtener todos los clientes (sin paginación)
+        const allClients = await getClientsByCategory(category, type);
+
+        // Calcular información de paginación
+        const totalCount = allClients.length;
+        const totalPages = Math.ceil(totalCount / pageSize);
+        const startIndex = (page - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const clients = allClients.slice(startIndex, endIndex);
+
+        return {
+            clients,
+            totalCount,
+            totalPages,
+            currentPage: page,
+            hasNextPage: page < totalPages,
+            hasPreviousPage: page > 1
+        };
+
+    } catch (error) {
+        console.error('Error getting paginated clients by category:', error);
         throw error;
     }
 } 

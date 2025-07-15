@@ -8,19 +8,25 @@ import { Badge } from '@repo/design-system/components/ui/badge';
 import { ArrowLeft, MessageCircle, Send, Users } from 'lucide-react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import type { Dictionary } from '@repo/internationalization';
-import type { ClientForTable } from '@repo/data-services/src/services/barfer/analytics/getClientsByCategory';
+import type { ClientForTableWithStatus } from '@repo/data-services';
 import type { WhatsAppTemplateData } from '@repo/data-services';
 import { WhatsAppClientsTable } from './WhatsAppClientsTable';
 import { WhatsAppTemplateSelectorClient } from './WhatsAppTemplateSelectorClient';
 import { type VisibilityFilterType } from '../../components/VisibilityFilter';
 
-interface WhatsAppClientsViewProps {
+interface WhatsAppClientsViewClientProps {
     category?: string;
     type?: string;
     visibility?: 'all' | 'hidden' | 'visible';
     dictionary: Dictionary;
-    clients: ClientForTable[];
+    clients: ClientForTableWithStatus[];
     whatsappTemplates: WhatsAppTemplateData[];
+    paginationInfo?: {
+        totalCount: number;
+        totalPages: number;
+        currentPage: number;
+        hasMore: boolean;
+    };
 }
 
 // Función para traducir categorías de comportamiento
@@ -57,7 +63,7 @@ const translateType = (type: string): string => {
     return translations[type] || type;
 };
 
-export function WhatsAppClientsView({ category, type, visibility, dictionary, clients, whatsappTemplates }: WhatsAppClientsViewProps) {
+export function WhatsAppClientsViewClient({ category, type, visibility, dictionary, clients, whatsappTemplates, paginationInfo }: WhatsAppClientsViewClientProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -65,7 +71,6 @@ export function WhatsAppClientsView({ category, type, visibility, dictionary, cl
     const [whatsappMessage, setWhatsappMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilterType>(visibility || 'all');
-    const [hiddenClients, setHiddenClients] = useState<Set<string>>(new Set());
 
     // Traducir categoría y tipo
     const categoryTitle = category
@@ -76,17 +81,15 @@ export function WhatsAppClientsView({ category, type, visibility, dictionary, cl
 
     const typeTitle = type ? translateType(type) : '';
 
-    // Filter clients based on visibility filter
+    // Filter clients based on visibility filter using server data
     const filteredClients = clients.filter(client => {
-        const isHidden = hiddenClients.has(client.email);
-
         switch (visibilityFilter) {
             case 'all':
                 return true;
             case 'hidden':
-                return isHidden;
+                return client.isHidden;
             case 'visible':
-                return !isHidden;
+                return !client.isHidden;
             default:
                 return true;
         }
@@ -214,7 +217,7 @@ export function WhatsAppClientsView({ category, type, visibility, dictionary, cl
                         dictionary={dictionary}
                         visibilityFilter={visibilityFilter}
                         onVisibilityFilterChange={handleVisibilityFilterChange}
-                        onHiddenClientsChange={setHiddenClients}
+                        paginationInfo={paginationInfo}
                     />
                 </CardContent>
             </Card>
