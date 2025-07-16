@@ -202,7 +202,7 @@ export async function getWhatsAppContactStatus(clientEmails: string[]): Promise<
             }
         ];
 
-        const result = await collection.aggregate(pipeline).toArray();
+        const result = await collection.aggregate(pipeline, { allowDiskUse: true }).toArray();
 
         return {
             success: true,
@@ -252,7 +252,7 @@ export async function getClientVisibilityStatus(clientEmails: string[]): Promise
             }
         ];
 
-        const result = await collection.aggregate(pipeline).toArray();
+        const result = await collection.aggregate(pipeline, { allowDiskUse: true }).toArray();
 
         return {
             success: true,
