@@ -27,6 +27,7 @@ export interface PaginatedClientsResponse {
 export interface ClientsPaginationOptions {
     category?: string;
     type?: 'behavior' | 'spending';
+    visibility?: 'all' | 'hidden' | 'visible';
     page?: number;
     pageSize?: number;
     sortBy?: 'totalSpent' | 'totalOrders' | 'lastOrder';
@@ -256,10 +257,74 @@ export interface PaginatedClientsWithStatusResponse {
  */
 export async function getClientsPaginatedWithStatus(options: ClientsPaginationOptions = {}): Promise<PaginatedClientsWithStatusResponse> {
     try {
-        // Primero obtener los clientes paginados básicos
-        const clientsResponse = await getClientsPaginated(options);
+        const { visibility, page = 1, pageSize = 50, ...restOptions } = options;
 
-        if (clientsResponse.clients.length === 0) {
+        // CASO 1: Sin filtro de visibilidad o filtro 'all' - flujo normal optimizado
+        if (!visibility || visibility === 'all') {
+            const clientsResponse = await getClientsPaginated(options);
+
+            if (clientsResponse.clients.length === 0) {
+                return {
+                    clients: [],
+                    totalCount: 0,
+                    hasMore: false,
+                    totalPages: 0
+                };
+            }
+
+            // Obtener emails de todos los clientes para consultar estados
+            const clientEmails = clientsResponse.clients.map(client => client.email);
+
+            // Importar funciones necesarias
+            const { getWhatsAppContactStatus, getClientVisibilityStatus } = await import('../markWhatsAppContacted');
+
+            // Cargar estados en paralelo
+            const [contactResult, visibilityResult] = await Promise.all([
+                getWhatsAppContactStatus(clientEmails),
+                getClientVisibilityStatus(clientEmails)
+            ]);
+
+            // Crear mapas para acceso rápido
+            const contactMap = new Map<string, Date | null>();
+            const visibilityMap = new Map<string, boolean>();
+
+            if (contactResult.success && contactResult.data) {
+                contactResult.data.forEach(item => {
+                    contactMap.set(item.clientEmail, item.whatsappContactedAt);
+                });
+            }
+
+            if (visibilityResult.success && visibilityResult.data) {
+                visibilityResult.data.forEach(item => {
+                    visibilityMap.set(item.clientEmail, item.isHidden);
+                });
+            }
+
+            // Combinar datos
+            const clientsWithStatus: ClientForTableWithStatus[] = clientsResponse.clients.map(client => ({
+                ...client,
+                whatsappContactedAt: contactMap.get(client.email) || null,
+                isHidden: visibilityMap.get(client.email) || false
+            }));
+
+            return {
+                clients: clientsWithStatus,
+                totalCount: clientsResponse.totalCount,
+                hasMore: clientsResponse.hasMore,
+                totalPages: clientsResponse.totalPages
+            };
+        }
+
+        // CASO 2: Con filtro de visibilidad específico - necesitamos obtener todos y filtrar
+        // Obtener una cantidad grande de clientes para poder filtrar
+        // Esto no es óptimo pero es necesario para filtrar por visibilidad
+        const allClientsResponse = await getClientsPaginated({
+            ...restOptions,
+            page: 1,
+            pageSize: 5000 // Número grande para obtener la mayoría
+        });
+
+        if (allClientsResponse.clients.length === 0) {
             return {
                 clients: [],
                 totalCount: 0,
@@ -269,15 +334,15 @@ export async function getClientsPaginatedWithStatus(options: ClientsPaginationOp
         }
 
         // Obtener emails de todos los clientes para consultar estados
-        const clientEmails = clientsResponse.clients.map(client => client.email);
+        const allClientEmails = allClientsResponse.clients.map(client => client.email);
 
         // Importar funciones necesarias
         const { getWhatsAppContactStatus, getClientVisibilityStatus } = await import('../markWhatsAppContacted');
 
         // Cargar estados en paralelo
         const [contactResult, visibilityResult] = await Promise.all([
-            getWhatsAppContactStatus(clientEmails),
-            getClientVisibilityStatus(clientEmails)
+            getWhatsAppContactStatus(allClientEmails),
+            getClientVisibilityStatus(allClientEmails)
         ]);
 
         // Crear mapas para acceso rápido
@@ -296,22 +361,35 @@ export async function getClientsPaginatedWithStatus(options: ClientsPaginationOp
             });
         }
 
-        // Combinar datos
-        const clientsWithStatus: ClientForTableWithStatus[] = clientsResponse.clients.map(client => ({
+        // Combinar datos con estados
+        const allClientsWithStatus: ClientForTableWithStatus[] = allClientsResponse.clients.map(client => ({
             ...client,
             whatsappContactedAt: contactMap.get(client.email) || null,
             isHidden: visibilityMap.get(client.email) || false
         }));
 
+        // Filtrar por visibilidad
+        const filteredClients = allClientsWithStatus.filter(client => {
+            const shouldInclude = visibility === 'hidden' ? client.isHidden : !client.isHidden;
+            return shouldInclude;
+        });
+
+        // Aplicar paginación a los resultados filtrados
+        const totalCount = filteredClients.length;
+        const totalPages = Math.ceil(totalCount / pageSize);
+        const startIndex = (page - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const paginatedClients = filteredClients.slice(startIndex, endIndex);
+
         return {
-            clients: clientsWithStatus,
-            totalCount: clientsResponse.totalCount,
-            hasMore: clientsResponse.hasMore,
-            totalPages: clientsResponse.totalPages
+            clients: paginatedClients,
+            totalCount,
+            hasMore: page < totalPages,
+            totalPages
         };
 
     } catch (error) {
-        console.error('Error getting paginated clients with status:', error);
+        console.error('❌ [SERVER] Error getting paginated clients with status:', error);
         throw error;
     }
 } 

@@ -43,9 +43,14 @@ export function VisibilityFilter({
                 return (
                     <Button
                         key={option.value}
+                        type="button"
                         variant={isSelected ? "default" : "outline"}
                         size="sm"
-                        onClick={() => onFilterChange(option.value)}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onFilterChange(option.value);
+                        }}
                         className="flex items-center gap-1 text-xs"
                     >
                         <Icon className="h-3 w-3" />

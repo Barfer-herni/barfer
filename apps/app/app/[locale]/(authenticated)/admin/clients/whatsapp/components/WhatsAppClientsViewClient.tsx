@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/design-system/components/ui/card';
 import { Textarea } from '@repo/design-system/components/ui/textarea';
@@ -13,6 +13,9 @@ import type { WhatsAppTemplateData } from '@repo/data-services';
 import { WhatsAppClientsTable } from './WhatsAppClientsTable';
 import { WhatsAppTemplateSelectorClient } from './WhatsAppTemplateSelectorClient';
 import { type VisibilityFilterType } from '../../components/VisibilityFilter';
+import { hideSelectedClients, showSelectedClients } from '../../actions';
+import { useToast } from '@repo/design-system/hooks/use-toast';
+import React from 'react'; // Added missing import
 
 interface WhatsAppClientsViewClientProps {
     category?: string;
@@ -69,8 +72,46 @@ export function WhatsAppClientsViewClient({ category, type, visibility, dictiona
     const searchParams = useSearchParams();
     const [selectedClients, setSelectedClients] = useState<string[]>([]);
     const [whatsappMessage, setWhatsappMessage] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilterType>(visibility || 'all');
+    // Separar los estados de loading
+    const [isLoadingSendWhatsApp, setIsLoadingSendWhatsApp] = useState(false);
+    const [isLoadingHideShow, setIsLoadingHideShow] = useState(false);
+
+    // Sincronizar el estado del filtro con la URL y props del servidor
+    const currentVisibilityFromUrl = (searchParams.get('visibility') as VisibilityFilterType) || 'all';
+    const [visibilityFilter, setVisibilityFilter] = useState<VisibilityFilterType>(currentVisibilityFromUrl);
+
+    const { toast } = useToast();
+
+    // Actualizar el estado local cuando cambie la URL
+    React.useEffect(() => {
+        const urlVisibility = (searchParams.get('visibility') as VisibilityFilterType) || 'all';
+        setVisibilityFilter(urlVisibility);
+    }, [searchParams]);
+
+    // Manejar el estado de clientes ocultos en el componente padre
+    const initialHiddenClients = useMemo(() => {
+        const hiddenSet = new Set<string>();
+        clients.forEach(client => {
+            if (client.isHidden) {
+                hiddenSet.add(client.email);
+            }
+        });
+        return hiddenSet;
+    }, [clients]);
+
+    const [hiddenClients, setHiddenClients] = useState(initialHiddenClients);
+
+    // Sincronizar el estado hiddenClients con los datos del servidor cuando cambien
+    React.useEffect(() => {
+        const serverHiddenClients = new Set<string>();
+        clients.forEach(client => {
+            if (client.isHidden) {
+                serverHiddenClients.add(client.email);
+            }
+        });
+
+        setHiddenClients(serverHiddenClients);
+    }, [clients]);
 
     // Traducir categoría y tipo
     const categoryTitle = category
@@ -81,35 +122,134 @@ export function WhatsAppClientsViewClient({ category, type, visibility, dictiona
 
     const typeTitle = type ? translateType(type) : '';
 
-    // Filter clients based on visibility filter using server data
-    const filteredClients = clients.filter(client => {
-        switch (visibilityFilter) {
-            case 'all':
-                return true;
-            case 'hidden':
-                return client.isHidden;
-            case 'visible':
-                return !client.isHidden;
-            default:
-                return true;
-        }
-    });
+    // Ya no necesitamos filtrar aquí porque el servidor ya envía los datos filtrados
+    const filteredClients = clients;
 
     const handleVisibilityFilterChange = (filter: VisibilityFilterType) => {
+        // Actualizar estado local inmediatamente para mejor UX
         setVisibilityFilter(filter);
 
-        // Update URL with new filter
+        // Update URL with new filter and reset to page 1
         const newSearchParams = new URLSearchParams(searchParams);
+        newSearchParams.set('page', '1'); // Reset a página 1 al cambiar filtro
+
         if (filter === 'all') {
             newSearchParams.delete('visibility');
         } else {
             newSearchParams.set('visibility', filter);
         }
 
-        router.push(`${pathname}?${newSearchParams.toString()}`);
+        const newUrl = `${pathname}?${newSearchParams.toString()}`;
+
+        // Navegar para obtener datos filtrados del servidor
+        router.push(newUrl);
     };
 
-    const handleSendMessages = async () => {
+    // Mover las funciones de ocultar/mostrar al componente padre
+    const handleHideSelectedClients = async (e?: React.MouseEvent) => {
+        e?.preventDefault();
+        e?.stopPropagation();
+
+        if (selectedClients.length === 0) return;
+
+        setIsLoadingHideShow(true);
+        try {
+            const selectedClientEmails = clients
+                .filter(client => selectedClients.includes(client.id))
+                .map(client => client.email);
+
+            const result = await hideSelectedClients(selectedClientEmails);
+
+            if (result.success) {
+                // Actualizar el estado local
+                const newHiddenClients = new Set(hiddenClients);
+                selectedClientEmails.forEach(email => {
+                    newHiddenClients.add(email);
+                });
+                setHiddenClients(newHiddenClients);
+
+                // Limpiar selección después de ocultar
+                setSelectedClients([]);
+
+                toast({
+                    title: "Éxito",
+                    description: result.message || `${selectedClientEmails.length} clientes ocultados`,
+                });
+
+                // La sincronización se hará automáticamente via useEffect cuando lleguen nuevos datos
+            } else {
+                toast({
+                    title: "Error",
+                    description: result.error || "Error al ocultar clientes",
+                    variant: "destructive",
+                });
+            }
+        } catch (error) {
+            console.error('Error hiding clients:', error);
+            toast({
+                title: "Error",
+                description: "Error interno del servidor",
+                variant: "destructive",
+            });
+        } finally {
+            setIsLoadingHideShow(false);
+        }
+    };
+
+    const handleShowSelectedClients = async (e?: React.MouseEvent) => {
+        e?.preventDefault();
+        e?.stopPropagation();
+
+        if (selectedClients.length === 0) return;
+
+        setIsLoadingHideShow(true);
+        try {
+            const selectedClientEmails = clients
+                .filter(client => selectedClients.includes(client.id))
+                .map(client => client.email);
+
+            const result = await showSelectedClients(selectedClientEmails);
+
+            if (result.success) {
+                // Actualizar el estado local
+                const newHiddenClients = new Set(hiddenClients);
+                selectedClientEmails.forEach(email => {
+                    newHiddenClients.delete(email);
+                });
+                setHiddenClients(newHiddenClients);
+
+                // Limpiar selección después de mostrar
+                setSelectedClients([]);
+
+                toast({
+                    title: "Éxito",
+                    description: result.message || `${selectedClientEmails.length} clientes mostrados`,
+                });
+
+                // La sincronización se hará automáticamente via useEffect cuando lleguen nuevos datos
+            } else {
+                toast({
+                    title: "Error",
+                    description: result.error || "Error al mostrar clientes",
+                    variant: "destructive",
+                });
+            }
+        } catch (error) {
+            console.error('Error showing clients:', error);
+            toast({
+                title: "Error",
+                description: "Error interno del servidor",
+                variant: "destructive",
+            });
+        } finally {
+            setIsLoadingHideShow(false);
+        }
+    };
+
+    const handleSendMessages = async (e?: React.MouseEvent) => {
+        e?.preventDefault();
+        e?.stopPropagation();
+
         if (selectedClients.length === 0) {
             alert('Selecciona al menos un cliente');
             return;
@@ -120,7 +260,7 @@ export function WhatsAppClientsViewClient({ category, type, visibility, dictiona
             return;
         }
 
-        setIsLoading(true);
+        setIsLoadingSendWhatsApp(true);
 
         try {
             const result = { success: true };
@@ -136,7 +276,7 @@ export function WhatsAppClientsViewClient({ category, type, visibility, dictiona
             alert('Error al enviar mensajes. Intenta nuevamente.');
             console.error('WhatsApp send error:', error);
         } finally {
-            setIsLoading(false);
+            setIsLoadingSendWhatsApp(false);
         }
     };
 
@@ -145,6 +285,7 @@ export function WhatsAppClientsViewClient({ category, type, visibility, dictiona
             {/* Header */}
             <div className="flex items-center gap-4">
                 <Button
+                    type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => router.back()}
@@ -191,11 +332,12 @@ export function WhatsAppClientsViewClient({ category, type, visibility, dictiona
                             {selectedClients.length} cliente(s) seleccionado(s)
                         </div>
                         <Button
+                            type="button"
                             onClick={handleSendMessages}
-                            disabled={isLoading || selectedClients.length === 0 || !whatsappMessage.trim()}
+                            disabled={isLoadingSendWhatsApp || selectedClients.length === 0 || !whatsappMessage.trim()}
                             className="min-w-[140px] bg-green-600 hover:bg-green-700"
                         >
-                            {isLoading ? 'Enviando...' : 'Enviar WhatsApp'}
+                            {isLoadingSendWhatsApp ? 'Enviando...' : 'Enviar WhatsApp'}
                         </Button>
                     </div>
                 </CardContent>
@@ -218,6 +360,10 @@ export function WhatsAppClientsViewClient({ category, type, visibility, dictiona
                         visibilityFilter={visibilityFilter}
                         onVisibilityFilterChange={handleVisibilityFilterChange}
                         paginationInfo={paginationInfo}
+                        hiddenClients={hiddenClients}
+                        onHideClients={handleHideSelectedClients}
+                        onShowClients={handleShowSelectedClients}
+                        loading={isLoadingHideShow}
                     />
                 </CardContent>
             </Card>

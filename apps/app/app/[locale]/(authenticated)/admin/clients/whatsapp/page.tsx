@@ -31,6 +31,7 @@ export default async function WhatsAppPage({ params, searchParams }: WhatsAppPag
         getClientsPaginatedWithStatus({
             category,
             type: type as 'behavior' | 'spending',
+            visibility,
             page,
             pageSize: 50
         }),
