@@ -16,6 +16,26 @@ import {
     PopoverTrigger,
 } from '@repo/design-system/components/ui/popover';
 
+// Función helper para crear fechas en zona horaria de Argentina
+const createArgentinaDate = (dateString: string, isEndOfDay = false): Date => {
+    // Crear fecha en zona horaria de Argentina (UTC-3)
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+
+    if (isEndOfDay) {
+        date.setHours(23, 59, 59, 999);
+    } else {
+        date.setHours(0, 0, 0, 0);
+    }
+
+    return date;
+};
+
+// Función helper para formatear fechas para la URL
+const formatDateForURL = (date: Date): string => {
+    return format(date, 'yyyy-MM-dd');
+};
+
 export function DateRangeFilter({
     className,
 }: React.HTMLAttributes<HTMLDivElement>) {
@@ -26,9 +46,11 @@ export function DateRangeFilter({
 
     const from = searchParams.get('from');
     const to = searchParams.get('to');
+
+    // Crear DateRange usando zona horaria de Argentina
     const urlDate: DateRange | undefined = {
-        from: from ? new Date(`${from}T00:00:00.000Z`) : undefined,
-        to: to ? new Date(`${to}T00:00:00.000Z`) : undefined,
+        from: from ? createArgentinaDate(from) : undefined,
+        to: to ? createArgentinaDate(to, true) : undefined,
     };
 
     const [selectedDate, setSelectedDate] = React.useState<DateRange | undefined>(urlDate);
@@ -46,8 +68,8 @@ export function DateRangeFilter({
             const fromDate = selectedDate.from;
             const toDate = selectedDate.to || selectedDate.from;
 
-            params.set('from', format(fromDate, 'yyyy-MM-dd'));
-            params.set('to', format(toDate, 'yyyy-MM-dd'));
+            params.set('from', formatDateForURL(fromDate));
+            params.set('to', formatDateForURL(toDate));
         } else {
             params.delete('from');
             params.delete('to');

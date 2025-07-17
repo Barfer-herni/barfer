@@ -447,17 +447,31 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                         <PopoverTrigger asChild>
                                             <Input
                                                 readOnly
-                                                value={createFormData.deliveryDay ? format(new Date(createFormData.deliveryDay), 'PPP', { locale: es }) : ''}
+                                                value={createFormData.deliveryDay ? (() => {
+                                                    // Crear fecha en zona horaria de Argentina
+                                                    const date = new Date(createFormData.deliveryDay);
+                                                    // Si la fecha está en UTC, necesitamos restar 3 horas para obtener la hora local de Argentina
+                                                    const argentinaDate = new Date(date.getTime() - (3 * 60 * 60 * 1000));
+                                                    return format(argentinaDate, 'PPP', { locale: es });
+                                                })() : ''}
                                                 placeholder="Seleccionar fecha"
                                             />
                                         </PopoverTrigger>
                                         <PopoverContent className="w-auto p-0">
                                             <Calendar
                                                 mode="single"
-                                                selected={createFormData.deliveryDay ? new Date(createFormData.deliveryDay) : undefined}
+                                                selected={createFormData.deliveryDay ? (() => {
+                                                    // Crear fecha en zona horaria de Argentina
+                                                    const date = new Date(createFormData.deliveryDay);
+                                                    // Si la fecha está en UTC, necesitamos restar 3 horas para obtener la hora local de Argentina
+                                                    const argentinaDate = new Date(date.getTime() - (3 * 60 * 60 * 1000));
+                                                    return argentinaDate;
+                                                })() : undefined}
                                                 onSelect={(date) => {
                                                     if (date) {
-                                                        handleCreateFormChange('deliveryDay', date.toISOString());
+                                                        // Convertir a zona horaria de Argentina y luego a ISO
+                                                        const argentinaDate = new Date(date.getTime() + (3 * 60 * 60 * 1000));
+                                                        handleCreateFormChange('deliveryDay', argentinaDate.toISOString());
                                                     }
                                                 }}
                                                 locale={es}
