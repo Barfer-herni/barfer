@@ -33,18 +33,15 @@ export const columns: ColumnDef<Order>[] = [
                 return <div className="w-full text-center text-sm">--</div>;
             }
 
-            // Crear fecha en zona horaria de Argentina
+            // Usar directamente el valor del campo deliveryDay
             const date = new Date(deliveryDay);
-            // Ajustar a zona horaria de Argentina (UTC-3)
-            // Si la fecha está en UTC, necesitamos restar 3 horas para obtener la hora local de Argentina
-            const argentinaDate = new Date(date.getTime() - (3 * 60 * 60 * 1000));
-            const formatted = argentinaDate.toLocaleDateString('es-AR', {
+            const formatted = date.toLocaleDateString('es-AR', {
                 day: '2-digit',
                 month: 'short',
             }).replace('.', '').replace(/\s/g, '-');
 
             // Colores por día de la semana
-            const day = argentinaDate.getDay();
+            const day = date.getDay();
             let bgColor = '';
             switch (day) {
                 case 1: // Lunes

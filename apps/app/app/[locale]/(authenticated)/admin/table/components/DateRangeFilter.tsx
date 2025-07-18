@@ -16,9 +16,8 @@ import {
     PopoverTrigger,
 } from '@repo/design-system/components/ui/popover';
 
-// Función helper para crear fechas en zona horaria de Argentina
-const createArgentinaDate = (dateString: string, isEndOfDay = false): Date => {
-    // Crear fecha en zona horaria de Argentina (UTC-3)
+// Función helper para crear fechas desde string
+const createDateFromString = (dateString: string, isEndOfDay = false): Date => {
     const [year, month, day] = dateString.split('-').map(Number);
     const date = new Date(year, month - 1, day);
 
@@ -47,10 +46,10 @@ export function DateRangeFilter({
     const from = searchParams.get('from');
     const to = searchParams.get('to');
 
-    // Crear DateRange usando zona horaria de Argentina
+    // Crear DateRange usando las fechas directamente
     const urlDate: DateRange | undefined = {
-        from: from ? createArgentinaDate(from) : undefined,
-        to: to ? createArgentinaDate(to, true) : undefined,
+        from: from ? createDateFromString(from) : undefined,
+        to: to ? createDateFromString(to, true) : undefined,
     };
 
     const [selectedDate, setSelectedDate] = React.useState<DateRange | undefined>(urlDate);

@@ -365,11 +365,9 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                         <Input
                             readOnly
                             value={editValues.deliveryDay ? (() => {
-                                // Crear fecha en zona horaria de Argentina
+                                // Usar directamente el valor del campo deliveryDay
                                 const date = new Date(editValues.deliveryDay);
-                                // Si la fecha está en UTC, necesitamos restar 3 horas para obtener la hora local de Argentina
-                                const argentinaDate = new Date(date.getTime() - (3 * 60 * 60 * 1000));
-                                return format(argentinaDate, 'dd/MM/yyyy');
+                                return format(date, 'dd/MM/yyyy');
                             })() : ''}
                             placeholder="Seleccionar fecha"
                             className="w-full text-xs text-center"
@@ -379,17 +377,14 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                         <Calendar
                             mode="single"
                             selected={editValues.deliveryDay ? (() => {
-                                // Crear fecha en zona horaria de Argentina
+                                // Usar directamente el valor del campo deliveryDay
                                 const date = new Date(editValues.deliveryDay);
-                                // Si la fecha está en UTC, necesitamos restar 3 horas para obtener la hora local de Argentina
-                                const argentinaDate = new Date(date.getTime() - (3 * 60 * 60 * 1000));
-                                return argentinaDate;
+                                return date;
                             })() : undefined}
                             onSelect={(date) => {
                                 if (date) {
-                                    // Convertir a zona horaria de Argentina y luego a ISO
-                                    const argentinaDate = new Date(date.getTime() + (3 * 60 * 60 * 1000));
-                                    onEditValueChange('deliveryDay', argentinaDate.toISOString());
+                                    // Usar directamente la fecha seleccionada
+                                    onEditValueChange('deliveryDay', date.toISOString());
                                 }
                             }}
                             locale={es}

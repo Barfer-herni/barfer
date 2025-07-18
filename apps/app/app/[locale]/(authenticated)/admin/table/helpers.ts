@@ -38,12 +38,9 @@ export const shouldHighlightRow = (row: any) => {
 export const getDateCellBackgroundColor = (deliveryDay: string) => {
     if (!deliveryDay) return '';
 
-    // Crear fecha en zona horaria de Argentina
+    // Usar directamente el valor del campo deliveryDay
     const date = new Date(deliveryDay);
-    // Ajustar a zona horaria de Argentina (UTC-3)
-    // Si la fecha está en UTC, necesitamos restar 3 horas para obtener la hora local de Argentina
-    const argentinaDate = new Date(date.getTime() - (3 * 60 * 60 * 1000));
-    const day = argentinaDate.getDay();
+    const day = date.getDay();
 
     return DAY_COLORS[day as keyof typeof DAY_COLORS] || '';
 };

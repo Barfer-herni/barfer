@@ -40,26 +40,22 @@ export async function getOrders({
         // Excluir envíos del día (método de pago 'transfer' y 'bank-transfer')
         baseFilter.paymentMethod = { $nin: ['transfer', 'bank-transfer'] };
 
-        // Filtro por fecha simplificado - usando zona horaria de Argentina
+        // Filtro por fecha simplificado - usar fechas directamente
         if ((from && from.trim() !== '') || (to && to.trim() !== '')) {
             baseFilter.deliveryDay = {};
 
             if (from && from.trim() !== '') {
-                // Crear fecha en zona horaria de Argentina (UTC-3)
+                // Crear fecha desde string sin manipulación de zona horaria
                 const [year, month, day] = from.split('-').map(Number);
                 const fromDateObj = new Date(year, month - 1, day, 0, 0, 0, 0);
-                // Convertir a UTC para la base de datos
-                const fromDateUTC = new Date(fromDateObj.getTime() + (3 * 60 * 60 * 1000));
-                baseFilter.deliveryDay.$gte = fromDateUTC;
+                baseFilter.deliveryDay.$gte = fromDateObj;
             }
 
             if (to && to.trim() !== '') {
-                // Crear fecha en zona horaria de Argentina (UTC-3)
+                // Crear fecha desde string sin manipulación de zona horaria
                 const [year, month, day] = to.split('-').map(Number);
                 const toDateObj = new Date(year, month - 1, day, 23, 59, 59, 999);
-                // Convertir a UTC para la base de datos
-                const toDateUTC = new Date(toDateObj.getTime() + (3 * 60 * 60 * 1000));
-                baseFilter.deliveryDay.$lte = toDateUTC;
+                baseFilter.deliveryDay.$lte = toDateObj;
             }
         }
 
