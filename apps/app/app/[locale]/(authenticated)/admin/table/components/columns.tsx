@@ -29,12 +29,30 @@ export const columns: ColumnDef<Order>[] = [
         enableSorting: true,
         cell: ({ row }: CellContext<Order, unknown>) => {
             const deliveryDay = row.original.deliveryDay;
+            const userName = row.original.user?.name || '';
+            const userLastName = row.original.user?.lastName || '';
+            const fullName = `${userName} ${userLastName}`.trim();
+
+            // Solo mostrar logs para Carhil Aguirre
+            if (fullName === 'Carhil Aguirre') {
+                console.log('🔍 ANTES de pintar deliveryDay para Carhil Aguirre:', {
+                    deliveryDay,
+                    type: typeof deliveryDay,
+                    rowId: row.id,
+                    fullName,
+                    original: row.original
+                });
+            }
+
             if (!deliveryDay) {
+                if (fullName === 'Carhil Aguirre') {
+                    console.log('❌ No hay deliveryDay para Carhil Aguirre, retornando --');
+                }
                 return <div className="w-full text-center text-sm">--</div>;
             }
 
-            // Usar directamente el valor del campo deliveryDay
-            const date = new Date(deliveryDay);
+            // Usar directamente el Date que ya viene
+            const date = deliveryDay as unknown as Date;
             const formatted = date.toLocaleDateString('es-AR', {
                 day: '2-digit',
                 month: 'short',
@@ -62,6 +80,24 @@ export const columns: ColumnDef<Order>[] = [
                 default:
                     bgColor = '';
             }
+
+            // Solo mostrar logs para Carhil Aguirre
+            if (fullName === 'Carhil Aguirre') {
+                console.log('✅ DESPUÉS de pintar deliveryDay para Carhil Aguirre:', {
+                    deliveryDay,
+                    deliveryDayType: typeof deliveryDay,
+                    deliveryDayIsDate: typeof deliveryDay === 'object' && deliveryDay !== null && 'getTime' in deliveryDay,
+                    date: date.toISOString(),
+                    dateLocal: date.toString(),
+                    dateUTC: date.toUTCString(),
+                    formatted,
+                    day,
+                    bgColor,
+                    rowId: row.id,
+                    fullName
+                });
+            }
+
             return (
                 <div className={`flex h-full w-full items-center justify-center text-center ${bgColor} rounded-sm`} style={{ minWidth: 60, maxWidth: 70 }}>
                     <span className="font-semibold">
