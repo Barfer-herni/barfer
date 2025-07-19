@@ -20,6 +20,7 @@ const ROUTE_PERMISSIONS: Record<string, string[]> = {
   '/admin/analytics': ['analytics:view'],
   '/admin/clients': ['clients:view'],
   '/admin/account': ['account:view_own'], // Todos pueden ver su cuenta
+  '/admin/prices': ['prices:view'],
 };
 
 // Role configuration with route permissions

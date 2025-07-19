@@ -7,7 +7,21 @@
         "users": "Benutzer",
         "settings": "Einstellungen",
         "logout": "Abmelden",
-        "loggingOut": "Abmelden..."
+        "loggingOut": "Abmelden...",
+        "account": "Mein Konto",
+        "analytics": "Analytik",
+        "clients": "Kunden",
+        "table": "Tabelle",
+        "balance": "Bestellbilanz",
+        "prices": "Preise",
+        "outputs": "Ausgänge",
+        "accountMobile": "Konto",
+        "analyticsMobile": "KPIs",
+        "clientsMobile": "Kunden",
+        "tableMobile": "Tabelle",
+        "balanceMobile": "Bilanz",
+        "pricesMobile": "Preise",
+        "outputsMobile": "Ausgänge"
       },
       "products": {
         "title": "Produkt-Dashboard",

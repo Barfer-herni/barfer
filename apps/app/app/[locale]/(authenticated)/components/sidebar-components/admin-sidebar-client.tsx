@@ -6,6 +6,9 @@ import {
     Users,
     BarChart3,
     Table,
+    Receipt,
+    Tags,
+    TrendingUp,
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -25,6 +28,9 @@ const ICON_MAP = {
     Users,
     BarChart3,
     Table,
+    Receipt,
+    Tags,
+    TrendingUp,
 } as const;
 
 type AdminSidebarClientProps = {

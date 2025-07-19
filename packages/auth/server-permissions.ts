@@ -34,6 +34,15 @@ export type Permission =
     | 'table:export'
     | 'table:delete'
     | 'table:edit'
+    // Balance
+    | 'balance:view'
+    | 'balance:export'
+    // Prices
+    | 'prices:view'
+    | 'prices:edit'
+    // Outputs
+    | 'outputs:view'
+    | 'outputs:export'
 
 // Permisos por defecto para admins (siempre tienen todos)
 export const ADMIN_PERMISSIONS: Permission[] = [
@@ -57,6 +66,12 @@ export const ADMIN_PERMISSIONS: Permission[] = [
     'table:export',
     'table:delete',
     'table:edit',
+    'balance:view',
+    'balance:export',
+    'prices:view',
+    'prices:edit',
+    'outputs:view',
+    'outputs:export',
 ];
 
 /**
@@ -198,6 +213,27 @@ export const SIDEBAR_CONFIG: SidebarItem[] = [
         href: '/admin/table',
         icon: 'Table',
         requiredPermissions: ['table:view'],
+    },
+    {
+        label: 'balance',
+        mobileLabel: 'balanceMobile',
+        href: '/admin/balance',
+        icon: 'Receipt',
+        requiredPermissions: ['balance:view'],
+    },
+    {
+        label: 'prices',
+        mobileLabel: 'pricesMobile',
+        href: '/admin/prices',
+        icon: 'Tags',
+        requiredPermissions: ['prices:view'],
+    },
+    {
+        label: 'outputs',
+        mobileLabel: 'outputsMobile',
+        href: '/admin/outputs',
+        icon: 'TrendingUp',
+        requiredPermissions: ['outputs:view'],
     },
 ];
 

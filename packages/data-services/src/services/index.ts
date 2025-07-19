@@ -7,6 +7,7 @@ export * from './imageService';
 export * from './uploadR2Image';
 export * from './userService';
 export * from './templateService';
+export * from './pricesService';
 
 // ==========================================
 // SERVICIOS DE BARFER E-COMMERCE (MongoDB)

@@ -116,3 +116,31 @@ model ScheduledWhatsAppCampaign {
 
   @@map("scheduled_whatsapp_campaigns")
 }
+
+enum PriceSection {
+  PERRO
+  GATO
+  OTROS
+}
+
+enum PriceType {
+  EFECTIVO
+  TRANSFERENCIA
+  MAYORISTA
+}
+
+model Price {
+  id          String       @id @default(uuid())
+  section     PriceSection // PERRO, GATO, OTROS
+  product     String       // POLLO, VACA, CERDO, CORDERO, BIG DOG VACA, etc.
+  weight      String?      // 5KG, 10KG (opcional para algunos productos)
+  priceType   PriceType    // EFECTIVO, TRANSFERENCIA, MAYORISTA
+  price       Float        // Precio actual
+  isActive    Boolean      @default(true)
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  @@map("prices")
+  @@unique([section, product, weight, priceType])
+}

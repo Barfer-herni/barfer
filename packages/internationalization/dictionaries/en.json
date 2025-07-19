@@ -12,10 +12,16 @@
         "analytics": "Analytics",
         "clients": "Clients",
         "table": "Table",
+        "balance": "Order Balance",
+        "prices": "Prices",
+        "outputs": "Outputs",
         "accountMobile": "Account",
         "analyticsMobile": "KPIs",
         "clientsMobile": "Clients",
-        "tableMobile": "Table"
+        "tableMobile": "Table",
+        "balanceMobile": "Balance",
+        "pricesMobile": "Prices",
+        "outputsMobile": "Outputs"
       },
       "menu": {
         "title": "Menu Management",
@@ -199,6 +205,43 @@
     "tablePage": {
       "title": "Orders Table",
       "description": "A list of all the orders."
+    },
+    "prices": {
+      "title": "Price Management",
+      "description": "Manage prices for all products by section and sale type",
+      "sections": {
+        "perro": "Dog Products",
+        "gato": "Cat Products",
+        "otros": "Other Products"
+      },
+      "priceTypes": {
+        "EFECTIVO": "Cash",
+        "TRANSFERENCIA": "Transfer",
+        "MAYORISTA": "Wholesale"
+      },
+      "table": {
+        "product": "Product",
+        "priceType": "Price Type",
+        "price": "Price ($)",
+        "status": "Status",
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "actions": {
+        "initialize": "Initialize Default Prices",
+        "update": "Update Price",
+        "updateSuccess": "Price updated successfully",
+        "initializeSuccess": "Prices initialized successfully",
+        "error": "Error processing operation"
+      },
+      "empty": {
+        "title": "No prices configured",
+        "description": "Would you like to initialize the table with the default structure?"
+      }
+    },
+    "layout": {
+      "title": "Barfer Administration Panel",
+      "description": "Access Barfer's administrative tools to manage your business efficiently."
     }
   },
   "web": {

@@ -33,3 +33,7 @@ export { migrateClientType } from './migrateClientType';
 
 // ===== CLIENT MANAGEMENT =====
 export { markWhatsAppContacted, getWhatsAppContactStatus } from './markWhatsAppContacted';
+
+// ===== PRICES =====
+export { getAllPrices, updateProductPrice, initializeBarferPrices } from './pricesService';
+export type { BarferPriceData, BarferUpdatePriceData } from './pricesService';

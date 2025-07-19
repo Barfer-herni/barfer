@@ -12,10 +12,16 @@
         "analytics": "Estadísticas",
         "clients": "Clientes",
         "table": "Tabla",
+        "balance": "Balance de Pedidos",
+        "prices": "Precios",
+        "outputs": "Salidas",
         "accountMobile": "Cuenta",
         "analyticsMobile": "KPIs",
         "clientsMobile": "Clientes",
-        "tableMobile": "Tabla"
+        "tableMobile": "Tabla",
+        "balanceMobile": "Balance",
+        "pricesMobile": "Precios",
+        "outputsMobile": "Salidas"
       },
       "menu": {
         "title": "Gestión de Menú",
@@ -384,6 +390,43 @@
         "poweredBy": "Menú digital creado con",
         "businessInfo": "Información del negocio"
       }
+    },
+    "prices": {
+      "title": "Gestión de Precios",
+      "description": "Administra los precios de todos los productos por sección y tipo de venta",
+      "sections": {
+        "perro": "Productos para Perros",
+        "gato": "Productos para Gatos", 
+        "otros": "Otros Productos"
+      },
+      "priceTypes": {
+        "EFECTIVO": "Efectivo",
+        "TRANSFERENCIA": "Transferencia",
+        "MAYORISTA": "Mayorista"
+      },
+      "table": {
+        "product": "Producto",
+        "priceType": "Tipo de Precio",
+        "price": "Precio ($)",
+        "status": "Estado",
+        "active": "Activo",
+        "inactive": "Inactivo"
+      },
+      "actions": {
+        "initialize": "Inicializar Precios por Defecto",
+        "update": "Actualizar Precio",
+        "updateSuccess": "Precio actualizado correctamente",
+        "initializeSuccess": "Precios inicializados correctamente",
+        "error": "Error al procesar la operación"
+      },
+      "empty": {
+        "title": "No hay precios configurados",
+        "description": "¿Deseas inicializar la tabla con la estructura por defecto?"
+      }
+    },
+    "layout": {
+      "title": "Panel de Administración Barfer",
+      "description": "Accede a las herramientas administrativas de Barfer para gestionar tu negocio de manera eficiente."
     }
   },
   "web": {
