@@ -7,6 +7,8 @@ export interface DataTableProps<TData extends { _id: string }, TValue> {
     total: number;
     pagination: PaginationState;
     sorting: SortingState;
+    canEdit?: boolean;
+    canDelete?: boolean;
 }
 
 export interface EditValues {

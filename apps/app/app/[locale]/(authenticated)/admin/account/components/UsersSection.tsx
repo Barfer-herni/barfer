@@ -47,7 +47,17 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
             email: '',
             password: '',
             role: 'user',
-            permissions: ['account:view_own'], // Permiso básico por defecto
+            permissions: [
+                'account:view_own',    // Permiso básico por defecto
+                'account:edit_own',    // Puede editar su perfil
+                'account:change_password', // Puede cambiar su contraseña
+                'analytics:view',      // Ver estadísticas básicas
+                'clients:view',        // Ver clientes
+                'table:view',          // Ver órdenes
+                'table:edit',          // Editar órdenes
+                'table:delete',        // Eliminar órdenes
+                'prices:view',         // Ver precios
+            ], // Permisos básicos por defecto para usuarios normales
         });
         setIsUserDialogOpen(true);
     };
@@ -392,6 +402,17 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
                                         </div>
                                         <div className="flex items-center space-x-2">
                                             <Switch
+                                                checked={userForm.permissions.includes('table:delete')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) setUserForm(prev => ({ ...prev, permissions: [...prev.permissions, 'table:delete'] }));
+                                                    else setUserForm(prev => ({ ...prev, permissions: prev.permissions.filter(p => p !== 'table:delete') }));
+                                                }}
+                                                disabled={isPending}
+                                            />
+                                            <Label className="text-sm">Eliminar órdenes</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
                                                 checked={userForm.permissions.includes('table:notify')}
                                                 onCheckedChange={(checked) => {
                                                     if (checked) setUserForm(prev => ({ ...prev, permissions: [...prev.permissions, 'table:notify'] }));
@@ -400,6 +421,60 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
                                                 disabled={isPending}
                                             />
                                             <Label className="text-sm">Notificar clientes (órdenes)</Label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Permisos de Gestión */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-2 w-2 rounded-full bg-purple-500"></div>
+                                        <Label className="text-sm font-medium text-purple-700 dark:text-purple-400">Permisos de Gestión</Label>
+                                    </div>
+                                    <div className="ml-4 space-y-2">
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                checked={userForm.permissions.includes('prices:view')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) setUserForm(prev => ({ ...prev, permissions: [...prev.permissions, 'prices:view'] }));
+                                                    else setUserForm(prev => ({ ...prev, permissions: prev.permissions.filter(p => p !== 'prices:view') }));
+                                                }}
+                                                disabled={isPending}
+                                            />
+                                            <Label className="text-sm">Ver precios</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                checked={userForm.permissions.includes('prices:edit')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) setUserForm(prev => ({ ...prev, permissions: [...prev.permissions, 'prices:edit'] }));
+                                                    else setUserForm(prev => ({ ...prev, permissions: prev.permissions.filter(p => p !== 'prices:edit') }));
+                                                }}
+                                                disabled={isPending}
+                                            />
+                                            <Label className="text-sm">Editar precios</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                checked={userForm.permissions.includes('balance:view')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) setUserForm(prev => ({ ...prev, permissions: [...prev.permissions, 'balance:view'] }));
+                                                    else setUserForm(prev => ({ ...prev, permissions: prev.permissions.filter(p => p !== 'balance:view') }));
+                                                }}
+                                                disabled={isPending}
+                                            />
+                                            <Label className="text-sm">Ver balance de pedidos</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                checked={userForm.permissions.includes('outputs:view')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) setUserForm(prev => ({ ...prev, permissions: [...prev.permissions, 'outputs:view'] }));
+                                                    else setUserForm(prev => ({ ...prev, permissions: prev.permissions.filter(p => p !== 'outputs:view') }));
+                                                }}
+                                                disabled={isPending}
+                                            />
+                                            <Label className="text-sm">Ver salidas</Label>
                                         </div>
                                     </div>
                                 </div>

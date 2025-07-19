@@ -37,6 +37,8 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     total,
     pagination,
     sorting,
+    canEdit = false,
+    canDelete = false,
 }: DataTableProps<TData, TValue>) {
     const router = useRouter();
     const pathname = usePathname();
@@ -606,6 +608,8 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 loading={loading}
                 rowSelection={rowSelection}
                 productSearchFilter={productSearchFilter}
+                canEdit={canEdit}
+                canDelete={canDelete}
                 onEditClick={handleEditClick}
                 onCancel={handleCancel}
                 onSave={handleSave}

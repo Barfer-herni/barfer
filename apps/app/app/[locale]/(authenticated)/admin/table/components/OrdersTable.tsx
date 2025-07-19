@@ -40,6 +40,8 @@ interface OrdersTableProps<TData extends { _id: string }, TValue> extends DataTa
     loading: boolean;
     rowSelection: Record<string, boolean>;
     productSearchFilter: string;
+    canEdit?: boolean;
+    canDelete?: boolean;
     onEditClick: (row: any) => void;
     onCancel: () => void;
     onSave: (row: any) => void;
@@ -63,6 +65,8 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
     loading,
     rowSelection,
     productSearchFilter,
+    canEdit = false,
+    canDelete = false,
     onEditClick,
     onCancel,
     onSave,
@@ -232,21 +236,30 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                 <TableCell className="px-0 py-1 border-r border-border">
                                     {editingRowId === row.id ? (
                                         <div className="flex gap-2 justify-center">
-                                            <Button size="icon" variant="default" onClick={() => onSave(row)} disabled={loading}>
-                                                <Save className="w-4 h-4" />
-                                            </Button>
+                                            {canEdit && (
+                                                <Button size="icon" variant="default" onClick={() => onSave(row)} disabled={loading}>
+                                                    <Save className="w-4 h-4" />
+                                                </Button>
+                                            )}
                                             <Button size="icon" variant="outline" onClick={onCancel} disabled={loading}>
                                                 <X className="w-4 h-4" />
                                             </Button>
                                         </div>
                                     ) : (
                                         <div className="flex gap-2 justify-center">
-                                            <Button size="icon" variant="outline" onClick={() => onEditClick(row)}>
-                                                <Pencil className="w-4 h-4" />
-                                            </Button>
-                                            <Button size="icon" variant="destructive" onClick={() => onDelete(row)} disabled={loading}>
-                                                <Trash2 className="w-4 h-4" />
-                                            </Button>
+                                            {canEdit && (
+                                                <Button size="icon" variant="outline" onClick={() => onEditClick(row)}>
+                                                    <Pencil className="w-4 h-4" />
+                                                </Button>
+                                            )}
+                                            {canDelete && (
+                                                <Button size="icon" variant="destructive" onClick={() => onDelete(row)} disabled={loading}>
+                                                    <Trash2 className="w-4 h-4" />
+                                                </Button>
+                                            )}
+                                            {!canEdit && !canDelete && (
+                                                <span className="text-xs text-muted-foreground px-2">Sin permisos</span>
+                                            )}
                                         </div>
                                     )}
                                 </TableCell>

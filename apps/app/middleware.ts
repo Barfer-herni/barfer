@@ -20,6 +20,9 @@ const ROUTE_PERMISSIONS: Record<string, string[]> = {
   '/admin/analytics': ['analytics:view'],
   '/admin/clients': ['clients:view'],
   '/admin/account': ['account:view_own'], // Todos pueden ver su cuenta
+  '/admin/table': ['table:view'],
+  '/admin/balance': ['balance:view'],
+  '/admin/outputs': ['outputs:view'],
   '/admin/prices': ['prices:view'],
 };
 

@@ -4,6 +4,7 @@ import type { Locale } from '@repo/internationalization';
 import { columns } from './components/columns';
 import { OrdersDataTable } from './components/OrdersDataTable';
 import type { PaginationState, SortingState } from '@tanstack/react-table';
+import { getCurrentUserWithPermissions } from '@repo/auth/server-permissions';
 
 export default async function TablePage({
     params,
@@ -35,7 +36,10 @@ export default async function TablePage({
         desc: sortOrder === 'desc',
     }];
 
-
+    // Obtener permisos del usuario para controlar acceso a botones
+    const userWithPermissions = await getCurrentUserWithPermissions();
+    const canEdit = userWithPermissions?.permissions.includes('table:edit') || false;
+    const canDelete = userWithPermissions?.permissions.includes('table:delete') || false;
 
     const { orders, pageCount, total } = await getOrders({
         pageIndex: pagination.pageIndex,
@@ -69,6 +73,8 @@ export default async function TablePage({
                     total={total}
                     pagination={pagination}
                     sorting={sorting}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
                 />
             </div>
         </div>
