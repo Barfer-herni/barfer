@@ -129,6 +129,25 @@ enum PriceType {
   MAYORISTA
 }
 
+enum TipoSalida {
+  ORDINARIO
+  EXTRAORDINARIO
+}
+
+enum FormaPago {
+  EFECTIVO
+  TRANSFERENCIA
+  TARJETA_DEBITO
+  TARJETA_CREDITO
+  MERCADO_PAGO
+  OTRO
+}
+
+enum TipoRegistro {
+  BLANCO
+  NEGRO
+}
+
 model Price {
   id          String       @id @default(uuid())
   section     PriceSection // PERRO, GATO, OTROS
@@ -143,4 +162,21 @@ model Price {
   
   @@map("prices")
   @@unique([section, product, weight, priceType])
+}
+
+model Salida {
+  id            String        @id @default(uuid())
+  fecha         DateTime      @default(now())
+  detalle       String
+  categoria     String
+  tipo          TipoSalida    // ORDINARIO o EXTRAORDINARIO
+  marca         String?       // Opcional
+  monto         Float
+  formaPago     FormaPago
+  tipoRegistro  TipoRegistro  // BLANCO o NEGRO
+  
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  @@map("salidas")
 }

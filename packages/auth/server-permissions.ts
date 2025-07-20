@@ -231,7 +231,7 @@ export const SIDEBAR_CONFIG: SidebarItem[] = [
     {
         label: 'outputs',
         mobileLabel: 'outputsMobile',
-        href: '/admin/outputs',
+        href: '/admin/salidas',
         icon: 'TrendingUp',
         requiredPermissions: ['outputs:view'],
     },
