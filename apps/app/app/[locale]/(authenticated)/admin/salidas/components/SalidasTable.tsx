@@ -16,6 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@repo/design-system/co
 import { toast } from '@repo/design-system/hooks/use-toast';
 import { Plus, Edit, Trash2, Filter } from 'lucide-react';
 import { AddSalidaModal } from './AddSalidaModal';
+import { EditSalidaModal } from './EditSalidaModal';
+import { DeleteSalidaDialog } from './DeleteSalidaDialog';
 import { SalidaData } from '@repo/data-services';
 
 interface SalidasTableProps {
@@ -26,6 +28,9 @@ interface SalidasTableProps {
 export function SalidasTable({ salidas = [], onRefreshSalidas }: SalidasTableProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+    const [selectedSalida, setSelectedSalida] = useState<SalidaData | null>(null);
 
     const formatDate = (date: Date) => {
         return new Intl.DateTimeFormat('es-AR', {
@@ -76,18 +81,20 @@ export function SalidasTable({ salidas = [], onRefreshSalidas }: SalidasTablePro
         }
     };
 
-    const handleEditSalida = (id: string) => {
-        toast({
-            title: "Funcionalidad en desarrollo",
-            description: "Próximamente podrás editar salidas",
-        });
+    const handleEditSalida = (salida: SalidaData) => {
+        setSelectedSalida(salida);
+        setIsEditModalOpen(true);
     };
 
-    const handleDeleteSalida = (id: string) => {
-        toast({
-            title: "Funcionalidad en desarrollo",
-            description: "Próximamente podrás eliminar salidas",
-        });
+    const handleDeleteSalida = (salida: SalidaData) => {
+        setSelectedSalida(salida);
+        setIsDeleteDialogOpen(true);
+    };
+
+    const handleModalClose = () => {
+        setSelectedSalida(null);
+        setIsEditModalOpen(false);
+        setIsDeleteDialogOpen(false);
     };
 
     return (
@@ -191,7 +198,7 @@ export function SalidasTable({ salidas = [], onRefreshSalidas }: SalidasTablePro
                                                 <Button
                                                     size="sm"
                                                     variant="ghost"
-                                                    onClick={() => handleEditSalida(salida.id)}
+                                                    onClick={() => handleEditSalida(salida)}
                                                     className="h-7 w-7 p-0 hover:bg-blue-50 text-blue-600"
                                                     title="Editar salida"
                                                 >
@@ -200,7 +207,7 @@ export function SalidasTable({ salidas = [], onRefreshSalidas }: SalidasTablePro
                                                 <Button
                                                     size="sm"
                                                     variant="ghost"
-                                                    onClick={() => handleDeleteSalida(salida.id)}
+                                                    onClick={() => handleDeleteSalida(salida)}
                                                     className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                                                     title="Eliminar salida"
                                                 >
@@ -230,6 +237,32 @@ export function SalidasTable({ salidas = [], onRefreshSalidas }: SalidasTablePro
                 onOpenChange={setIsAddModalOpen}
                 onSalidaCreated={handleSalidaCreated}
             />
+
+            {/* Modal para editar salida */}
+            {selectedSalida && (
+                <EditSalidaModal
+                    open={isEditModalOpen}
+                    onOpenChange={(open) => {
+                        setIsEditModalOpen(open);
+                        if (!open) handleModalClose();
+                    }}
+                    salida={selectedSalida}
+                    onSalidaUpdated={handleSalidaCreated}
+                />
+            )}
+
+            {/* Diálogo para eliminar salida */}
+            {selectedSalida && (
+                <DeleteSalidaDialog
+                    open={isDeleteDialogOpen}
+                    onOpenChange={(open) => {
+                        setIsDeleteDialogOpen(open);
+                        if (!open) handleModalClose();
+                    }}
+                    salida={selectedSalida}
+                    onSalidaDeleted={handleSalidaCreated}
+                />
+            )}
         </div>
     );
 } 

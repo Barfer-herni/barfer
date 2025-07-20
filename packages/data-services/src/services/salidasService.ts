@@ -212,6 +212,20 @@ export async function updateSalida(id: string, data: UpdateSalidaInput): Promise
             data: {
                 ...data,
                 updatedAt: new Date()
+            },
+            include: {
+                categoria: {
+                    select: {
+                        id: true,
+                        nombre: true
+                    }
+                },
+                metodoPago: {
+                    select: {
+                        id: true,
+                        nombre: true
+                    }
+                }
             }
         });
 
