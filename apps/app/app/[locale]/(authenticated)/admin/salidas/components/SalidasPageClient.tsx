@@ -1,33 +1,37 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dictionary } from '@repo/internationalization';
+import { getAllSalidasAction } from '../actions';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/design-system/components/ui/card';
 import { Table2, BarChart3 } from 'lucide-react';
 import { SalidasTable } from './SalidasTable';
-
-interface Salida {
-    id: string;
-    fecha: Date;
-    detalle: string;
-    categoria: string;
-    tipo: 'ORDINARIO' | 'EXTRAORDINARIO';
-    marca?: string | null;
-    monto: number;
-    formaPago: 'EFECTIVO' | 'TRANSFERENCIA' | 'TARJETA_DEBITO' | 'TARJETA_CREDITO' | 'MERCADO_PAGO' | 'OTRO';
-    tipoRegistro: 'BLANCO' | 'NEGRO';
-    createdAt: Date;
-    updatedAt: Date;
-}
+import { SalidaData } from '@repo/data-services';
 
 interface SalidasPageClientProps {
-    salidas: Salida[];
+    salidas: SalidaData[];
     dictionary: Dictionary;
 }
 
-export function SalidasPageClient({ salidas, dictionary }: SalidasPageClientProps) {
+export function SalidasPageClient({ salidas: initialSalidas, dictionary }: SalidasPageClientProps) {
     const [activeTab, setActiveTab] = useState<'tabla' | 'estadisticas'>('tabla');
+    const [salidas, setSalidas] = useState<SalidaData[]>(initialSalidas);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const refreshSalidas = async () => {
+        setIsLoading(true);
+        try {
+            const result = await getAllSalidasAction();
+            if (result.success) {
+                setSalidas(result.salidas || []);
+            }
+        } catch (error) {
+            console.error('Error refreshing salidas:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     return (
         <>
@@ -61,7 +65,7 @@ export function SalidasPageClient({ salidas, dictionary }: SalidasPageClientProp
                             <CardTitle>Tabla de Salidas</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <SalidasTable salidas={salidas} />
+                            <SalidasTable salidas={salidas} onRefreshSalidas={refreshSalidas} />
                         </CardContent>
                     </Card>
                 )}

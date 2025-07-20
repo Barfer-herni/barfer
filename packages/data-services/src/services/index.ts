@@ -9,6 +9,8 @@ export * from './userService';
 export * from './templateService';
 export * from './pricesService';
 export * from './salidasService';
+export * from './categoriasService';
+export * from './metodosPagoService';
 
 // ==========================================
 // SERVICIOS DE BARFER E-COMMERCE (MongoDB)

@@ -1,17 +1,26 @@
 import { database } from '@repo/database';
-import type { TipoSalida, FormaPago, TipoRegistro } from '@repo/database';
+import type { TipoSalida, TipoRegistro } from '@repo/database';
 
 // Tipos para el servicio
 export interface SalidaData {
     id: string;
     fecha: Date;
     detalle: string;
-    categoria: string;
     tipo: TipoSalida;
     marca?: string | null;
     monto: number;
-    formaPago: FormaPago;
     tipoRegistro: TipoRegistro;
+    categoriaId: string;
+    metodoPagoId: string;
+    // Datos relacionados
+    categoria: {
+        id: string;
+        nombre: string;
+    };
+    metodoPago: {
+        id: string;
+        nombre: string;
+    };
     createdAt: Date;
     updatedAt: Date;
 }
@@ -19,22 +28,22 @@ export interface SalidaData {
 export interface CreateSalidaInput {
     fecha: Date;
     detalle: string;
-    categoria: string;
+    categoriaId: string;
     tipo: TipoSalida;
     marca?: string;
     monto: number;
-    formaPago: FormaPago;
+    metodoPagoId: string;
     tipoRegistro: TipoRegistro;
 }
 
 export interface UpdateSalidaInput {
     fecha?: Date;
     detalle?: string;
-    categoria?: string;
+    categoriaId?: string;
     tipo?: TipoSalida;
     marca?: string;
     monto?: number;
-    formaPago?: FormaPago;
+    metodoPagoId?: string;
     tipoRegistro?: TipoRegistro;
 }
 
@@ -52,6 +61,20 @@ export async function getAllSalidas(): Promise<{
 }> {
     try {
         const salidas = await database.salida.findMany({
+            include: {
+                categoria: {
+                    select: {
+                        id: true,
+                        nombre: true
+                    }
+                },
+                metodoPago: {
+                    select: {
+                        id: true,
+                        nombre: true
+                    }
+                }
+            },
             orderBy: {
                 fecha: 'desc'
             }
@@ -83,7 +106,21 @@ export async function getSalidaById(id: string): Promise<{
 }> {
     try {
         const salida = await database.salida.findUnique({
-            where: { id }
+            where: { id },
+            include: {
+                categoria: {
+                    select: {
+                        id: true,
+                        nombre: true
+                    }
+                },
+                metodoPago: {
+                    select: {
+                        id: true,
+                        nombre: true
+                    }
+                }
+            }
         });
 
         if (!salida) {
@@ -122,12 +159,26 @@ export async function createSalida(data: CreateSalidaInput): Promise<{
             data: {
                 fecha: data.fecha,
                 detalle: data.detalle,
-                categoria: data.categoria,
+                categoriaId: data.categoriaId,
                 tipo: data.tipo,
                 marca: data.marca,
                 monto: data.monto,
-                formaPago: data.formaPago,
+                metodoPagoId: data.metodoPagoId,
                 tipoRegistro: data.tipoRegistro
+            },
+            include: {
+                categoria: {
+                    select: {
+                        id: true,
+                        nombre: true
+                    }
+                },
+                metodoPago: {
+                    select: {
+                        id: true,
+                        nombre: true
+                    }
+                }
             }
         });
 
@@ -260,8 +311,24 @@ export async function getSalidasByCategory(categoria: string): Promise<{
         const salidas = await database.salida.findMany({
             where: {
                 categoria: {
-                    contains: categoria,
-                    mode: 'insensitive'
+                    nombre: {
+                        contains: categoria,
+                        mode: 'insensitive'
+                    }
+                }
+            },
+            include: {
+                categoria: {
+                    select: {
+                        id: true,
+                        nombre: true
+                    }
+                },
+                metodoPago: {
+                    select: {
+                        id: true,
+                        nombre: true
+                    }
                 }
             },
             orderBy: {

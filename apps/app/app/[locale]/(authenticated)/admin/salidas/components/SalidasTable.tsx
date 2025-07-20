@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react';
-import { TipoSalida, FormaPago, TipoRegistro } from '@repo/database';
+import { TipoSalida, TipoRegistro } from '@repo/database';
 import {
     Table,
     TableBody,
@@ -15,27 +15,17 @@ import { Badge } from '@repo/design-system/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/design-system/components/ui/card';
 import { toast } from '@repo/design-system/hooks/use-toast';
 import { Plus, Edit, Trash2, Filter } from 'lucide-react';
-
-interface Salida {
-    id: string;
-    fecha: Date;
-    detalle: string;
-    categoria: string;
-    tipo: TipoSalida;
-    marca?: string | null;
-    monto: number;
-    formaPago: FormaPago;
-    tipoRegistro: TipoRegistro;
-    createdAt: Date;
-    updatedAt: Date;
-}
+import { AddSalidaModal } from './AddSalidaModal';
+import { SalidaData } from '@repo/data-services';
 
 interface SalidasTableProps {
-    salidas?: Salida[];
+    salidas?: SalidaData[];
+    onRefreshSalidas?: () => void;
 }
 
-export function SalidasTable({ salidas = [] }: SalidasTableProps) {
+export function SalidasTable({ salidas = [], onRefreshSalidas }: SalidasTableProps) {
     const [isLoading, setIsLoading] = useState(false);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
     const formatDate = (date: Date) => {
         return new Intl.DateTimeFormat('es-AR', {
@@ -64,23 +54,26 @@ export function SalidasTable({ salidas = [] }: SalidasTableProps) {
             : 'bg-gray-100 text-gray-800 border-gray-200';
     };
 
-    const getFormaPagoLabel = (formaPago: FormaPago) => {
-        const labels: Record<FormaPago, string> = {
-            EFECTIVO: 'Efectivo',
-            TRANSFERENCIA: 'Transferencia',
-            TARJETA_DEBITO: 'Tarjeta Débito',
-            TARJETA_CREDITO: 'Tarjeta Crédito',
-            MERCADO_PAGO: 'Mercado Pago',
-            OTRO: 'Otro'
+    const getFormaPagoLabel = (metodoPago: string) => {
+        const labels: Record<string, string> = {
+            'EFECTIVO': 'Efectivo',
+            'TRANSFERENCIA': 'Transfer.',
+            'TARJETA DEBITO': 'T. Débito',
+            'TARJETA CREDITO': 'T. Crédito',
+            'MERCADO PAGO': 'M. Pago',
+            'CHEQUE': 'Cheque'
         };
-        return labels[formaPago] || formaPago;
+        return labels[metodoPago] || metodoPago;
     };
 
     const handleAddSalida = () => {
-        toast({
-            title: "Funcionalidad en desarrollo",
-            description: "Próximamente podrás agregar nuevas salidas",
-        });
+        setIsAddModalOpen(true);
+    };
+
+    const handleSalidaCreated = () => {
+        if (onRefreshSalidas) {
+            onRefreshSalidas();
+        }
     };
 
     const handleEditSalida = (id: string) => {
@@ -100,116 +93,127 @@ export function SalidasTable({ salidas = [] }: SalidasTableProps) {
     return (
         <div className="space-y-4">
             {/* Header con botón de agregar */}
-            <div className="flex justify-between items-center">
-                <div>
-                    <h3 className="text-lg font-semibold">Registro de Salidas</h3>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-1">
+                <div className="space-y-1">
+                    <h3 className="text-lg font-semibold text-gray-900">Registro de Salidas</h3>
                     <p className="text-sm text-muted-foreground">
-                        {salidas.length} salida{salidas.length !== 1 ? 's' : ''} registrada{salidas.length !== 1 ? 's' : ''}
+                        {salidas.length === 0
+                            ? 'No hay salidas registradas'
+                            : `${salidas.length} salida${salidas.length !== 1 ? 's' : ''} registrada${salidas.length !== 1 ? 's' : ''}`
+                        }
                     </p>
                 </div>
-                <Button onClick={handleAddSalida} className="flex items-center gap-2">
+                <Button onClick={handleAddSalida} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700">
                     <Plus className="h-4 w-4" />
-                    Agregar Salida
+                    <span className="hidden sm:inline">Agregar Salida</span>
+                    <span className="sm:hidden">Agregar</span>
                 </Button>
             </div>
 
             {/* Tabla */}
-            <div className="rounded-lg border">
-                <Table>
-                    <TableHeader>
-                        <TableRow className="bg-muted/50">
-                            <TableHead className="font-semibold">Fecha</TableHead>
-                            <TableHead className="font-semibold">Detalle</TableHead>
-                            <TableHead className="font-semibold">Categoría</TableHead>
-                            <TableHead className="font-semibold">Tipo</TableHead>
-                            <TableHead className="font-semibold">Marca</TableHead>
-                            <TableHead className="font-semibold text-right">Monto</TableHead>
-                            <TableHead className="font-semibold">Forma de Pago</TableHead>
-                            <TableHead className="font-semibold">Registro</TableHead>
-                            <TableHead className="font-semibold text-center">Acciones</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {salidas.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                                    No hay salidas registradas aún.
-                                    <br />
-                                    <span className="text-sm">Haz clic en "Agregar Salida" para comenzar.</span>
-                                </TableCell>
+            <div className="rounded-lg border overflow-hidden">
+                <div className="overflow-x-auto">
+                    <Table className="min-w-[1000px]">
+                        <TableHeader>
+                            <TableRow className="bg-muted/50">
+                                <TableHead className="font-semibold w-[100px]">Fecha</TableHead>
+                                <TableHead className="font-semibold min-w-[200px]">Detalle</TableHead>
+                                <TableHead className="font-semibold w-[120px]">Categoría</TableHead>
+                                <TableHead className="font-semibold w-[110px] text-center">Tipo</TableHead>
+                                <TableHead className="font-semibold w-[100px]">Marca</TableHead>
+                                <TableHead className="font-semibold w-[120px] text-right">Monto</TableHead>
+                                <TableHead className="font-semibold w-[140px]">Forma de Pago</TableHead>
+                                <TableHead className="font-semibold w-[100px] text-center">Registro</TableHead>
+                                <TableHead className="font-semibold w-[100px] text-center">Acciones</TableHead>
                             </TableRow>
-                        ) : (
-                            salidas.map((salida) => (
-                                <TableRow key={salida.id} className="hover:bg-muted/30">
-                                    <TableCell className="font-medium">
-                                        {formatDate(salida.fecha)}
-                                    </TableCell>
-                                    <TableCell className="max-w-xs truncate" title={salida.detalle}>
-                                        {salida.detalle}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant="secondary">
-                                            {salida.categoria}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge
-                                            variant="outline"
-                                            className={getTipoColor(salida.tipo)}
-                                        >
-                                            {salida.tipo}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        {salida.marca ? (
-                                            <span className="text-sm">{salida.marca}</span>
-                                        ) : (
-                                            <span className="text-muted-foreground">—</span>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="text-right font-mono">
-                                        {formatCurrency(salida.monto)}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant="outline">
-                                            {getFormaPagoLabel(salida.formaPago)}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge
-                                            variant="outline"
-                                            className={getTipoRegistroColor(salida.tipoRegistro)}
-                                        >
-                                            {salida.tipoRegistro}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-1">
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                onClick={() => handleEditSalida(salida.id)}
-                                                className="h-8 w-8 p-0"
-                                                title="Editar salida"
-                                            >
-                                                <Edit className="h-3 w-3" />
-                                            </Button>
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                onClick={() => handleDeleteSalida(salida.id)}
-                                                className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                title="Eliminar salida"
-                                            >
-                                                <Trash2 className="h-3 w-3" />
-                                            </Button>
+                        </TableHeader>
+                        <TableBody>
+                            {salidas.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
+                                        <div className="flex flex-col items-center gap-2">
+                                            <div className="text-base font-medium">No hay salidas registradas aún</div>
+                                            <div className="text-sm">Haz clic en "Agregar Salida" para comenzar</div>
                                         </div>
                                     </TableCell>
                                 </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
+                            ) : (
+                                salidas.map((salida) => (
+                                    <TableRow key={salida.id} className="hover:bg-muted/30">
+                                        <TableCell className="font-medium text-sm w-[100px]">
+                                            {formatDate(salida.fecha)}
+                                        </TableCell>
+                                        <TableCell className="min-w-[200px] max-w-[300px]" title={salida.detalle}>
+                                            <div className="truncate">
+                                                {salida.detalle}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="w-[120px]">
+                                            <Badge variant="secondary" className="text-xs">
+                                                {salida.categoria?.nombre || 'Sin categoría'}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="w-[110px] text-center">
+                                            <Badge
+                                                variant="outline"
+                                                className={`${getTipoColor(salida.tipo)} text-xs`}
+                                            >
+                                                {salida.tipo === 'ORDINARIO' ? 'ORD' : 'EXT'}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="w-[100px] text-sm">
+                                            {salida.marca && salida.marca !== 'SIN_MARCA' ? (
+                                                <div className="truncate" title={salida.marca}>
+                                                    {salida.marca}
+                                                </div>
+                                            ) : (
+                                                <span className="text-muted-foreground">—</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-right font-mono w-[120px] text-sm font-semibold">
+                                            {formatCurrency(salida.monto)}
+                                        </TableCell>
+                                        <TableCell className="w-[140px]">
+                                            <Badge variant="outline" className="text-xs">
+                                                {getFormaPagoLabel(salida.metodoPago?.nombre || 'Sin método')}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="w-[100px] text-center">
+                                            <Badge
+                                                variant="outline"
+                                                className={`${getTipoRegistroColor(salida.tipoRegistro)} text-xs`}
+                                            >
+                                                {salida.tipoRegistro}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="w-[100px]">
+                                            <div className="flex items-center justify-center gap-1">
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => handleEditSalida(salida.id)}
+                                                    className="h-7 w-7 p-0 hover:bg-blue-50 text-blue-600"
+                                                    title="Editar salida"
+                                                >
+                                                    <Edit className="h-3 w-3" />
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => handleDeleteSalida(salida.id)}
+                                                    className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                    title="Eliminar salida"
+                                                >
+                                                    <Trash2 className="h-3 w-3" />
+                                                </Button>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
             </div>
 
             {/* Información adicional */}
@@ -219,6 +223,13 @@ export function SalidasTable({ salidas = [] }: SalidasTableProps) {
                 <p>• El tipo "ORDINARIO" representa gastos habituales, "EXTRAORDINARIO" gastos excepcionales</p>
                 <p>• "BLANCO" son gastos declarados, "NEGRO" son gastos no declarados</p>
             </div>
+
+            {/* Modal para agregar salida */}
+            <AddSalidaModal
+                open={isAddModalOpen}
+                onOpenChange={setIsAddModalOpen}
+                onSalidaCreated={handleSalidaCreated}
+            />
         </div>
     );
 } 

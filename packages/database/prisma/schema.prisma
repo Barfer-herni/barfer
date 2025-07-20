@@ -134,14 +134,7 @@ enum TipoSalida {
   EXTRAORDINARIO
 }
 
-enum FormaPago {
-  EFECTIVO
-  TRANSFERENCIA
-  TARJETA_DEBITO
-  TARJETA_CREDITO
-  MERCADO_PAGO
-  OTRO
-}
+// FormaPago eliminado - ahora usamos tabla MetodoPago
 
 enum TipoRegistro {
   BLANCO
@@ -164,16 +157,49 @@ model Price {
   @@unique([section, product, weight, priceType])
 }
 
+model Categoria {
+  id          String   @id @default(uuid())
+  nombre      String   @unique
+  descripcion String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relaciones
+  salidas     Salida[]
+  
+  @@map("categorias")
+}
+
+model MetodoPago {
+  id          String   @id @default(uuid())
+  nombre      String   @unique
+  descripcion String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relaciones
+  salidas     Salida[]
+  
+  @@map("metodos_pago")
+}
+
 model Salida {
   id            String        @id @default(uuid())
   fecha         DateTime      @default(now())
   detalle       String
-  categoria     String
   tipo          TipoSalida    // ORDINARIO o EXTRAORDINARIO
   marca         String?       // Opcional
   monto         Float
-  formaPago     FormaPago
   tipoRegistro  TipoRegistro  // BLANCO o NEGRO
+  
+  // Relaciones con las nuevas tablas
+  categoriaId   String
+  categoria     Categoria     @relation(fields: [categoriaId], references: [id])
+  
+  metodoPagoId  String
+  metodoPago    MetodoPago    @relation(fields: [metodoPagoId], references: [id])
   
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
