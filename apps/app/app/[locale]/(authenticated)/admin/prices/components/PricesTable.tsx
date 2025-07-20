@@ -140,6 +140,31 @@ export function PricesTable({ prices, dictionary }: PricesTableProps) {
                 return sectionOrder[a.section] - sectionOrder[b.section];
             }
             if (a.product !== b.product) {
+                // Orden personalizado para productos específicos
+                const getProductOrder = (product: string) => {
+                    // Primero los productos con orden específico
+                    const specificOrder: { [key: string]: number } = {
+                        'VACA': 1,
+                        'HUESOS CARNOSOS 5KG': 2,
+                        'COMPLEMENTOS': 3,
+                        'GARRAS': 4,
+                        'CORNALITOS': 5,
+                        'HUESOS RECREATIVOS': 6,
+                        'CALDO DE HUESOS': 7,
+                    };
+
+                    return specificOrder[product] || 999; // Los productos sin orden específico van al final
+                };
+
+                const orderA = getProductOrder(a.product);
+                const orderB = getProductOrder(b.product);
+
+                // Si los órdenes son diferentes, usar el orden específico
+                if (orderA !== orderB) {
+                    return orderA - orderB;
+                }
+
+                // Si ambos tienen el mismo orden (999 = sin orden específico), usar orden alfabético
                 return a.product.localeCompare(b.product);
             }
             // Ordenar pesos: 5KG antes que 10KG, null al final
@@ -347,6 +372,28 @@ export function PricesTable({ prices, dictionary }: PricesTableProps) {
         }
     };
 
+    const getProductRowColor = (product: string) => {
+        const productUpper = product.toUpperCase();
+
+        if (productUpper.includes('POLLO')) {
+            return 'bg-yellow-100 hover:bg-yellow-200';
+        }
+        if (productUpper.includes('VACA')) {
+            return 'bg-red-100 hover:bg-red-200';
+        }
+        if (productUpper.includes('CERDO')) {
+            return 'bg-pink-100 hover:bg-pink-200';
+        }
+        if (productUpper.includes('CORDERO')) {
+            return 'bg-violet-100 hover:bg-violet-200';
+        }
+        if (productUpper.includes('HUESOS CARNOSOS')) {
+            return 'bg-amber-100 hover:bg-amber-200';
+        }
+
+        return 'hover:bg-muted/30'; // Color por defecto
+    };
+
     const rows = groupedPrices();
 
     if (localPrices.length === 0) {
@@ -534,7 +581,7 @@ export function PricesTable({ prices, dictionary }: PricesTableProps) {
                                 const key = `${row.section}-${row.product}-${row.weight || 'no-weight'}`;
 
                                 return (
-                                    <TableRow key={key} className="hover:bg-muted/30">
+                                    <TableRow key={key} className={getProductRowColor(row.product)}>
                                         <TableCell>
                                             <Badge
                                                 variant="outline"
