@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { TipoSalida, TipoRegistro } from '@repo/database';
 import {
     Table,
@@ -13,8 +13,10 @@ import {
 import { Button } from '@repo/design-system/components/ui/button';
 import { Badge } from '@repo/design-system/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/design-system/components/ui/card';
+import { Input } from '@repo/design-system/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@repo/design-system/components/ui/select';
 import { toast } from '@repo/design-system/hooks/use-toast';
-import { Plus, Edit, Trash2, Filter } from 'lucide-react';
+import { Plus, Edit, Trash2, Filter, Search, X } from 'lucide-react';
 import { AddSalidaModal } from './AddSalidaModal';
 import { EditSalidaModal } from './EditSalidaModal';
 import { DeleteSalidaDialog } from './DeleteSalidaDialog';
@@ -31,6 +33,14 @@ export function SalidasTable({ salidas = [], onRefreshSalidas }: SalidasTablePro
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedSalida, setSelectedSalida] = useState<SalidaData | null>(null);
+
+    // Estados para los filtros
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategoria, setSelectedCategoria] = useState<string>('');
+    const [selectedMarca, setSelectedMarca] = useState<string>('');
+    const [selectedMetodoPago, setSelectedMetodoPago] = useState<string>('');
+    const [selectedTipo, setSelectedTipo] = useState<string>('');
+    const [selectedTipoRegistro, setSelectedTipoRegistro] = useState<string>('');
 
     const formatDate = (date: Date) => {
         return new Intl.DateTimeFormat('es-AR', {
@@ -71,6 +81,86 @@ export function SalidasTable({ salidas = [], onRefreshSalidas }: SalidasTablePro
         return labels[metodoPago] || metodoPago;
     };
 
+    // Obtener opciones únicas para los filtros
+    const uniqueCategorias = useMemo(() => {
+        const categorias = salidas
+            .map(s => s.categoria?.nombre)
+            .filter((name): name is string => name !== undefined)
+            .filter((name, index, array) => array.indexOf(name) === index);
+        return categorias.sort();
+    }, [salidas]);
+
+    const uniqueMarcas = useMemo(() => {
+        const marcas = salidas
+            .map(s => s.marca)
+            .filter((marca): marca is string => marca !== undefined && marca !== 'SIN_MARCA')
+            .filter((marca, index, array) => array.indexOf(marca) === index);
+        return marcas.sort();
+    }, [salidas]);
+
+    const uniqueMetodosPago = useMemo(() => {
+        const metodos = salidas
+            .map(s => s.metodoPago?.nombre)
+            .filter((name): name is string => name !== undefined)
+            .filter((name, index, array) => array.indexOf(name) === index);
+        return metodos.sort();
+    }, [salidas]);
+
+    // Filtrar las salidas
+    const filteredSalidas = useMemo(() => {
+        return salidas.filter(salida => {
+            // Filtro por texto de búsqueda
+            if (searchTerm) {
+                const searchLower = searchTerm.toLowerCase();
+                const matchesDetalle = salida.detalle.toLowerCase().includes(searchLower);
+                const matchesCategoria = salida.categoria?.nombre?.toLowerCase().includes(searchLower);
+                const matchesMarca = salida.marca?.toLowerCase().includes(searchLower);
+                const matchesMetodoPago = salida.metodoPago?.nombre?.toLowerCase().includes(searchLower);
+                const matchesMonto = salida.monto.toString().includes(searchTerm);
+
+                if (!matchesDetalle && !matchesCategoria && !matchesMarca && !matchesMetodoPago && !matchesMonto) {
+                    return false;
+                }
+            }
+
+            // Filtro por categoría
+            if (selectedCategoria && salida.categoria?.nombre !== selectedCategoria) {
+                return false;
+            }
+
+            // Filtro por marca
+            if (selectedMarca && salida.marca !== selectedMarca) {
+                return false;
+            }
+
+            // Filtro por método de pago
+            if (selectedMetodoPago && salida.metodoPago?.nombre !== selectedMetodoPago) {
+                return false;
+            }
+
+            // Filtro por tipo
+            if (selectedTipo && salida.tipo !== selectedTipo) {
+                return false;
+            }
+
+            // Filtro por tipo de registro
+            if (selectedTipoRegistro && salida.tipoRegistro !== selectedTipoRegistro) {
+                return false;
+            }
+
+            return true;
+        });
+    }, [salidas, searchTerm, selectedCategoria, selectedMarca, selectedMetodoPago, selectedTipo, selectedTipoRegistro]);
+
+    const clearFilters = () => {
+        setSearchTerm('');
+        setSelectedCategoria('');
+        setSelectedMarca('');
+        setSelectedMetodoPago('');
+        setSelectedTipo('');
+        setSelectedTipoRegistro('');
+    };
+
     const handleAddSalida = () => {
         setIsAddModalOpen(true);
     };
@@ -106,7 +196,7 @@ export function SalidasTable({ salidas = [], onRefreshSalidas }: SalidasTablePro
                     <p className="text-sm text-muted-foreground">
                         {salidas.length === 0
                             ? 'No hay salidas registradas'
-                            : `${salidas.length} salida${salidas.length !== 1 ? 's' : ''} registrada${salidas.length !== 1 ? 's' : ''}`
+                            : `${filteredSalidas.length} de ${salidas.length} salida${salidas.length !== 1 ? 's' : ''} mostrada${salidas.length !== 1 ? 's' : ''}${filteredSalidas.length !== salidas.length ? ' (filtradas)' : ''}`
                         }
                     </p>
                 </div>
@@ -116,6 +206,105 @@ export function SalidasTable({ salidas = [], onRefreshSalidas }: SalidasTablePro
                     <span className="sm:hidden">Agregar</span>
                 </Button>
             </div>
+
+            {/* Panel de filtros */}
+            <Card>
+                <CardHeader className="pb-4">
+                    <CardTitle className="text-base flex items-center gap-2">
+                        <Filter className="h-4 w-4" />
+                        Filtros de Búsqueda
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {/* Buscador de texto */}
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                        <Input
+                            placeholder="Buscar por detalle, categoría, marca, método de pago o monto..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="pl-10"
+                        />
+                    </div>
+
+                    {/* Filtros por selects */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                        {/* Categoría */}
+                        <Select value={selectedCategoria} onValueChange={setSelectedCategoria}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Categoría" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {uniqueCategorias.map(categoria => (
+                                    <SelectItem key={categoria} value={categoria}>
+                                        {categoria}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        {/* Marca */}
+                        <Select value={selectedMarca} onValueChange={setSelectedMarca}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Marca" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {uniqueMarcas.map(marca => (
+                                    <SelectItem key={marca} value={marca}>
+                                        {marca}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        {/* Método de pago */}
+                        <Select value={selectedMetodoPago} onValueChange={setSelectedMetodoPago}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Forma de pago" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {uniqueMetodosPago.map(metodo => (
+                                    <SelectItem key={metodo} value={metodo}>
+                                        {getFormaPagoLabel(metodo)}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        {/* Tipo */}
+                        <Select value={selectedTipo} onValueChange={setSelectedTipo}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Tipo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ORDINARIO">Ordinario</SelectItem>
+                                <SelectItem value="EXTRAORDINARIO">Extraordinario</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        {/* Tipo de registro */}
+                        <Select value={selectedTipoRegistro} onValueChange={setSelectedTipoRegistro}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Registro" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="BLANCO">Blanco</SelectItem>
+                                <SelectItem value="NEGRO">Negro</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        {/* Botón de limpiar filtros */}
+                        <Button
+                            variant="outline"
+                            onClick={clearFilters}
+                            className="flex items-center gap-2"
+                        >
+                            <X className="h-4 w-4" />
+                            Limpiar
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
 
             {/* Tabla */}
             <div className="rounded-lg border overflow-hidden">
@@ -135,17 +324,26 @@ export function SalidasTable({ salidas = [], onRefreshSalidas }: SalidasTablePro
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {salidas.length === 0 ? (
+                            {filteredSalidas.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">
-                                            <div className="text-base font-medium">No hay salidas registradas aún</div>
-                                            <div className="text-sm">Haz clic en "Agregar Salida" para comenzar</div>
+                                            {salidas.length === 0 ? (
+                                                <>
+                                                    <div className="text-base font-medium">No hay salidas registradas aún</div>
+                                                    <div className="text-sm">Haz clic en "Agregar Salida" para comenzar</div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="text-base font-medium">No se encontraron salidas</div>
+                                                    <div className="text-sm">Intenta con diferentes filtros de búsqueda</div>
+                                                </>
+                                            )}
                                         </div>
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                salidas.map((salida) => (
+                                filteredSalidas.map((salida) => (
                                     <TableRow key={salida.id} className="hover:bg-muted/30">
                                         <TableCell className="font-medium text-sm w-[100px]">
                                             {formatDate(salida.fecha)}
@@ -226,7 +424,8 @@ export function SalidasTable({ salidas = [], onRefreshSalidas }: SalidasTablePro
             {/* Información adicional */}
             <div className="text-sm text-muted-foreground space-y-1">
                 <p>• Las salidas se muestran ordenadas por fecha (más recientes primero)</p>
-                <p>• Usa los filtros para buscar salidas específicas</p>
+                <p>• Usa el buscador de texto para buscar en detalle, categoría, marca, método de pago o monto</p>
+                <p>• Los filtros desplegables permiten filtrar por criterios específicos</p>
                 <p>• El tipo "ORDINARIO" representa gastos habituales, "EXTRAORDINARIO" gastos excepcionales</p>
                 <p>• "BLANCO" son gastos declarados, "NEGRO" son gastos no declarados</p>
             </div>
