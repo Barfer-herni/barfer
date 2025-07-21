@@ -57,6 +57,10 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
                 'table:edit',          // Editar órdenes
                 'table:delete',        // Eliminar órdenes
                 'prices:view',         // Ver precios
+                'outputs:view',        // Ver salidas
+                'outputs:create',      // Crear salidas
+                'outputs:edit',        // Editar salidas
+                'outputs:delete',      // Eliminar salidas
             ], // Permisos básicos por defecto para usuarios normales
         });
         setIsUserDialogOpen(true);
@@ -475,6 +479,39 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
                                                 disabled={isPending}
                                             />
                                             <Label className="text-sm">Ver salidas</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                checked={userForm.permissions.includes('outputs:create')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) setUserForm(prev => ({ ...prev, permissions: [...prev.permissions, 'outputs:create'] }));
+                                                    else setUserForm(prev => ({ ...prev, permissions: prev.permissions.filter(p => p !== 'outputs:create') }));
+                                                }}
+                                                disabled={isPending}
+                                            />
+                                            <Label className="text-sm">Crear salidas</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                checked={userForm.permissions.includes('outputs:edit')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) setUserForm(prev => ({ ...prev, permissions: [...prev.permissions, 'outputs:edit'] }));
+                                                    else setUserForm(prev => ({ ...prev, permissions: prev.permissions.filter(p => p !== 'outputs:edit') }));
+                                                }}
+                                                disabled={isPending}
+                                            />
+                                            <Label className="text-sm">Editar salidas</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                checked={userForm.permissions.includes('outputs:delete')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) setUserForm(prev => ({ ...prev, permissions: [...prev.permissions, 'outputs:delete'] }));
+                                                    else setUserForm(prev => ({ ...prev, permissions: prev.permissions.filter(p => p !== 'outputs:delete') }));
+                                                }}
+                                                disabled={isPending}
+                                            />
+                                            <Label className="text-sm">Eliminar salidas</Label>
                                         </div>
                                     </div>
                                 </div>

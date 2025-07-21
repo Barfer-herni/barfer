@@ -13,9 +13,10 @@ import { SalidaData } from '@repo/data-services';
 interface SalidasPageClientProps {
     salidas: SalidaData[];
     dictionary: Dictionary;
+    userPermissions?: string[];
 }
 
-export function SalidasPageClient({ salidas: initialSalidas, dictionary }: SalidasPageClientProps) {
+export function SalidasPageClient({ salidas: initialSalidas, dictionary, userPermissions = [] }: SalidasPageClientProps) {
     const [activeTab, setActiveTab] = useState<'tabla' | 'estadisticas'>('tabla');
     const [salidas, setSalidas] = useState<SalidaData[]>(initialSalidas);
     const [isLoading, setIsLoading] = useState(false);
@@ -66,7 +67,11 @@ export function SalidasPageClient({ salidas: initialSalidas, dictionary }: Salid
                             <CardTitle>Tabla de Salidas</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <SalidasTable salidas={salidas} onRefreshSalidas={refreshSalidas} />
+                            <SalidasTable
+                                salidas={salidas}
+                                onRefreshSalidas={refreshSalidas}
+                                userPermissions={userPermissions}
+                            />
                         </CardContent>
                     </Card>
                 )}

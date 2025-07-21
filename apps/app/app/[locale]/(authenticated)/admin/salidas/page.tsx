@@ -2,6 +2,7 @@ import { getDictionary } from '@repo/internationalization';
 import type { Locale } from '@repo/internationalization';
 import { getAllSalidasAction } from './actions';
 import { SalidasPageClient } from './components/SalidasPageClient';
+import { getCurrentUserWithPermissions } from '@repo/auth/server-permissions';
 
 interface SalidasPageProps {
     params: Promise<{ locale: Locale }>;
@@ -10,6 +11,12 @@ interface SalidasPageProps {
 export default async function SalidasPage({ params }: SalidasPageProps) {
     const { locale } = await params;
     const dictionary = await getDictionary(locale);
+
+    // Obtener usuario actual con permisos
+    const userWithPermissions = await getCurrentUserWithPermissions();
+    const userPermissions = Array.isArray(userWithPermissions?.permissions)
+        ? userWithPermissions.permissions.filter((p): p is string => typeof p === 'string')
+        : [];
 
     // Obtener todas las salidas
     const result = await getAllSalidasAction();
@@ -26,7 +33,11 @@ export default async function SalidasPage({ params }: SalidasPageProps) {
                 </p>
             </div>
 
-            <SalidasPageClient salidas={salidas} dictionary={dictionary} />
+            <SalidasPageClient
+                salidas={salidas}
+                dictionary={dictionary}
+                userPermissions={userPermissions}
+            />
         </div>
     );
 } 

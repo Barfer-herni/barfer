@@ -25,9 +25,10 @@ import { SalidaData } from '@repo/data-services';
 interface SalidasTableProps {
     salidas?: SalidaData[];
     onRefreshSalidas?: () => void;
+    userPermissions?: string[];
 }
 
-export function SalidasTable({ salidas = [], onRefreshSalidas }: SalidasTableProps) {
+export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions = [] }: SalidasTableProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -54,7 +55,9 @@ export function SalidasTable({ salidas = [], onRefreshSalidas }: SalidasTablePro
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('es-AR', {
             style: 'currency',
-            currency: 'ARS'
+            currency: 'ARS',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
         }).format(amount);
     };
 
@@ -216,11 +219,13 @@ export function SalidasTable({ salidas = [], onRefreshSalidas }: SalidasTablePro
                         }
                     </p>
                 </div>
-                <Button onClick={handleAddSalida} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700">
-                    <Plus className="h-4 w-4" />
-                    <span className="hidden sm:inline">Agregar Salida</span>
-                    <span className="sm:hidden">Agregar</span>
-                </Button>
+                {userPermissions.includes('outputs:create') && (
+                    <Button onClick={handleAddSalida} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700">
+                        <Plus className="h-4 w-4" />
+                        <span className="hidden sm:inline">Agregar Salida</span>
+                        <span className="sm:hidden">Agregar</span>
+                    </Button>
+                )}
             </div>
 
             {/* Panel de filtros */}
@@ -427,24 +432,31 @@ export function SalidasTable({ salidas = [], onRefreshSalidas }: SalidasTablePro
                                         </TableCell>
                                         <TableCell className="w-[100px]">
                                             <div className="flex items-center justify-center gap-1">
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    onClick={() => handleEditSalida(salida)}
-                                                    className="h-7 w-7 p-0 hover:bg-blue-50 text-blue-600"
-                                                    title="Editar salida"
-                                                >
-                                                    <Edit className="h-3 w-3" />
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    onClick={() => handleDeleteSalida(salida)}
-                                                    className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                                    title="Eliminar salida"
-                                                >
-                                                    <Trash2 className="h-3 w-3" />
-                                                </Button>
+                                                {userPermissions.includes('outputs:edit') && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => handleEditSalida(salida)}
+                                                        className="h-7 w-7 p-0 hover:bg-blue-50 text-blue-600"
+                                                        title="Editar salida"
+                                                    >
+                                                        <Edit className="h-3 w-3" />
+                                                    </Button>
+                                                )}
+                                                {userPermissions.includes('outputs:delete') && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => handleDeleteSalida(salida)}
+                                                        className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                        title="Eliminar salida"
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                    </Button>
+                                                )}
+                                                {!userPermissions.includes('outputs:edit') && !userPermissions.includes('outputs:delete') && (
+                                                    <span className="text-xs text-muted-foreground">Sin permisos</span>
+                                                )}
                                             </div>
                                         </TableCell>
                                     </TableRow>

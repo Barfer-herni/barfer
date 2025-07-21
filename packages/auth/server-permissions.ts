@@ -40,9 +40,12 @@ export type Permission =
     // Prices
     | 'prices:view'
     | 'prices:edit'
-    // Outputs
+    // Outputs/Salidas
     | 'outputs:view'
     | 'outputs:export'
+    | 'outputs:create'
+    | 'outputs:edit'
+    | 'outputs:delete'
 
 // Permisos por defecto para admins (siempre tienen todos)
 export const ADMIN_PERMISSIONS: Permission[] = [
@@ -72,6 +75,9 @@ export const ADMIN_PERMISSIONS: Permission[] = [
     'prices:edit',
     'outputs:view',
     'outputs:export',
+    'outputs:create',
+    'outputs:edit',
+    'outputs:delete',
 ];
 
 /**

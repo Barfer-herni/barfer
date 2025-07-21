@@ -19,6 +19,7 @@ import {
 } from '@repo/data-services';
 import { revalidatePath } from 'next/cache';
 import { TipoSalida, TipoRegistro } from '@repo/database';
+import { hasPermission } from '@repo/auth/server-permissions';
 
 // Re-exportar tipos para las acciones
 export type { CreateSalidaInput as CreateSalidaData };
@@ -33,6 +34,11 @@ export async function getAllSalidasAction() {
 
 // Crear una nueva salida
 export async function createSalidaAction(data: CreateSalidaInput) {
+    // Verificar permisos
+    if (!await hasPermission('outputs:create')) {
+        return { success: false, error: 'No tienes permisos para crear salidas' };
+    }
+
     const result = await createSalida(data);
     if (result.success) {
         revalidatePath('/admin/salidas');
@@ -42,6 +48,11 @@ export async function createSalidaAction(data: CreateSalidaInput) {
 
 // Actualizar una salida
 export async function updateSalidaAction(salidaId: string, data: Partial<CreateSalidaInput>) {
+    // Verificar permisos
+    if (!await hasPermission('outputs:edit')) {
+        return { success: false, error: 'No tienes permisos para editar salidas' };
+    }
+
     const result = await updateSalida(salidaId, data);
     if (result.success) {
         revalidatePath('/admin/salidas');
@@ -51,6 +62,11 @@ export async function updateSalidaAction(salidaId: string, data: Partial<CreateS
 
 // Eliminar una salida
 export async function deleteSalidaAction(salidaId: string) {
+    // Verificar permisos
+    if (!await hasPermission('outputs:delete')) {
+        return { success: false, error: 'No tienes permisos para eliminar salidas' };
+    }
+
     const result = await deleteSalida(salidaId);
     if (result.success) {
         revalidatePath('/admin/salidas');

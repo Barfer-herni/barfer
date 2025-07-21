@@ -23,6 +23,7 @@ const ROUTE_PERMISSIONS: Record<string, string[]> = {
   '/admin/table': ['table:view'],
   '/admin/balance': ['balance:view'],
   '/admin/outputs': ['outputs:view'],
+  '/admin/salidas': ['outputs:view'], // Salidas es la ruta en español para outputs
   '/admin/prices': ['prices:view'],
 };
 
