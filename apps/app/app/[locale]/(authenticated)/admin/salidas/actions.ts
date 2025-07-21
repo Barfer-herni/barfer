@@ -15,6 +15,7 @@ import {
     getSalidasTypeAnalytics,
     getSalidasMonthlyAnalytics,
     getSalidasOverviewAnalytics,
+    getSalidasDetailsByCategory,
     type CreateSalidaInput
 } from '@repo/data-services';
 import { revalidatePath } from 'next/cache';
@@ -136,4 +137,9 @@ export async function getSalidasMonthlyAnalyticsAction(categoriaId?: string, sta
 // Obtener resumen de analytics de salidas
 export async function getSalidasOverviewAnalyticsAction(startDate?: Date, endDate?: Date) {
     return await getSalidasOverviewAnalytics(startDate, endDate);
+}
+
+// Obtener desglose detallado de salidas por categoría
+export async function getSalidasDetailsByCategoryAction(categoriaId: string, startDate?: Date, endDate?: Date) {
+    return await getSalidasDetailsByCategory(categoriaId, startDate, endDate);
 } 

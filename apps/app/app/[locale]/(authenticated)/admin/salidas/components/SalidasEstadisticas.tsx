@@ -26,14 +26,16 @@ import {
     getSalidasTypeAnalyticsAction,
     getSalidasMonthlyAnalyticsAction,
     getSalidasOverviewAnalyticsAction,
-    getAllCategoriasAction
+    getAllCategoriasAction,
+    getSalidasDetailsByCategoryAction
 } from '../actions';
 import {
     type SalidaCategoryStats,
     type SalidaTipoStats,
     type SalidaMonthlyStats,
     type SalidasAnalyticsSummary,
-    type CategoriaData
+    type CategoriaData,
+    type SalidaData
 } from '@repo/data-services';
 
 interface SalidasEstadisticasProps {
@@ -63,6 +65,11 @@ export function SalidasEstadisticas({ onRefreshData }: SalidasEstadisticasProps)
     const [selectedPeriod, setSelectedPeriod] = useState<string>('last30days');
     const [customStartDate, setCustomStartDate] = useState<string>('');
     const [customEndDate, setCustomEndDate] = useState<string>('');
+
+    // Estados para desglose interactivo
+    const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null);
+    const [categoryDetails, setCategoryDetails] = useState<SalidaData[]>([]);
+    const [loadingDetails, setLoadingDetails] = useState(false);
 
     // Funciones para calcular períodos de fecha
     const getPeriodDates = (period: string): { startDate?: Date, endDate?: Date } => {
@@ -165,6 +172,10 @@ export function SalidasEstadisticas({ onRefreshData }: SalidasEstadisticasProps)
 
     // Recargar datos cuando cambie el período
     useEffect(() => {
+        // Limpiar expansión cuando cambie el período
+        setExpandedCategoryId(null);
+        setCategoryDetails([]);
+
         if (selectedPeriod !== 'custom') {
             // Para períodos predefinidos, cargar inmediatamente
             loadAllData();
@@ -262,8 +273,47 @@ export function SalidasEstadisticas({ onRefreshData }: SalidasEstadisticasProps)
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('es-AR', {
             style: 'currency',
-            currency: 'ARS'
+            currency: 'ARS',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
         }).format(amount);
+    };
+
+    // Función para manejar click en categoría
+    const handleCategoryClick = async (categoriaId: string) => {
+        if (expandedCategoryId === categoriaId) {
+            // Si ya está expandida, colapsar
+            setExpandedCategoryId(null);
+            setCategoryDetails([]);
+            return;
+        }
+
+        setLoadingDetails(true);
+        setExpandedCategoryId(categoriaId);
+
+        try {
+            const { startDate, endDate } = getPeriodDates(selectedPeriod);
+            const result = await getSalidasDetailsByCategoryAction(categoriaId, startDate, endDate);
+
+            if (result.success && result.salidas) {
+                setCategoryDetails(result.salidas);
+            } else {
+                setCategoryDetails([]);
+            }
+        } catch (error) {
+            console.error('Error obteniendo desglose:', error);
+            setCategoryDetails([]);
+        } finally {
+            setLoadingDetails(false);
+        }
+    };
+
+    const formatDate = (date: Date) => {
+        return new Intl.DateTimeFormat('es-AR', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }).format(new Date(date));
     };
 
     const CustomTooltip = ({ active, payload, label }: any) => {
@@ -522,26 +572,81 @@ export function SalidasEstadisticas({ onRefreshData }: SalidasEstadisticasProps)
                         <Card>
                             <CardHeader>
                                 <CardTitle>Ranking por Categoría</CardTitle>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                    Haz click en una categoría para ver el desglose detallado de gastos
+                                </p>
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-3">
                                     {categoryStats.map((item, index) => (
-                                        <div key={item.categoriaId} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                                            <div className="flex items-center gap-3">
-                                                <div className="text-lg font-bold text-muted-foreground">
-                                                    #{index + 1}
+                                        <div key={item.categoriaId}>
+                                            {/* Fila principal de categoría - clickeable */}
+                                            <div
+                                                className="flex items-center justify-between p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted/70 transition-colors"
+                                                onClick={() => handleCategoryClick(item.categoriaId)}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="text-lg font-bold text-muted-foreground">
+                                                        #{index + 1}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium flex items-center gap-2">
+                                                            {item.categoriaNombre}
+                                                            {expandedCategoryId === item.categoriaId && (
+                                                                <span className="text-xs text-blue-600">▼</span>
+                                                            )}
+                                                        </p>
+                                                        <p className="text-sm text-muted-foreground">{item.cantidad} transacciones</p>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="font-medium">{item.categoriaNombre}</p>
-                                                    <p className="text-sm text-muted-foreground">{item.cantidad} transacciones</p>
+                                                <div className="text-right">
+                                                    <p className="font-bold">{formatCurrency(item.totalMonto)}</p>
+                                                    <Badge variant="secondary" className="text-xs">
+                                                        {item.porcentaje.toFixed(1)}%
+                                                    </Badge>
                                                 </div>
                                             </div>
-                                            <div className="text-right">
-                                                <p className="font-bold">{formatCurrency(item.totalMonto)}</p>
-                                                <Badge variant="secondary" className="text-xs">
-                                                    {item.porcentaje.toFixed(1)}%
-                                                </Badge>
-                                            </div>
+
+                                            {/* Desglose detallado - solo visible si está expandida */}
+                                            {expandedCategoryId === item.categoriaId && (
+                                                <div className="ml-4 mt-2 space-y-2">
+                                                    {loadingDetails ? (
+                                                        <div className="text-center py-4 text-sm text-muted-foreground">
+                                                            Cargando desglose...
+                                                        </div>
+                                                    ) : categoryDetails.length > 0 ? (
+                                                        <>
+                                                            <div className="text-sm font-medium text-muted-foreground mb-2">
+                                                                Detalle de gastos:
+                                                            </div>
+                                                            {categoryDetails.map((salida, detailIndex) => (
+                                                                <div key={salida.id} className="flex items-center justify-between p-2 bg-background border rounded text-sm">
+                                                                    <div className="flex-1">
+                                                                        <p className="font-medium text-sm">
+                                                                            {salida.detalle}
+                                                                        </p>
+                                                                        <p className="text-xs text-muted-foreground">
+                                                                            {formatDate(salida.fecha)} • {salida.metodoPago?.nombre || 'N/A'}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="text-right">
+                                                                        <p className="font-semibold">
+                                                                            {formatCurrency(salida.monto)}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                            <div className="text-xs text-muted-foreground pt-2 border-t">
+                                                                Total: {categoryDetails.length} gastos • {formatCurrency(categoryDetails.reduce((sum, s) => sum + s.monto, 0))}
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <div className="text-center py-4 text-sm text-muted-foreground">
+                                                            No hay gastos para mostrar en este período
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     ))}
                                 </div>

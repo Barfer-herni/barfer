@@ -456,4 +456,44 @@ export async function getSalidasStatsByMonth(year: number, month: number): Promi
             error: 'GET_SALIDAS_STATS_BY_MONTH_ERROR'
         };
     }
+}
+
+/**
+ * Obtener desglose detallado de salidas por categoría
+ */
+export async function getSalidasDetailsByCategory(
+    categoriaId: string,
+    startDate?: Date,
+    endDate?: Date
+): Promise<{ success: boolean; salidas?: SalidaData[]; error?: string }> {
+    try {
+        // Construir el filtro
+        const whereClause: any = {
+            categoriaId: categoriaId
+        };
+
+        // Agregar filtro de fechas si se proporciona
+        if (startDate || endDate) {
+            whereClause.fecha = {};
+            if (startDate) whereClause.fecha.gte = startDate;
+            if (endDate) whereClause.fecha.lte = endDate;
+        }
+
+        const salidas = await database.salida.findMany({
+            where: whereClause,
+            include: {
+                categoria: true,
+                metodoPago: true
+            },
+            orderBy: [
+                { fecha: 'desc' },
+                { monto: 'desc' }
+            ]
+        });
+
+        return { success: true, salidas };
+    } catch (error) {
+        console.error('Error obteniendo desglose de salidas por categoría:', error);
+        return { success: false, error: 'Error interno del servidor' };
+    }
 } 

@@ -10,6 +10,7 @@ export * from './templateService';
 export * from './pricesService';
 export * from './salidasService';
 export * from './salidasAnalyticsService';
+export { getSalidasDetailsByCategory } from './salidasService';
 export * from './categoriasService';
 export * from './metodosPagoService';
 
