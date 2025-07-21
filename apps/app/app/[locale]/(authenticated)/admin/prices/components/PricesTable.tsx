@@ -147,18 +147,20 @@ export function PricesTable({ prices, dictionary }: PricesTableProps) {
                         return 0; // BIG DOG productos arriba de todo
                     }
 
-                    // Primero los productos con orden específico
-                    const specificOrder: { [key: string]: number } = {
-                        'VACA': 1,
-                        'HUESOS CARNOSOS 5KG': 2,
-                        'COMPLEMENTOS': 3,
-                        'GARRAS': 4,
-                        'CORNALITOS': 5,
-                        'HUESOS RECREATIVOS': 6,
-                        'CALDO DE HUESOS': 7,
-                    };
+                    // Normalizar producto para comparación (eliminar espacios extra y mayúsculas)
+                    const normalizedProduct = product.trim().toUpperCase();
 
-                    return specificOrder[product] || 999; // Los productos sin orden específico van al final
+                    // Primero los productos con orden específico - usar includes para mayor flexibilidad
+                    if (normalizedProduct.includes('VACA')) return 1;
+                    if (normalizedProduct.includes('HUESOS CARNOSOS')) return 2;
+                    if (normalizedProduct.includes('BOX') && normalizedProduct.includes('COMPLEMENTOS')) return 3;
+                    if (normalizedProduct === 'COMPLEMENTOS') return 3;
+                    if (normalizedProduct.includes('GARRAS')) return 4;
+                    if (normalizedProduct.includes('CORNALITOS')) return 5;
+                    if (normalizedProduct.includes('HUESOS RECREATIVOS')) return 6;
+                    if (normalizedProduct.includes('CALDO')) return 7;
+
+                    return 999; // Los productos sin orden específico van al final
                 };
 
                 const orderA = getProductOrder(a.product);
