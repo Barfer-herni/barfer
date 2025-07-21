@@ -142,6 +142,11 @@ export function PricesTable({ prices, dictionary }: PricesTableProps) {
             if (a.product !== b.product) {
                 // Orden personalizado para productos específicos
                 const getProductOrder = (product: string) => {
+                    // Detectar productos que empiecen con BIG DOG
+                    if (product.startsWith('BIG DOG')) {
+                        return 0; // BIG DOG productos arriba de todo
+                    }
+
                     // Primero los productos con orden específico
                     const specificOrder: { [key: string]: number } = {
                         'VACA': 1,
@@ -396,6 +401,77 @@ export function PricesTable({ prices, dictionary }: PricesTableProps) {
 
     const rows = groupedPrices();
 
+    // Función para crear filas con separadores visuales entre secciones
+    const renderRowsWithSeparators = () => {
+        if (rows.length === 0) {
+            return (
+                <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        {hasActiveFilters ?
+                            'No hay productos que coincidan con los filtros seleccionados.' :
+                            'No hay productos disponibles.'
+                        }
+                    </TableCell>
+                </TableRow>
+            );
+        }
+
+        const elements: React.ReactElement[] = [];
+        let currentSection: PriceSection | null = null;
+
+        rows.forEach((row, index) => {
+            const key = `${row.section}-${row.product}-${row.weight || 'no-weight'}`;
+
+            // Agregar separador si cambiamos de sección
+            if (currentSection !== null && currentSection !== row.section) {
+                elements.push(
+                    <TableRow key={`separator-${row.section}`} className="bg-muted/20">
+                        <TableCell colSpan={6} className="py-3">
+                            <div className="h-2 bg-muted-foreground/15 rounded-sm"></div>
+                        </TableCell>
+                    </TableRow>
+                );
+            }
+
+            currentSection = row.section;
+
+            // Agregar fila del producto
+            elements.push(
+                <TableRow key={key} className={getProductRowColor(row.product)}>
+                    <TableCell>
+                        <Badge
+                            variant="outline"
+                            className={`${getSectionColor(row.section)} font-medium`}
+                        >
+                            {getSectionLabel(row.section)}
+                        </Badge>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                        {row.product}
+                    </TableCell>
+                    <TableCell className="text-center">
+                        {row.weight ? (
+                            <Badge variant="secondary" className="font-mono">
+                                {row.weight}
+                            </Badge>
+                        ) : row.product.startsWith('BIG DOG') ? (
+                            <Badge variant="secondary" className="font-mono">
+                                15KG
+                            </Badge>
+                        ) : (
+                            <span className="text-muted-foreground">—</span>
+                        )}
+                    </TableCell>
+                    {renderPriceInput(row.efectivo)}
+                    {renderPriceInput(row.transferencia)}
+                    {renderPriceInput(row.mayorista, "—")}
+                </TableRow>
+            );
+        });
+
+        return elements;
+    };
+
     if (localPrices.length === 0) {
         return (
             <div className="text-center py-12">
@@ -567,48 +643,7 @@ export function PricesTable({ prices, dictionary }: PricesTableProps) {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {rows.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                                    {hasActiveFilters ?
-                                        'No hay productos que coincidan con los filtros seleccionados.' :
-                                        'No hay productos disponibles.'
-                                    }
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            rows.map((row, index) => {
-                                const key = `${row.section}-${row.product}-${row.weight || 'no-weight'}`;
-
-                                return (
-                                    <TableRow key={key} className={getProductRowColor(row.product)}>
-                                        <TableCell>
-                                            <Badge
-                                                variant="outline"
-                                                className={`${getSectionColor(row.section)} font-medium`}
-                                            >
-                                                {getSectionLabel(row.section)}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="font-medium">
-                                            {row.product}
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            {row.weight ? (
-                                                <Badge variant="secondary" className="font-mono">
-                                                    {row.weight}
-                                                </Badge>
-                                            ) : (
-                                                <span className="text-muted-foreground">—</span>
-                                            )}
-                                        </TableCell>
-                                        {renderPriceInput(row.efectivo)}
-                                        {renderPriceInput(row.transferencia)}
-                                        {renderPriceInput(row.mayorista, "—")}
-                                    </TableRow>
-                                );
-                            })
-                        )}
+                        {renderRowsWithSeparators()}
                     </TableBody>
                 </Table>
             </div>
