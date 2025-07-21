@@ -11,6 +11,10 @@ import {
     getAllMetodosPago,
     createCategoria,
     createMetodoPago,
+    getSalidasCategoryAnalytics,
+    getSalidasTypeAnalytics,
+    getSalidasMonthlyAnalytics,
+    getSalidasOverviewAnalytics,
     type CreateSalidaInput
 } from '@repo/data-services';
 import { revalidatePath } from 'next/cache';
@@ -92,4 +96,28 @@ export async function createMetodoPagoAction(nombre: string) {
         revalidatePath('/admin/salidas');
     }
     return result;
+}
+
+// ==========================================
+// ACCIONES DE ANALYTICS
+// ==========================================
+
+// Obtener estadísticas de salidas por categoría
+export async function getSalidasCategoryAnalyticsAction(startDate?: Date, endDate?: Date) {
+    return await getSalidasCategoryAnalytics(startDate, endDate);
+}
+
+// Obtener estadísticas de salidas por tipo
+export async function getSalidasTypeAnalyticsAction(startDate?: Date, endDate?: Date) {
+    return await getSalidasTypeAnalytics(startDate, endDate);
+}
+
+// Obtener estadísticas de salidas por mes
+export async function getSalidasMonthlyAnalyticsAction(categoriaId?: string, startDate?: Date, endDate?: Date) {
+    return await getSalidasMonthlyAnalytics(categoriaId, startDate, endDate);
+}
+
+// Obtener resumen de analytics de salidas
+export async function getSalidasOverviewAnalyticsAction(startDate?: Date, endDate?: Date) {
+    return await getSalidasOverviewAnalytics(startDate, endDate);
 } 

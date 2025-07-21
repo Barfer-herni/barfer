@@ -9,6 +9,7 @@ export * from './userService';
 export * from './templateService';
 export * from './pricesService';
 export * from './salidasService';
+export * from './salidasAnalyticsService';
 export * from './categoriasService';
 export * from './metodosPagoService';
 

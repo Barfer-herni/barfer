@@ -7,6 +7,7 @@ import { Button } from '@repo/design-system/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/design-system/components/ui/card';
 import { Table2, BarChart3 } from 'lucide-react';
 import { SalidasTable } from './SalidasTable';
+import { SalidasEstadisticas } from './SalidasEstadisticas';
 import { SalidaData } from '@repo/data-services';
 
 interface SalidasPageClientProps {
@@ -71,16 +72,7 @@ export function SalidasPageClient({ salidas: initialSalidas, dictionary }: Salid
                 )}
 
                 {activeTab === 'estadisticas' && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Estadísticas de Salidas</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex items-center justify-center h-40 text-muted-foreground">
-                                <p>Estadísticas en desarrollo...</p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <SalidasEstadisticas onRefreshData={refreshSalidas} />
                 )}
             </div>
         </>
