@@ -19,7 +19,8 @@ import { Button } from '@repo/design-system/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@repo/design-system/components/ui/select';
 import { Badge } from '@repo/design-system/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@repo/design-system/components/ui/tabs';
-import { ChartBar, PieChart as PieChartIcon, TrendingUp, Filter } from 'lucide-react';
+import { Input } from '@repo/design-system/components/ui/input';
+import { ChartBar, PieChart as PieChartIcon, TrendingUp, Filter, Calendar, CalendarDays } from 'lucide-react';
 import {
     getSalidasCategoryAnalyticsAction,
     getSalidasTypeAnalyticsAction,
@@ -58,20 +59,131 @@ export function SalidasEstadisticas({ onRefreshData }: SalidasEstadisticasProps)
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [isLoading, setIsLoading] = useState(true);
 
+    // Estados para filtros de fecha
+    const [selectedPeriod, setSelectedPeriod] = useState<string>('last30days');
+    const [customStartDate, setCustomStartDate] = useState<string>('');
+    const [customEndDate, setCustomEndDate] = useState<string>('');
+
+    // Funciones para calcular períodos de fecha
+    const getPeriodDates = (period: string): { startDate?: Date, endDate?: Date } => {
+        const now = new Date();
+
+        // Función helper para crear fecha al inicio del día (00:00:00)
+        const startOfDay = (date: Date) => {
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+            return d;
+        };
+
+        // Función helper para crear fecha al final del día (23:59:59)
+        const endOfDay = (date: Date) => {
+            const d = new Date(date);
+            d.setHours(23, 59, 59, 999);
+            return d;
+        };
+
+        switch (period) {
+            case 'today':
+                return {
+                    startDate: startOfDay(now),
+                    endDate: endOfDay(now)
+                };
+            case 'yesterday':
+                const yesterday = new Date(now);
+                yesterday.setDate(now.getDate() - 1);
+                return {
+                    startDate: startOfDay(yesterday),
+                    endDate: endOfDay(yesterday)
+                };
+            case 'last7days':
+                const last7Days = new Date(now);
+                last7Days.setDate(now.getDate() - 7);
+                return {
+                    startDate: startOfDay(last7Days),
+                    endDate: endOfDay(now)
+                };
+            case 'last30days':
+                const last30Days = new Date(now);
+                last30Days.setDate(now.getDate() - 30);
+                return {
+                    startDate: startOfDay(last30Days),
+                    endDate: endOfDay(now)
+                };
+            case 'thismonth':
+                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                return {
+                    startDate: startOfDay(startOfMonth),
+                    endDate: endOfDay(now)
+                };
+            case 'lastmonth':
+                const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+                return {
+                    startDate: startOfDay(startOfLastMonth),
+                    endDate: endOfDay(endOfLastMonth)
+                };
+            case 'last3months':
+                const last3Months = new Date(now);
+                last3Months.setMonth(now.getMonth() - 3);
+                return {
+                    startDate: startOfDay(last3Months),
+                    endDate: endOfDay(now)
+                };
+            case 'thisyear':
+                const startOfYear = new Date(now.getFullYear(), 0, 1);
+                return {
+                    startDate: startOfDay(startOfYear),
+                    endDate: endOfDay(now)
+                };
+            case 'custom':
+                if (customStartDate && customEndDate) {
+                    return {
+                        startDate: startOfDay(new Date(customStartDate)),
+                        endDate: endOfDay(new Date(customEndDate))
+                    };
+                } else if (customStartDate) {
+                    return {
+                        startDate: startOfDay(new Date(customStartDate)),
+                        endDate: endOfDay(now)
+                    };
+                } else if (customEndDate) {
+                    return {
+                        endDate: endOfDay(new Date(customEndDate))
+                    };
+                }
+                return {};
+            default:
+                return {};
+        }
+    };
+
     // Cargar datos
     useEffect(() => {
         loadAllData();
         loadCategories();
     }, []);
 
+    // Recargar datos cuando cambie el período
+    useEffect(() => {
+        if (selectedPeriod !== 'custom') {
+            // Para períodos predefinidos, cargar inmediatamente
+            loadAllData();
+        } else if (selectedPeriod === 'custom' && (customStartDate || customEndDate)) {
+            // Para custom, cargar si al menos una fecha está definida
+            loadAllData();
+        }
+    }, [selectedPeriod, customStartDate, customEndDate]);
+
     const loadAllData = async () => {
         setIsLoading(true);
         try {
+            const { startDate, endDate } = getPeriodDates(selectedPeriod);
+
             const [categoryData, typeData, monthlyData, overviewData] = await Promise.all([
-                getSalidasCategoryAnalyticsAction(),
-                getSalidasTypeAnalyticsAction(),
-                getSalidasMonthlyAnalyticsAction(),
-                getSalidasOverviewAnalyticsAction()
+                getSalidasCategoryAnalyticsAction(startDate, endDate),
+                getSalidasTypeAnalyticsAction(startDate, endDate),
+                getSalidasMonthlyAnalyticsAction(undefined, startDate, endDate),
+                getSalidasOverviewAnalyticsAction(startDate, endDate)
             ]);
 
             setCategoryStats(categoryData);
@@ -98,8 +210,9 @@ export function SalidasEstadisticas({ onRefreshData }: SalidasEstadisticasProps)
 
     const loadMonthlyData = async () => {
         try {
+            const { startDate, endDate } = getPeriodDates(selectedPeriod);
             const categoryId = selectedCategory === 'all' || selectedCategory === '' ? undefined : selectedCategory;
-            const data = await getSalidasMonthlyAnalyticsAction(categoryId);
+            const data = await getSalidasMonthlyAnalyticsAction(categoryId, startDate, endDate);
             setMonthlyStats(data);
         } catch (error) {
             console.error('Error loading monthly data:', error);
@@ -185,8 +298,125 @@ export function SalidasEstadisticas({ onRefreshData }: SalidasEstadisticasProps)
         );
     }
 
+    const formatDateForInput = (date: Date) => {
+        return date.toISOString().split('T')[0];
+    };
+
+    const getPeriodLabel = (period: string) => {
+        switch (period) {
+            case 'today': return 'Hoy';
+            case 'yesterday': return 'Ayer';
+            case 'last7days': return 'Últimos 7 días';
+            case 'last30days': return 'Últimos 30 días';
+            case 'thismonth': return 'Este mes';
+            case 'lastmonth': return 'Mes pasado';
+            case 'last3months': return 'Últimos 3 meses';
+            case 'thisyear': return 'Este año';
+            case 'custom': return 'Rango personalizado';
+            default: return 'Período';
+        }
+    };
+
     return (
         <div className="space-y-6">
+            {/* Panel de filtros de fecha */}
+            <Card>
+                <CardHeader className="pb-4">
+                    <CardTitle className="text-base flex items-center gap-2">
+                        <Calendar className="h-4 w-4" />
+                        Período de Análisis
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {/* Períodos rápidos */}
+                    <div>
+                        <label className="text-sm font-medium text-muted-foreground mb-2 block">Períodos rápidos</label>
+                        <div className="flex flex-wrap gap-2">
+                            {[
+                                { value: 'today', label: 'Hoy' },
+                                { value: 'yesterday', label: 'Ayer' },
+                                { value: 'last7days', label: 'Últimos 7 días' },
+                                { value: 'last30days', label: 'Últimos 30 días' },
+                                { value: 'thismonth', label: 'Este mes' },
+                                { value: 'lastmonth', label: 'Mes pasado' },
+                                { value: 'last3months', label: 'Últimos 3 meses' },
+                                { value: 'thisyear', label: 'Este año' }
+                            ].map((period) => (
+                                <Button
+                                    key={period.value}
+                                    variant={selectedPeriod === period.value ? 'default' : 'outline'}
+                                    size="sm"
+                                    onClick={() => setSelectedPeriod(period.value)}
+                                    className="text-xs"
+                                >
+                                    {period.label}
+                                </Button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Rango personalizado */}
+                    <div>
+                        <div className="flex items-center gap-2 mb-2">
+                            <label className="text-sm font-medium text-muted-foreground">Rango personalizado</label>
+                            <Button
+                                variant={selectedPeriod === 'custom' ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => setSelectedPeriod('custom')}
+                                className="text-xs"
+                            >
+                                <CalendarDays className="h-3 w-3 mr-1" />
+                                Personalizado
+                            </Button>
+                        </div>
+
+                        {selectedPeriod === 'custom' && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-xs text-muted-foreground mb-1 block">Desde</label>
+                                    <Input
+                                        type="date"
+                                        value={customStartDate}
+                                        onChange={(e) => setCustomStartDate(e.target.value)}
+                                        className="text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-muted-foreground mb-1 block">Hasta</label>
+                                    <Input
+                                        type="date"
+                                        value={customEndDate}
+                                        onChange={(e) => setCustomEndDate(e.target.value)}
+                                        className="text-sm"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Período seleccionado */}
+                    <div className="pt-2 border-t">
+                        <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Período actual:</span>
+                            <span className="font-medium">{getPeriodLabel(selectedPeriod)}</span>
+                        </div>
+                        {(() => {
+                            const { startDate, endDate } = getPeriodDates(selectedPeriod);
+                            if (startDate || endDate) {
+                                return (
+                                    <div className="text-xs text-muted-foreground mt-1">
+                                        {startDate && `Desde: ${startDate.toLocaleDateString('es-AR')} ${startDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`}
+                                        {startDate && endDate && ' • '}
+                                        {endDate && `Hasta: ${endDate.toLocaleDateString('es-AR')} ${endDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`}
+                                    </div>
+                                );
+                            }
+                            return null;
+                        })()}
+                    </div>
+                </CardContent>
+            </Card>
+
             {/* Resumen general */}
             {overviewStats && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -41,6 +41,7 @@ export function SalidasTable({ salidas = [], onRefreshSalidas }: SalidasTablePro
     const [selectedMetodoPago, setSelectedMetodoPago] = useState<string>('');
     const [selectedTipo, setSelectedTipo] = useState<string>('');
     const [selectedTipoRegistro, setSelectedTipoRegistro] = useState<string>('');
+    const [selectedFecha, setSelectedFecha] = useState<string>('');
 
     const formatDate = (date: Date) => {
         return new Intl.DateTimeFormat('es-AR', {
@@ -148,9 +149,23 @@ export function SalidasTable({ salidas = [], onRefreshSalidas }: SalidasTablePro
                 return false;
             }
 
+            // Filtro por fecha exacta
+            if (selectedFecha) {
+                const fechaSalida = new Date(salida.fecha);
+                const fechaFilter = new Date(selectedFecha);
+
+                // Comparar solo año, mes y día (ignorar tiempo)
+                const salidaDateString = fechaSalida.toISOString().split('T')[0];
+                const filterDateString = fechaFilter.toISOString().split('T')[0];
+
+                if (salidaDateString !== filterDateString) {
+                    return false;
+                }
+            }
+
             return true;
         });
-    }, [salidas, searchTerm, selectedCategoria, selectedMarca, selectedMetodoPago, selectedTipo, selectedTipoRegistro]);
+    }, [salidas, searchTerm, selectedCategoria, selectedMarca, selectedMetodoPago, selectedTipo, selectedTipoRegistro, selectedFecha]);
 
     const clearFilters = () => {
         setSearchTerm('');
@@ -159,6 +174,7 @@ export function SalidasTable({ salidas = [], onRefreshSalidas }: SalidasTablePro
         setSelectedMetodoPago('');
         setSelectedTipo('');
         setSelectedTipoRegistro('');
+        setSelectedFecha('');
     };
 
     const handleAddSalida = () => {
@@ -227,81 +243,99 @@ export function SalidasTable({ salidas = [], onRefreshSalidas }: SalidasTablePro
                         />
                     </div>
 
-                    {/* Filtros por selects */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                        {/* Categoría */}
-                        <Select value={selectedCategoria} onValueChange={setSelectedCategoria}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Categoría" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {uniqueCategorias.map(categoria => (
-                                    <SelectItem key={categoria} value={categoria}>
-                                        {categoria}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                    {/* Filtros organizados en dos filas */}
+                    <div className="space-y-3">
+                        {/* Primera fila: Filtros principales */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                            {/* Categoría */}
+                            <Select value={selectedCategoria} onValueChange={setSelectedCategoria}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Categoría" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {uniqueCategorias.map(categoria => (
+                                        <SelectItem key={categoria} value={categoria}>
+                                            {categoria}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
 
-                        {/* Marca */}
-                        <Select value={selectedMarca} onValueChange={setSelectedMarca}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Marca" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {uniqueMarcas.map(marca => (
-                                    <SelectItem key={marca} value={marca}>
-                                        {marca}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                            {/* Marca */}
+                            <Select value={selectedMarca} onValueChange={setSelectedMarca}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Marca" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {uniqueMarcas.map(marca => (
+                                        <SelectItem key={marca} value={marca}>
+                                            {marca}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
 
-                        {/* Método de pago */}
-                        <Select value={selectedMetodoPago} onValueChange={setSelectedMetodoPago}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Forma de pago" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {uniqueMetodosPago.map(metodo => (
-                                    <SelectItem key={metodo} value={metodo}>
-                                        {getFormaPagoLabel(metodo)}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                            {/* Método de pago */}
+                            <Select value={selectedMetodoPago} onValueChange={setSelectedMetodoPago}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Forma de pago" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {uniqueMetodosPago.map(metodo => (
+                                        <SelectItem key={metodo} value={metodo}>
+                                            {getFormaPagoLabel(metodo)}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
 
-                        {/* Tipo */}
-                        <Select value={selectedTipo} onValueChange={setSelectedTipo}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Tipo" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="ORDINARIO">Ordinario</SelectItem>
-                                <SelectItem value="EXTRAORDINARIO">Extraordinario</SelectItem>
-                            </SelectContent>
-                        </Select>
+                            {/* Tipo */}
+                            <Select value={selectedTipo} onValueChange={setSelectedTipo}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Tipo" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="ORDINARIO">Ordinario</SelectItem>
+                                    <SelectItem value="EXTRAORDINARIO">Extraordinario</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-                        {/* Tipo de registro */}
-                        <Select value={selectedTipoRegistro} onValueChange={setSelectedTipoRegistro}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Registro" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="BLANCO">Blanco</SelectItem>
-                                <SelectItem value="NEGRO">Negro</SelectItem>
-                            </SelectContent>
-                        </Select>
+                        {/* Segunda fila: Filtros adicionales */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                            {/* Tipo de registro */}
+                            <Select value={selectedTipoRegistro} onValueChange={setSelectedTipoRegistro}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Registro" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="BLANCO">Blanco</SelectItem>
+                                    <SelectItem value="NEGRO">Negro</SelectItem>
+                                </SelectContent>
+                            </Select>
 
-                        {/* Botón de limpiar filtros */}
-                        <Button
-                            variant="outline"
-                            onClick={clearFilters}
-                            className="flex items-center gap-2"
-                        >
-                            <X className="h-4 w-4" />
-                            Limpiar
-                        </Button>
+                            {/* Fecha específica */}
+                            <Input
+                                type="date"
+                                value={selectedFecha}
+                                onChange={(e) => setSelectedFecha(e.target.value)}
+                                className="text-sm"
+                                title="Filtrar por fecha específica"
+                            />
+
+                            {/* Espacio vacío para balancear */}
+                            <div></div>
+
+                            {/* Botón de limpiar filtros */}
+                            <Button
+                                variant="outline"
+                                onClick={clearFilters}
+                                className="flex items-center gap-2 justify-center"
+                            >
+                                <X className="h-4 w-4" />
+                                Limpiar
+                            </Button>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
@@ -426,6 +460,7 @@ export function SalidasTable({ salidas = [], onRefreshSalidas }: SalidasTablePro
                 <p>• Las salidas se muestran ordenadas por fecha (más recientes primero)</p>
                 <p>• Usa el buscador de texto para buscar en detalle, categoría, marca, método de pago o monto</p>
                 <p>• Los filtros desplegables permiten filtrar por criterios específicos</p>
+                <p>• Usa el filtro "Fecha" para mostrar solo salidas de una fecha específica</p>
                 <p>• El tipo "ORDINARIO" representa gastos habituales, "EXTRAORDINARIO" gastos excepcionales</p>
                 <p>• "BLANCO" son gastos declarados, "NEGRO" son gastos no declarados</p>
             </div>
