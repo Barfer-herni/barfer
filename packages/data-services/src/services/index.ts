@@ -11,6 +11,7 @@ export * from './pricesService';
 export * from './salidasService';
 export * from './salidasAnalyticsService';
 export { getSalidasDetailsByCategory } from './salidasService';
+export * from './balanceService';
 export * from './categoriasService';
 export * from './metodosPagoService';
 

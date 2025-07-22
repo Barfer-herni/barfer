@@ -57,6 +57,7 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
                 'table:edit',          // Editar órdenes
                 'table:delete',        // Eliminar órdenes
                 'prices:view',         // Ver precios
+                'balance:view',        // Ver balance
                 'outputs:view',        // Ver salidas
                 'outputs:create',      // Crear salidas
                 'outputs:edit',        // Editar salidas
@@ -467,7 +468,7 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
                                                 }}
                                                 disabled={isPending}
                                             />
-                                            <Label className="text-sm">Ver balance de pedidos</Label>
+                                            <Label className="text-sm">Ver balance financiero</Label>
                                         </div>
                                         <div className="flex items-center space-x-2">
                                             <Switch

@@ -40,6 +40,9 @@ export type Permission =
     // Prices
     | 'prices:view'
     | 'prices:edit'
+    // Balance  
+    | 'balance:view'
+    | 'balance:export'
     // Outputs/Salidas
     | 'outputs:view'
     | 'outputs:export'
