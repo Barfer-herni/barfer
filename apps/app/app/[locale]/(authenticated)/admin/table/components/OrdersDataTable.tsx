@@ -25,7 +25,9 @@ import {
     createDefaultOrderData,
     filterValidItems,
     buildExportFileName,
-    downloadBase64File
+    downloadBase64File,
+    createLocalDate,
+    createLocalDateISO
 } from '../helpers';
 import type { DataTableProps } from '../types';
 import { OrdersTable } from './OrdersTable';
@@ -450,8 +452,8 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                             <Input
                                                 readOnly
                                                 value={createFormData.deliveryDay ? (() => {
-                                                    // Usar directamente el valor del campo deliveryDay
-                                                    const date = new Date(createFormData.deliveryDay);
+                                                    // Usar la función helper para crear una fecha local
+                                                    const date = createLocalDate(createFormData.deliveryDay);
                                                     return format(date, 'PPP', { locale: es });
                                                 })() : ''}
                                                 placeholder="Seleccionar fecha"
@@ -461,14 +463,13 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                             <Calendar
                                                 mode="single"
                                                 selected={createFormData.deliveryDay ? (() => {
-                                                    // Usar directamente el valor del campo deliveryDay
-                                                    const date = new Date(createFormData.deliveryDay);
-                                                    return date;
+                                                    // Usar la función helper para crear una fecha local
+                                                    return createLocalDate(createFormData.deliveryDay);
                                                 })() : undefined}
                                                 onSelect={(date) => {
                                                     if (date) {
-                                                        // Usar directamente la fecha seleccionada
-                                                        handleCreateFormChange('deliveryDay', date.toISOString());
+                                                        // Usar la función helper para crear una fecha ISO local
+                                                        handleCreateFormChange('deliveryDay', createLocalDateISO(date));
                                                     }
                                                 }}
                                                 locale={es}

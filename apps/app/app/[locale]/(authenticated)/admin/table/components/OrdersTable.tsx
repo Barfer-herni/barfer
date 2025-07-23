@@ -30,7 +30,9 @@ import {
     getFilteredProducts,
     shouldHighlightRow,
     getDateCellBackgroundColor,
-    getStatusCellBackgroundColor
+    getStatusCellBackgroundColor,
+    createLocalDate,
+    createLocalDateISO
 } from '../helpers';
 import type { DataTableProps } from '../types';
 
@@ -378,8 +380,8 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                         <Input
                             readOnly
                             value={editValues.deliveryDay ? (() => {
-                                // Usar directamente el valor del campo deliveryDay
-                                const date = new Date(editValues.deliveryDay);
+                                // Usar la función helper para crear una fecha local
+                                const date = createLocalDate(editValues.deliveryDay);
                                 return format(date, 'dd/MM/yyyy');
                             })() : ''}
                             placeholder="Seleccionar fecha"
@@ -390,14 +392,13 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                         <Calendar
                             mode="single"
                             selected={editValues.deliveryDay ? (() => {
-                                // Usar directamente el valor del campo deliveryDay
-                                const date = new Date(editValues.deliveryDay);
-                                return date;
+                                // Usar la función helper para crear una fecha local
+                                return createLocalDate(editValues.deliveryDay);
                             })() : undefined}
                             onSelect={(date) => {
                                 if (date) {
-                                    // Usar directamente la fecha seleccionada
-                                    onEditValueChange('deliveryDay', date.toISOString());
+                                    // Usar la función helper para crear una fecha ISO local
+                                    onEditValueChange('deliveryDay', createLocalDateISO(date));
                                 }
                             }}
                             locale={es}
