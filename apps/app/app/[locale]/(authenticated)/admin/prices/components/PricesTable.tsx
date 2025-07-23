@@ -343,7 +343,7 @@ export function PricesTable({ prices, dictionary }: PricesTableProps) {
                     ) : (
                         <>
                             <span className="font-mono text-center min-w-[60px]">
-                                ${price.price.toFixed(2)}
+                                ${price.price.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                             </span>
                             <Button
                                 size="sm"
@@ -420,9 +420,11 @@ export function PricesTable({ prices, dictionary }: PricesTableProps) {
 
         const elements: React.ReactElement[] = [];
         let currentSection: PriceSection | null = null;
+        let hasShownBigDogSeparator = false;
 
         rows.forEach((row, index) => {
             const key = `${row.section}-${row.product}-${row.weight || 'no-weight'}`;
+            const isBigDog = row.product.startsWith('BIG DOG');
 
             // Agregar separador si cambiamos de sección
             if (currentSection !== null && currentSection !== row.section) {
@@ -433,6 +435,26 @@ export function PricesTable({ prices, dictionary }: PricesTableProps) {
                         </TableCell>
                     </TableRow>
                 );
+                hasShownBigDogSeparator = false; // Reset para la nueva sección
+            }
+
+            // Agregar separador especial entre BIG DOG y otros productos de PERRO
+            if (row.section === 'PERRO' && !isBigDog && !hasShownBigDogSeparator) {
+                // Buscar si hay productos BIG DOG antes de este
+                const hasBigDogBefore = rows.slice(0, index).some(r =>
+                    r.section === 'PERRO' && r.product.startsWith('BIG DOG')
+                );
+
+                if (hasBigDogBefore) {
+                    elements.push(
+                        <TableRow key={`bigdog-separator-${row.product}`} className="bg-orange-50/50">
+                            <TableCell colSpan={6} className="py-2">
+                                <div className="h-1 bg-orange-200 rounded-sm"></div>
+                            </TableCell>
+                        </TableRow>
+                    );
+                    hasShownBigDogSeparator = true;
+                }
             }
 
             currentSection = row.section;

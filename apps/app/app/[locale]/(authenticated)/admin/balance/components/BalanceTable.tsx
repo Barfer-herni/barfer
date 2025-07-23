@@ -226,7 +226,7 @@ export function BalanceTable({ data, dictionary }: BalanceTableProps) {
 
                                                     {/* Gastos Ordinarios */}
                                                     <TableCell className="text-center">
-                                                        <div className="font-mono font-medium text-blue-600">
+                                                        <div className="font-mono font-medium text-red-600">
                                                             {formatCurrency(row.gastosOrdinariosTotal)}
                                                         </div>
                                                     </TableCell>
