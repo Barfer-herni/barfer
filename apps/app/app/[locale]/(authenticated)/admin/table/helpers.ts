@@ -154,19 +154,24 @@ export const downloadBase64File = (base64Data: string, fileName: string) => {
 
 // Función para crear una fecha local preservando la fecha original
 export const createLocalDate = (dateInput: string | Date): Date => {
+    let date: Date;
+
     if (dateInput && typeof dateInput === 'object' && 'getTime' in dateInput) {
-        // Si ya es un Date, crear uno nuevo preservando la fecha local
-        const originalDate = dateInput as Date;
-        return new Date(originalDate.getFullYear(), originalDate.getMonth(), originalDate.getDate());
+        // Si ya es un Date, usar directamente
+        date = dateInput as Date;
     } else if (typeof dateInput === 'string') {
-        // Si es string, parsear y crear fecha local
-        const parsedDate = new Date(dateInput);
-        return new Date(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate());
+        // Si es string, parsear
+        date = new Date(dateInput);
     } else {
         // Fallback
-        const parsedDate = new Date(dateInput as any);
-        return new Date(parsedDate.getFullYear(), parsedDate.getMonth(), parsedDate.getDate());
+        date = new Date(dateInput as any);
     }
+
+    // Sumar 5 horas para ajustar a Argentina (UTC-3)
+    const adjustedDate = new Date(date.getTime() + (5 * 60 * 60 * 1000));
+
+    // Crear fecha local preservando solo año, mes y día
+    return new Date(adjustedDate.getFullYear(), adjustedDate.getMonth(), adjustedDate.getDate());
 };
 
 // Función para crear una fecha ISO preservando la fecha local
