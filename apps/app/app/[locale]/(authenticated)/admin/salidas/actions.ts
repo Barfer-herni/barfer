@@ -10,6 +10,7 @@ import {
     getAllCategorias,
     getAllMetodosPago,
     createCategoria,
+    deleteCategoria,
     createMetodoPago,
     getSalidasCategoryAnalytics,
     getSalidasTypeAnalytics,
@@ -95,6 +96,20 @@ export async function getAllCategoriasAction() {
 // Crear una nueva categoría
 export async function createCategoriaAction(nombre: string) {
     const result = await createCategoria({ nombre });
+    if (result.success) {
+        revalidatePath('/admin/salidas');
+    }
+    return result;
+}
+
+// Eliminar una categoría
+export async function deleteCategoriaAction(categoriaId: string) {
+    // Verificar permisos
+    if (!await hasPermission('outputs:delete')) {
+        return { success: false, error: 'No tienes permisos para eliminar categorías' };
+    }
+
+    const result = await deleteCategoria(categoriaId);
     if (result.success) {
         revalidatePath('/admin/salidas');
     }

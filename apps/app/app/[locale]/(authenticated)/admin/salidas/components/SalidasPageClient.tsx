@@ -5,9 +5,10 @@ import { Dictionary } from '@repo/internationalization';
 import { getAllSalidasAction } from '../actions';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/design-system/components/ui/card';
-import { Table2, BarChart3 } from 'lucide-react';
+import { Table2, BarChart3, Tag } from 'lucide-react';
 import { SalidasTable } from './SalidasTable';
 import { SalidasEstadisticas } from './SalidasEstadisticas';
+import { CategoriasManager } from './CategoriasManager';
 import { SalidaData } from '@repo/data-services';
 
 interface SalidasPageClientProps {
@@ -17,7 +18,7 @@ interface SalidasPageClientProps {
 }
 
 export function SalidasPageClient({ salidas: initialSalidas, dictionary, userPermissions = [] }: SalidasPageClientProps) {
-    const [activeTab, setActiveTab] = useState<'tabla' | 'estadisticas'>('tabla');
+    const [activeTab, setActiveTab] = useState<'tabla' | 'estadisticas' | 'categorias'>('tabla');
     const [salidas, setSalidas] = useState<SalidaData[]>(initialSalidas);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -56,6 +57,14 @@ export function SalidasPageClient({ salidas: initialSalidas, dictionary, userPer
                         <BarChart3 className="h-4 w-4" />
                         Estadísticas
                     </Button>
+                    <Button
+                        onClick={() => setActiveTab('categorias')}
+                        variant={activeTab === 'categorias' ? 'default' : 'outline'}
+                        className="flex items-center gap-2"
+                    >
+                        <Tag className="h-4 w-4" />
+                        Categorías
+                    </Button>
                 </div>
             </div>
 
@@ -78,6 +87,10 @@ export function SalidasPageClient({ salidas: initialSalidas, dictionary, userPer
 
                 {activeTab === 'estadisticas' && (
                     <SalidasEstadisticas onRefreshData={refreshSalidas} />
+                )}
+
+                {activeTab === 'categorias' && (
+                    <CategoriasManager />
                 )}
             </div>
         </>
