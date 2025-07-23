@@ -221,7 +221,7 @@ importers:
         specifier: 19.0.0
         version: 19.0.0(react@19.0.0)
       recharts:
-        specifier: ^2.15.1
+        specifier: ^2.15.4
         version: 2.15.4(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       require-in-the-middle:
         specifier: ^7.5.2

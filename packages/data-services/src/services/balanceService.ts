@@ -23,12 +23,22 @@ export interface BalanceMonthlyData {
     cantVentasExpressPorcentaje: number;
     // Entradas Totales
     entradasTotales: number;
-    // Salidas
+    // Salidas - Desglose por tipo y empresa
     salidas: number;
     salidasPorcentaje: number;
-    // Resultado
-    resultadoBarfer: number;
-    porcentajeSobreTotalEntradas: number;
+    // Gastos Ordinarios
+    gastosOrdinariosBarfer: number;
+    gastosOrdinariosSLR: number;
+    gastosOrdinariosTotal: number;
+    // Gastos Extraordinarios
+    gastosExtraordinariosBarfer: number;
+    gastosExtraordinariosSLR: number;
+    gastosExtraordinariosTotal: number;
+    // Resultados - Dos cuentas diferentes
+    resultadoSinExtraordinarios: number; // Entradas - Gastos Ordinarios
+    resultadoConExtraordinarios: number; // Entradas - (Gastos Ordinarios + Gastos Extraordinarios)
+    porcentajeSinExtraordinarios: number;
+    porcentajeConExtraordinarios: number;
     // Precio por KG
     precioPorKg: number;
 }
@@ -55,34 +65,7 @@ export async function getBalanceMonthly(
             const yearEndDate = new Date(currentYear, 11, 31, 23, 59, 59); // Año actual
             ordersMatchCondition.createdAt = { $gte: yearStartDate, $lte: yearEndDate };
         }
-        const sampleOrders = await ordersCollection.find(ordersMatchCondition).limit(10).toArray();
-        const paymentMethodCounts = await ordersCollection.aggregate([
-            { $match: ordersMatchCondition },
-            { $group: { _id: '$paymentMethod', count: { $sum: 1 } } }
-        ]).toArray();
-        paymentMethodCounts.forEach((item: any) => {
-        });
 
-
-        const orderTypeCounts = await ordersCollection.aggregate([
-            { $match: ordersMatchCondition },
-            { $group: { _id: '$orderType', count: { $sum: 1 } } }
-        ]).toArray();
-        orderTypeCounts.forEach((item: any) => {
-        });
-        sampleOrders.forEach((order: any, index: number) => {
-            const paymentMethod = order.paymentMethod || '';
-            const orderType = order.orderType || 'minorista';
-
-            let categoria = '';
-            if (paymentMethod === 'bank-transfer') {
-                categoria = 'EXPRESS';
-            } else if (orderType === 'mayorista') {
-                categoria = 'MAYORISTA';
-            } else {
-                categoria = 'MINORISTA';
-            }
-        });
 
         const ordersPipeline: any[] = [];
         if (Object.keys(ordersMatchCondition).length > 0) {
@@ -259,23 +242,64 @@ export async function getBalanceMonthly(
             salidasMatchCondition.fecha = { gte: yearStartDate, lte: yearEndDate };
         }
 
-        // Obtener datos de salidas directamente desde Prisma
+        // Obtener datos de salidas con desglose por tipo y marca
         const salidasResult = await database.salida.findMany({
             where: salidasMatchCondition,
             select: {
                 fecha: true,
-                monto: true
+                monto: true,
+                tipo: true,
+                marca: true
             }
         });
 
-        // Procesar salidas por mes
-        const salidasByMonth = new Map<string, number>();
+        // Procesar salidas por mes con desglose
+        const salidasByMonth = new Map<string, {
+            total: number;
+            ordinariosBarfer: number;
+            ordinariosSLR: number;
+            extraordinariosBarfer: number;
+            extraordinariosSLR: number;
+        }>();
 
         for (const salida of salidasResult) {
             const fecha = new Date(salida.fecha);
             const monthKey = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
-            const currentSum = salidasByMonth.get(monthKey) || 0;
-            salidasByMonth.set(monthKey, currentSum + salida.monto);
+            const marca = salida.marca?.toLowerCase() || 'barfer';
+            const isBarfer = marca === 'barfer';
+            const isSLR = marca === 'slr';
+
+            const current = salidasByMonth.get(monthKey) || {
+                total: 0,
+                ordinariosBarfer: 0,
+                ordinariosSLR: 0,
+                extraordinariosBarfer: 0,
+                extraordinariosSLR: 0
+            };
+
+            current.total += salida.monto;
+
+            if (salida.tipo === 'ORDINARIO') {
+                if (isBarfer) {
+                    current.ordinariosBarfer += salida.monto;
+                } else if (isSLR) {
+                    current.ordinariosSLR += salida.monto;
+                } else {
+                    // Si no es SLR, asumimos que es Barfer
+                    current.ordinariosBarfer += salida.monto;
+                }
+            } else if (salida.tipo === 'EXTRAORDINARIO') {
+                if (isBarfer) {
+                    current.extraordinariosBarfer += salida.monto;
+                } else if (isSLR) {
+                    current.extraordinariosSLR += salida.monto;
+                } else {
+                    // Si no es SLR, asumimos que es Barfer
+                    current.extraordinariosBarfer += salida.monto;
+                }
+            }
+
+            salidasByMonth.set(monthKey, current);
         }
 
         // Combinar datos y calcular métricas
@@ -283,7 +307,13 @@ export async function getBalanceMonthly(
 
         for (const orderData of ordersResult) {
             const monthKey = `${orderData._id.year}-${String(orderData._id.month).padStart(2, '0')}`;
-            const salidas = salidasByMonth.get(monthKey) || 0;
+            const salidasData = salidasByMonth.get(monthKey) || {
+                total: 0,
+                ordinariosBarfer: 0,
+                ordinariosSLR: 0,
+                extraordinariosBarfer: 0,
+                extraordinariosSLR: 0
+            };
 
             const totalEntradas = orderData.totalEntradas;
             const totalMinorista = orderData.totalMinorista;
@@ -294,7 +324,10 @@ export async function getBalanceMonthly(
             // Estimación simple del peso basada en órdenes promedio
             // Para evitar agregaciones complejas que pueden causar errores de memoria
             const estimatedWeight = orderData.totalItems * 8; // Estimación de 8kg promedio por item
-            const resultadoBarfer = totalEntradas - salidas;
+
+            // Cálculo de los dos resultados diferentes
+            const resultadoSinExtraordinarios = totalEntradas - salidasData.ordinariosBarfer - salidasData.ordinariosSLR;
+            const resultadoConExtraordinarios = totalEntradas - salidasData.total;
             const precioPorKg = estimatedWeight > 0 ? totalEntradas / estimatedWeight : 0;
 
             balanceData.push({
@@ -316,12 +349,22 @@ export async function getBalanceMonthly(
                 cantVentasExpressPorcentaje: totalOrdenes > 0 ? (orderData.cantExpress / totalOrdenes) * 100 : 0,
                 // Entradas Totales
                 entradasTotales: totalEntradas,
-                // Salidas
-                salidas: salidas,
-                salidasPorcentaje: totalEntradas > 0 ? (salidas / totalEntradas) * 100 : 0,
-                // Resultado
-                resultadoBarfer: resultadoBarfer,
-                porcentajeSobreTotalEntradas: totalEntradas > 0 ? (resultadoBarfer / totalEntradas) * 100 : 0,
+                // Salidas - Desglose por tipo y empresa
+                salidas: salidasData.total,
+                salidasPorcentaje: totalEntradas > 0 ? (salidasData.total / totalEntradas) * 100 : 0,
+                // Gastos Ordinarios
+                gastosOrdinariosBarfer: salidasData.ordinariosBarfer,
+                gastosOrdinariosSLR: salidasData.ordinariosSLR,
+                gastosOrdinariosTotal: salidasData.ordinariosBarfer + salidasData.ordinariosSLR,
+                // Gastos Extraordinarios
+                gastosExtraordinariosBarfer: salidasData.extraordinariosBarfer,
+                gastosExtraordinariosSLR: salidasData.extraordinariosSLR,
+                gastosExtraordinariosTotal: salidasData.extraordinariosBarfer + salidasData.extraordinariosSLR,
+                // Resultados - Dos cuentas diferentes
+                resultadoSinExtraordinarios: resultadoSinExtraordinarios,
+                resultadoConExtraordinarios: resultadoConExtraordinarios,
+                porcentajeSinExtraordinarios: totalEntradas > 0 ? (resultadoSinExtraordinarios / totalEntradas) * 100 : 0,
+                porcentajeConExtraordinarios: totalEntradas > 0 ? (resultadoConExtraordinarios / totalEntradas) * 100 : 0,
                 // Precio por KG
                 precioPorKg: precioPorKg
             });
