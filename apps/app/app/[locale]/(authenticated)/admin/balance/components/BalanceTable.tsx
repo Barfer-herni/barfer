@@ -96,9 +96,10 @@ export function BalanceTable({ data, dictionary }: BalanceTableProps) {
             </Card>
 
             <Tabs defaultValue="resumen" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="resumen">📊 Resumen</TabsTrigger>
-                    <TabsTrigger value="detallado">📋 Detallado</TabsTrigger>
+                    <TabsTrigger value="evolucion">📈 Evolución</TabsTrigger>
+                    <TabsTrigger value="detallado">📊 Ponderación</TabsTrigger>
                     <TabsTrigger value="comparativo">📈 Comparativo</TabsTrigger>
                 </TabsList>
 
@@ -424,19 +425,19 @@ export function BalanceTable({ data, dictionary }: BalanceTableProps) {
                                                 </div>
                                             </TableHead>
 
-                                            {/* Totales */}
-                                            <TableHead colSpan={3} className="text-center font-bold border-r bg-green-50">
+                                            {/* Gastos Ordinarios */}
+                                            <TableHead colSpan={2} className="text-center font-bold border-r bg-blue-50">
                                                 <div className="flex items-center justify-center gap-2">
-                                                    <TrendingUp className="h-4 w-4 text-green-600" />
-                                                    Totales
+                                                    <AlertTriangle className="h-4 w-4 text-blue-600" />
+                                                    Gastos Ordinarios
                                                 </div>
                                             </TableHead>
 
-                                            {/* Resultado */}
-                                            <TableHead colSpan={2} className="text-center font-bold bg-yellow-50">
+                                            {/* Gastos Extraordinarios */}
+                                            <TableHead colSpan={2} className="text-center font-bold bg-orange-50">
                                                 <div className="flex items-center justify-center gap-2">
-                                                    <DollarSign className="h-4 w-4 text-yellow-600" />
-                                                    Resultado
+                                                    <AlertTriangle className="h-4 w-4 text-orange-600" />
+                                                    Gastos Extraordinarios
                                                 </div>
                                             </TableHead>
                                         </TableRow>
@@ -457,10 +458,9 @@ export function BalanceTable({ data, dictionary }: BalanceTableProps) {
                                             <TableHead className="text-center border-r">%</TableHead>
 
                                             <TableHead className="text-center">Total</TableHead>
-                                            <TableHead className="text-center">Gastos</TableHead>
                                             <TableHead className="text-center border-r">%</TableHead>
 
-                                            <TableHead className="text-center">Neto</TableHead>
+                                            <TableHead className="text-center">Total</TableHead>
                                             <TableHead className="text-center">%</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -490,19 +490,16 @@ export function BalanceTable({ data, dictionary }: BalanceTableProps) {
                                                 <TableCell className="text-center">{row.cantVentasExpress}</TableCell>
                                                 <TableCell className="text-center text-xs border-r">{row.cantVentasExpressPorcentaje.toFixed(0)}%</TableCell>
 
-                                                {/* Totales */}
-                                                <TableCell className="text-right font-mono font-bold text-green-700">{formatCurrency(row.entradasTotales)}</TableCell>
-                                                <TableCell className="text-right font-mono text-red-600">{formatCurrency(row.salidas)}</TableCell>
-                                                <TableCell className="text-center text-xs border-r">{row.salidasPorcentaje.toFixed(0)}%</TableCell>
-
-                                                {/* Resultado Sin Extraordinarios */}
-                                                <TableCell className="text-right font-mono font-bold">
-                                                    <span className={row.resultadoSinExtraordinarios >= 0 ? 'text-green-600' : 'text-red-600'}>
-                                                        {formatCurrency(row.resultadoSinExtraordinarios)}
-                                                    </span>
+                                                {/* Gastos Ordinarios */}
+                                                <TableCell className="text-right font-mono text-red-600">{formatCurrency(row.gastosOrdinariosTotal)}</TableCell>
+                                                <TableCell className="text-center text-xs border-r">
+                                                    {row.entradasTotales > 0 ? ((row.gastosOrdinariosTotal / row.entradasTotales) * 100).toFixed(0) : 0}%
                                                 </TableCell>
-                                                <TableCell className="text-center">
-                                                    {formatPercentage(row.porcentajeSinExtraordinarios)}
+
+                                                {/* Gastos Extraordinarios */}
+                                                <TableCell className="text-right font-mono text-red-600">{formatCurrency(row.gastosExtraordinariosTotal)}</TableCell>
+                                                <TableCell className="text-center text-xs">
+                                                    {row.entradasTotales > 0 ? ((row.gastosExtraordinariosTotal / row.entradasTotales) * 100).toFixed(0) : 0}%
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -513,7 +510,151 @@ export function BalanceTable({ data, dictionary }: BalanceTableProps) {
                     </Card>
                 </TabsContent>
 
+                {/* Tabla de Evolución - Mismo formato que detallado pero con evolución */}
+                <TabsContent value="evolucion">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <TrendingUp className="h-5 w-5 text-blue-600" />
+                                Evolución de Gastos e Ingresos
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="bg-muted/30">
+                                            <TableHead rowSpan={2} className="font-bold border-r">Mes</TableHead>
 
+                                            {/* Minorista */}
+                                            <TableHead colSpan={4} className="text-center font-bold border-r bg-blue-50">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <Package className="h-4 w-4 text-blue-600" />
+                                                    Minorista
+                                                </div>
+                                            </TableHead>
+
+                                            {/* Mayorista */}
+                                            <TableHead colSpan={4} className="text-center font-bold border-r bg-purple-50">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <Users className="h-4 w-4 text-purple-600" />
+                                                    Mayorista
+                                                </div>
+                                            </TableHead>
+
+                                            {/* Express */}
+                                            <TableHead colSpan={4} className="text-center font-bold border-r bg-orange-50">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <TrendingUp className="h-4 w-4 text-orange-600" />
+                                                    Express
+                                                </div>
+                                            </TableHead>
+
+                                            {/* Gastos Ordinarios */}
+                                            <TableHead colSpan={2} className="text-center font-bold border-r bg-blue-50">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <AlertTriangle className="h-4 w-4 text-blue-600" />
+                                                    Gastos Ordinarios
+                                                </div>
+                                            </TableHead>
+
+                                            {/* Gastos Extraordinarios */}
+                                            <TableHead colSpan={2} className="text-center font-bold bg-orange-50">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <AlertTriangle className="h-4 w-4 text-orange-600" />
+                                                    Gastos Extraordinarios
+                                                </div>
+                                            </TableHead>
+                                        </TableRow>
+                                        <TableRow className="bg-muted/20 text-xs">
+                                            <TableHead className="text-center border-r">Ingresos</TableHead>
+                                            <TableHead className="text-center">%</TableHead>
+                                            <TableHead className="text-center">Ventas</TableHead>
+                                            <TableHead className="text-center border-r">%</TableHead>
+
+                                            <TableHead className="text-center border-r">Ingresos</TableHead>
+                                            <TableHead className="text-center">%</TableHead>
+                                            <TableHead className="text-center">Ventas</TableHead>
+                                            <TableHead className="text-center border-r">%</TableHead>
+
+                                            <TableHead className="text-center border-r">Ingresos</TableHead>
+                                            <TableHead className="text-center">%</TableHead>
+                                            <TableHead className="text-center">Ventas</TableHead>
+                                            <TableHead className="text-center border-r">%</TableHead>
+
+                                            <TableHead className="text-center">Total</TableHead>
+                                            <TableHead className="text-center border-r">%</TableHead>
+
+                                            <TableHead className="text-center">Total</TableHead>
+                                            <TableHead className="text-center">%</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+
+                                    <TableBody>
+                                        {filteredData.map((row, index) => {
+                                            const prevRow = filteredData[index - 1];
+                                            const minoristaChange = prevRow ? ((row.entradasMinorista - prevRow.entradasMinorista) / (prevRow.entradasMinorista || 1)) * 100 : 0;
+                                            const mayoristaChange = prevRow ? ((row.entradasMayorista - prevRow.entradasMayorista) / (prevRow.entradasMayorista || 1)) * 100 : 0;
+                                            const expressChange = prevRow ? ((row.entradasExpress - prevRow.entradasExpress) / (prevRow.entradasExpress || 1)) * 100 : 0;
+                                            const ordinariosChange = prevRow ? ((row.gastosOrdinariosTotal - prevRow.gastosOrdinariosTotal) / (prevRow.gastosOrdinariosTotal || 1)) * 100 : 0;
+                                            const extraordinariosChange = prevRow ? ((row.gastosExtraordinariosTotal - prevRow.gastosExtraordinariosTotal) / (prevRow.gastosExtraordinariosTotal || 1)) * 100 : 0;
+
+                                            return (
+                                                <TableRow key={`evolucion-${row.mes}`} className={`${getRowColor(row.resultadoSinExtraordinarios, row.resultadoConExtraordinarios)} transition-colors`}>
+                                                    <TableCell className="font-medium border-r">
+                                                        {formatMonthName(row.mes)}
+                                                    </TableCell>
+
+                                                    {/* Minorista */}
+                                                    <TableCell className="text-right font-mono">{formatCurrency(row.entradasMinorista)}</TableCell>
+                                                    <TableCell className="text-center text-xs">
+                                                        {index > 0 ? formatPercentage(minoristaChange) : '-'}
+                                                    </TableCell>
+                                                    <TableCell className="text-center">{row.cantVentasMinorista}</TableCell>
+                                                    <TableCell className="text-center text-xs border-r">
+                                                        {index > 0 ? formatPercentage(minoristaChange) : '-'}
+                                                    </TableCell>
+
+                                                    {/* Mayorista */}
+                                                    <TableCell className="text-right font-mono">{formatCurrency(row.entradasMayorista)}</TableCell>
+                                                    <TableCell className="text-center text-xs">
+                                                        {index > 0 ? formatPercentage(mayoristaChange) : '-'}
+                                                    </TableCell>
+                                                    <TableCell className="text-center">{row.cantVentasMayorista}</TableCell>
+                                                    <TableCell className="text-center text-xs border-r">
+                                                        {index > 0 ? formatPercentage(mayoristaChange) : '-'}
+                                                    </TableCell>
+
+                                                    {/* Express */}
+                                                    <TableCell className="text-right font-mono">{formatCurrency(row.entradasExpress)}</TableCell>
+                                                    <TableCell className="text-center text-xs">
+                                                        {index > 0 ? formatPercentage(expressChange) : '-'}
+                                                    </TableCell>
+                                                    <TableCell className="text-center">{row.cantVentasExpress}</TableCell>
+                                                    <TableCell className="text-center text-xs border-r">
+                                                        {index > 0 ? formatPercentage(expressChange) : '-'}
+                                                    </TableCell>
+
+                                                    {/* Gastos Ordinarios */}
+                                                    <TableCell className="text-right font-mono text-red-600">{formatCurrency(row.gastosOrdinariosTotal)}</TableCell>
+                                                    <TableCell className="text-center text-xs border-r">
+                                                        {index > 0 ? formatPercentage(ordinariosChange) : '-'}
+                                                    </TableCell>
+
+                                                    {/* Gastos Extraordinarios */}
+                                                    <TableCell className="text-right font-mono text-red-600">{formatCurrency(row.gastosExtraordinariosTotal)}</TableCell>
+                                                    <TableCell className="text-center text-xs">
+                                                        {index > 0 ? formatPercentage(extraordinariosChange) : '-'}
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
 
                 {/* Tabla Comparativa - Solo lo esencial */}
                 <TabsContent value="comparativo">
