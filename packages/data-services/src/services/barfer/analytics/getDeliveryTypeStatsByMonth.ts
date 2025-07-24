@@ -28,10 +28,13 @@ interface DeliveryTypeStats {
     month: string;
     sameDayOrders: number;
     normalOrders: number;
+    wholesaleOrders: number;
     sameDayRevenue: number;
     normalRevenue: number;
+    wholesaleRevenue: number;
     sameDayWeight: number;
     normalWeight: number;
+    wholesaleWeight: number;
 }
 
 export async function getDeliveryTypeStatsByMonth(startDate?: Date, endDate?: Date): Promise<DeliveryTypeStats[]> {
@@ -58,6 +61,9 @@ export async function getDeliveryTypeStatsByMonth(startDate?: Date, endDate?: Da
                             { $eq: ["$deliveryArea.sameDayDelivery", true] },
                             { $eq: ["$items.sameDayDelivery", true] }
                         ]
+                    },
+                    isWholesale: {
+                        $eq: ["$orderType", "mayorista"]
                     }
                 }
             },
@@ -68,21 +74,52 @@ export async function getDeliveryTypeStatsByMonth(startDate?: Date, endDate?: Da
                         month: { $month: "$createdAt" }
                     },
                     sameDayOrders: {
-                        $sum: { $cond: ["$isSameDayDelivery", 1, 0] }
+                        $sum: {
+                            $cond: [
+                                { $and: ["$isSameDayDelivery", { $not: "$isWholesale" }] },
+                                1,
+                                0
+                            ]
+                        }
                     },
                     normalOrders: {
-                        $sum: { $cond: ["$isSameDayDelivery", 0, 1] }
+                        $sum: {
+                            $cond: [
+                                { $and: [{ $not: "$isSameDayDelivery" }, { $not: "$isWholesale" }] },
+                                1,
+                                0
+                            ]
+                        }
+                    },
+                    wholesaleOrders: {
+                        $sum: { $cond: ["$isWholesale", 1, 0] }
                     },
                     sameDayRevenue: {
-                        $sum: { $cond: ["$isSameDayDelivery", "$total", 0] }
+                        $sum: {
+                            $cond: [
+                                { $and: ["$isSameDayDelivery", { $not: "$isWholesale" }] },
+                                "$total",
+                                0
+                            ]
+                        }
                     },
                     normalRevenue: {
-                        $sum: { $cond: ["$isSameDayDelivery", 0, "$total"] }
+                        $sum: {
+                            $cond: [
+                                { $and: [{ $not: "$isSameDayDelivery" }, { $not: "$isWholesale" }] },
+                                "$total",
+                                0
+                            ]
+                        }
+                    },
+                    wholesaleRevenue: {
+                        $sum: { $cond: ["$isWholesale", "$total", 0] }
                     },
                     // Agrupar items para calcular peso después
                     items: {
                         $push: {
                             isSameDay: "$isSameDayDelivery",
+                            isWholesale: "$isWholesale",
                             quantity: "$items.options.quantity",
                             productName: "$items.name",
                             optionName: "$items.options.name"
@@ -105,8 +142,10 @@ export async function getDeliveryTypeStatsByMonth(startDate?: Date, endDate?: Da
                     },
                     sameDayOrders: 1,
                     normalOrders: 1,
+                    wholesaleOrders: 1,
                     sameDayRevenue: 1,
                     normalRevenue: 1,
+                    wholesaleRevenue: 1,
                     items: 1
                 }
             }
@@ -118,12 +157,15 @@ export async function getDeliveryTypeStatsByMonth(startDate?: Date, endDate?: Da
         const formattedResult = result.map((item: any) => {
             let sameDayWeight = 0;
             let normalWeight = 0;
+            let wholesaleWeight = 0;
 
             item.items.forEach((productItem: any) => {
                 const weight = getWeightInKg(productItem.productName, productItem.optionName);
                 if (weight !== null) {
                     const totalWeight = weight * productItem.quantity;
-                    if (productItem.isSameDay) {
+                    if (productItem.isWholesale) {
+                        wholesaleWeight += totalWeight;
+                    } else if (productItem.isSameDay) {
                         sameDayWeight += totalWeight;
                     } else {
                         normalWeight += totalWeight;
@@ -134,10 +176,13 @@ export async function getDeliveryTypeStatsByMonth(startDate?: Date, endDate?: Da
                 month: item.month,
                 sameDayOrders: item.sameDayOrders,
                 normalOrders: item.normalOrders,
+                wholesaleOrders: item.wholesaleOrders,
                 sameDayRevenue: item.sameDayRevenue,
                 normalRevenue: item.normalRevenue,
+                wholesaleRevenue: item.wholesaleRevenue,
                 sameDayWeight: Math.round(sameDayWeight * 100) / 100, // Redondear a 2 decimales
-                normalWeight: Math.round(normalWeight * 100) / 100
+                normalWeight: Math.round(normalWeight * 100) / 100,
+                wholesaleWeight: Math.round(wholesaleWeight * 100) / 100
             };
         });
 

@@ -6,8 +6,10 @@ interface DeliveryTypeStats {
     month: string;
     sameDayOrders: number;
     normalOrders: number;
+    wholesaleOrders: number;
     sameDayRevenue: number;
     normalRevenue: number;
+    wholesaleRevenue: number;
 }
 
 interface DeliveryOrdersChartProps {
@@ -27,6 +29,7 @@ export function DeliveryOrdersChart({ data }: DeliveryOrdersChartProps) {
                 <Legend />
                 <Bar dataKey="sameDayOrders" name="Envíos en el día" fill="#3498db" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="normalOrders" name="Reparto normal" fill="#9b59b6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="wholesaleOrders" name="Mayorista" fill="#e74c3c" radius={[4, 4, 0, 0]} />
             </BarChart>
         </ResponsiveContainer>
     );
