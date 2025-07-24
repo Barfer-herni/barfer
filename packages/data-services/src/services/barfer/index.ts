@@ -10,7 +10,13 @@ export type { ClientGeneralStats } from './analytics/getClientGeneralStats';
 export { getClientCategoriesStats } from './analytics/getClientCategoriesStats';
 export type { ClientCategoriesStats } from './analytics/getClientCategoriesStats';
 export { getClientsPaginated, getClientsPaginatedWithStatus } from './analytics/getClientsPaginated';
-export type { ClientsPaginationOptions } from './analytics/getClientsPaginated';
+export type {
+    ClientsPaginationOptions,
+    ClientForTable,
+    ClientForTableWithStatus,
+    PaginatedClientsResponse,
+    PaginatedClientsWithStatusResponse
+} from './analytics/getClientsPaginated';
 export { getCustomerFrequency } from './analytics/getCustomerFrequency';
 export { getCustomerInsights } from './analytics/getCustomerInsights';
 export { getOrdersByDay } from './analytics/getOrdersByDay';
