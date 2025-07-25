@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useCallback, useTransition } from 'react';
+import { useState, useCallback, useTransition, useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { Input } from '@repo/design-system/components/ui/input';
 import { Button } from '@repo/design-system/components/ui/button';
-import { updateOrderAction, deleteOrderAction, createOrderAction, updateOrdersStatusBulkAction } from '../actions';
+import { updateOrderAction, deleteOrderAction, createOrderAction, updateOrdersStatusBulkAction, undoLastChangeAction, getBackupsCountAction } from '../actions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@repo/design-system/components/ui/dialog';
 import { Label } from '@repo/design-system/components/ui/label';
 import { Textarea } from '@repo/design-system/components/ui/textarea';
@@ -16,6 +16,7 @@ import { Calendar } from '@repo/design-system/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@repo/design-system/components/ui/popover';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { RotateCcw } from 'lucide-react';
 
 // Imports de constantes y helpers
 import { STATUS_OPTIONS, PAYMENT_METHOD_OPTIONS, ORDER_TYPE_OPTIONS } from '../constants';
@@ -57,6 +58,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     const [productSearchFilter, setProductSearchFilter] = useState('');
     const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? '');
     const [isPending, startTransition] = useTransition();
+    const [backupsCount, setBackupsCount] = useState(0);
 
 
 
@@ -185,6 +187,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             setEditValues({});
             setProductSearchFilter('');
             router.refresh();
+            updateBackupsCount(); // Actualizar contador después de guardar
         } catch (e) {
             alert(e instanceof Error ? e.message : 'Error al guardar los cambios');
         } finally {
@@ -202,6 +205,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             const result = await deleteOrderAction(row.id);
             if (!result.success) throw new Error(result.error || 'Error al eliminar');
             router.refresh();
+            updateBackupsCount(); // Actualizar contador después de eliminar
         } catch (e) {
             alert(e instanceof Error ? e.message : 'Error al eliminar la orden');
         } finally {
@@ -283,9 +287,42 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
         }
     };
 
+    // Función para deshacer el último cambio
+    const handleUndo = async () => {
+        setLoading(true);
+        try {
+            const result = await undoLastChangeAction();
+            if (!result.success) {
+                alert(result.error || 'No hay cambios para deshacer');
+                return;
+            }
 
+            router.refresh();
+            updateBackupsCount(); // Actualizar contador después de deshacer
+            alert('Cambio deshecho correctamente');
+        } catch (e) {
+            alert(e instanceof Error ? e.message : 'Error al deshacer el cambio');
+        } finally {
+            setLoading(false);
+        }
+    };
 
+    // Función para obtener la cantidad de backups
+    const updateBackupsCount = async () => {
+        try {
+            const result = await getBackupsCountAction();
+            if (result.success && result.count !== undefined) {
+                setBackupsCount(result.count);
+            }
+        } catch (error) {
+            console.error('Error getting backups count:', error);
+        }
+    };
 
+    // Actualizar contador de backups al cargar
+    useEffect(() => {
+        updateBackupsCount();
+    }, []);
 
     return (
         <div>
@@ -310,6 +347,19 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                     >
                         {isExporting ? 'Exportando...' : 'Exportar a Excel'}
                     </Button>
+
+                    {/* Botón de Deshacer */}
+                    {backupsCount > 0 && (
+                        <Button
+                            onClick={handleUndo}
+                            disabled={loading}
+                            variant="outline"
+                            className="text-blue-600 hover:text-blue-700 border-blue-600"
+                        >
+                            <RotateCcw className="w-4 h-4 mr-2" />
+                            Deshacer último cambio ({backupsCount})
+                        </Button>
+                    )}
 
                     <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
                         <DialogTrigger asChild>
