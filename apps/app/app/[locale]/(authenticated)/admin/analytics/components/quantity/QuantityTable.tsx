@@ -39,7 +39,13 @@ export function QuantityTable({ data, title, description }: QuantityTableProps) 
     };
 
     const formatWeight = (weight: number) => {
-        return weight.toFixed(2);
+        // Si el número es entero, mostrar sin decimales
+        if (weight === Math.floor(weight)) {
+            return weight.toString();
+        }
+        // Si tiene decimales, mostrar solo si no son .00
+        const formatted = weight.toFixed(2);
+        return formatted.endsWith('.00') ? weight.toFixed(0) : formatted;
     };
 
     if (!data || data.length === 0) {

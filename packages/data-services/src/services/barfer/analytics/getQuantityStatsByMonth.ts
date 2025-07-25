@@ -35,13 +35,8 @@ const getProductWeight = (productName: string, optionName: string): number => {
     const lowerProductName = productName.toLowerCase();
     const lowerOptionName = optionName.toLowerCase();
 
-    console.log('=== DEBUG: Calculando peso ===');
-    console.log('Producto:', productName);
-    console.log('Opción:', optionName);
-
     // Big Dog productos
     if (lowerProductName.includes('big dog')) {
-        console.log('Big Dog detectado, peso: 15KG');
         return 15; // Big Dog siempre es 15KG
     }
 
@@ -49,7 +44,6 @@ const getProductWeight = (productName: string, optionName: string): number => {
     const weightMatch = lowerOptionName.match(/(\d+(?:\.\d+)?)\s*kg/i);
     if (weightMatch) {
         const weight = parseFloat(weightMatch[1]);
-        console.log('Peso extraído de opción:', weight, 'KG');
         return weight;
     }
 
@@ -57,13 +51,11 @@ const getProductWeight = (productName: string, optionName: string): number => {
     const productWeightMatch = lowerProductName.match(/(\d+(?:\.\d+)?)\s*kg/i);
     if (productWeightMatch) {
         const weight = parseFloat(productWeightMatch[1]);
-        console.log('Peso extraído de producto:', weight, 'KG');
         return weight;
     }
 
     // Valores por defecto basados en el nombre del producto
     if (lowerProductName.includes('huesos') || lowerProductName.includes('carnosos')) {
-        console.log('Huesos carnosos detectado, peso: 1KG');
         return 1; // Huesos carnosos
     }
 
@@ -75,32 +67,30 @@ const getProductWeight = (productName: string, optionName: string): number => {
         const standardWeightMatch = lowerProductName.match(/(\d+(?:\.\d+)?)\s*k?g?/i);
         if (standardWeightMatch) {
             const weight = parseFloat(standardWeightMatch[1]);
-            console.log('Peso estándar extraído:', weight, 'KG');
             return weight;
         }
 
         // Si no se encuentra, usar valor por defecto
-        console.log('Usando peso por defecto: 5KG');
         return 5; // Productos estándar
     }
 
-    console.log('Producto no reconocido, peso: 0KG');
     return 0; // Producto no reconocido
 };
 
 /**
- * Categoriza un producto basado en su nombre
+ * Categoriza un producto basado en su nombre y opción
  */
-const categorizeProduct = (productName: string): {
+const categorizeProduct = (productName: string, optionName: string): {
     category: 'perro' | 'gato' | 'otros';
     subcategory: string;
 } => {
     const lowerName = productName.toLowerCase();
+    const lowerOptionName = optionName.toLowerCase();
 
-    // Big Dog productos (perro)
+    // Big Dog productos (perro) - el nombre es "BIG DOG (15kg)" y la variante está en options
     if (lowerName.includes('big dog')) {
-        if (lowerName.includes('pollo')) return { category: 'perro', subcategory: 'bigDogPollo' };
-        if (lowerName.includes('vaca')) return { category: 'perro', subcategory: 'bigDogVaca' };
+        if (lowerOptionName.includes('pollo')) return { category: 'perro', subcategory: 'bigDogPollo' };
+        if (lowerOptionName.includes('vaca')) return { category: 'perro', subcategory: 'bigDogVaca' };
         return { category: 'perro', subcategory: 'bigDog' };
     }
 
@@ -161,7 +151,7 @@ export async function testProductData(): Promise<void> {
                 if (item.options) {
                     item.options.forEach((option: any, optIndex: number) => {
                         const weight = getProductWeight(item.name, option.name);
-                        const { category, subcategory } = categorizeProduct(item.name);
+                        const { category, subcategory } = categorizeProduct(item.name, option.name);
 
                         console.log(`    Opción ${optIndex + 1}:`, {
                             name: option.name,
@@ -225,7 +215,7 @@ export async function debugQuantityStats(startDate?: Date, endDate?: Date): Prom
                     if (item.options) {
                         item.options.forEach((option: any, optionIndex: number) => {
                             const weight = getProductWeight(item.name, option.name);
-                            const { category, subcategory } = categorizeProduct(item.name);
+                            const { category, subcategory } = categorizeProduct(item.name, option.name);
                             console.log(`    Option ${optionIndex + 1}:`, {
                                 name: option.name,
                                 quantity: option.quantity,
@@ -347,6 +337,8 @@ export async function getQuantityStatsByMonth(startDate?: Date, endDate?: Date):
             const optionName = item._id.optionName;
             const quantity = item.totalQuantity;
 
+
+
             // Calcular peso real
             const weight = getProductWeight(productName, optionName);
             const totalWeight = weight * quantity;
@@ -379,7 +371,9 @@ export async function getQuantityStatsByMonth(startDate?: Date, endDate?: Date):
             }
 
             // Categorizar producto
-            const { subcategory } = categorizeProduct(productName);
+            const { subcategory } = categorizeProduct(productName, optionName);
+
+
 
             // Asignar peso a la categoría correspondiente
             switch (subcategory) {
