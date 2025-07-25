@@ -102,7 +102,7 @@ export async function getConfirmedOrdersByMonth() {
                     revenue: 1
                 }
             },
-            { $sort: { '_id.year': -1, '_id.month': -1 } } // Más reciente primero
+            { $sort: { '_id.year': -1, '_id.month': -1 } }
         ]).toArray();
 
         const formattedResult = result.map((item: any) => ({
@@ -111,14 +111,6 @@ export async function getConfirmedOrdersByMonth() {
             uniqueCustomers: item.uniqueCustomers,
             revenue: item.revenue
         }));
-
-        console.log('📅 CONFIRMED ORDERS BY MONTH:', {
-            totalMonths: result.length,
-            sampleData: formattedResult.slice(0, 3),
-            statusUsed: 'confirmed',
-            aggregationResult: result[0] || null
-        });
-
         return formattedResult;
     } catch (error) {
         console.error('Error fetching confirmed orders by month:', error);

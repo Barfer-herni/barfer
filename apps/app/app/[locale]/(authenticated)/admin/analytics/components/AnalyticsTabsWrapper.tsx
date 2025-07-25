@@ -13,6 +13,7 @@ interface AnalyticsTabsWrapperProps {
     categoriesTab: React.ReactNode;
     paymentsTab: React.ReactNode;
     frequencyTab: React.ReactNode;
+    quantityTab: React.ReactNode;
 }
 
 function AnalyticsSkeleton() {
@@ -47,20 +48,22 @@ export function AnalyticsTabsWrapper({
     productsTab,
     categoriesTab,
     paymentsTab,
-    frequencyTab
+    frequencyTab,
+    quantityTab
 }: AnalyticsTabsWrapperProps) {
     const { analyticsActiveTab, setAnalyticsActiveTab } = useInitStore();
 
     return (
         <Tabs value={analyticsActiveTab} onValueChange={setAnalyticsActiveTab} className="space-y-4">
             <div className="overflow-x-auto">
-                <TabsList className="grid grid-cols-6 w-full min-w-[480px] md:min-w-0">
+                <TabsList className="grid grid-cols-7 w-full min-w-[560px] md:min-w-0">
                     <TabsTrigger value="daily" className="text-xs md:text-sm px-1 md:px-3">Por Día</TabsTrigger>
                     <TabsTrigger value="monthly" className="text-xs md:text-sm px-1 md:px-3">Por Mes</TabsTrigger>
                     <TabsTrigger value="products" className="text-xs md:text-sm px-1 md:px-3">Productos</TabsTrigger>
                     <TabsTrigger value="categories" className="text-xs md:text-sm px-1 md:px-3">Categorías</TabsTrigger>
                     <TabsTrigger value="payments" className="text-xs md:text-sm px-1 md:px-3">Pagos</TabsTrigger>
                     <TabsTrigger value="frequency" className="text-xs md:text-sm px-1 md:px-3">Métricas</TabsTrigger>
+                    <TabsTrigger value="quantity" className="text-xs md:text-sm px-1 md:px-3">Cant. Total KG</TabsTrigger>
                 </TabsList>
             </div>
 
@@ -97,6 +100,12 @@ export function AnalyticsTabsWrapper({
             <TabsContent value="frequency" className="space-y-4">
                 <Suspense fallback={<AnalyticsSkeleton />}>
                     {frequencyTab}
+                </Suspense>
+            </TabsContent>
+
+            <TabsContent value="quantity" className="space-y-4">
+                <Suspense fallback={<AnalyticsSkeleton />}>
+                    {quantityTab}
                 </Suspense>
             </TabsContent>
         </Tabs>

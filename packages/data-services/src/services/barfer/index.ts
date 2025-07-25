@@ -29,6 +29,7 @@ export { getPurchaseFrequency } from './analytics/getPurchaseFrequency';
 export { getRevenueByDay } from './analytics/getRevenueByDay';
 export * from './analytics/getDeliveryTypeStatsByMonth';
 export * from './analytics/getProductTimeline';
+export * from './analytics/getQuantityStatsByMonth';
 
 // ===== ORDERS =====
 export { getOrders } from './getOrders';
