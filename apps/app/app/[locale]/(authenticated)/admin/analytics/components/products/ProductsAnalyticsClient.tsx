@@ -121,47 +121,6 @@ export function ProductsAnalyticsClient({
 
     return (
         <div className="space-y-8">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Filter className="h-5 w-5" /> Filtro de Evolución</CardTitle>
-                    <CardDescription>Selecciona un producto para ver su evolución específica en los gráficos.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" role="combobox" aria-expanded={popoverOpen} className="w-[300px] justify-between">
-                                {selectedProduct === 'all'
-                                    ? 'Todos los productos'
-                                    : productOptions.find(p => p.value === selectedProduct)?.label || 'Seleccionar producto...'}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[300px] p-0">
-                            <Command>
-                                <CommandInput placeholder="Buscar producto..." />
-                                <CommandList>
-                                    <CommandEmpty>No se encontraron productos.</CommandEmpty>
-                                    <CommandGroup>
-                                        {productOptions.map((option) => (
-                                            <CommandItem
-                                                key={option.value}
-                                                value={option.value}
-                                                onSelect={(currentValue) => {
-                                                    setSelectedProduct(currentValue === selectedProduct ? 'all' : currentValue);
-                                                    setPopoverOpen(false);
-                                                }}
-                                            >
-                                                {option.label}
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
-                </CardContent>
-            </Card>
-
             {/* Filtros y Listas de Productos - MOVIDO ARRIBA */}
             <Card>
                 <CardHeader>
@@ -203,6 +162,48 @@ export function ProductsAnalyticsClient({
 
             {/* Gráficos de Línea de Tiempo - SOLO TOTALES */}
             <div className="space-y-8">
+                {/* Filtro de Evolución - MOVIDO AQUÍ */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Filter className="h-5 w-5" /> Filtro de Evolución</CardTitle>
+                        <CardDescription>Selecciona un producto para ver su evolución específica en los gráficos.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                            <PopoverTrigger asChild>
+                                <Button variant="outline" role="combobox" aria-expanded={popoverOpen} className="w-[300px] justify-between">
+                                    {selectedProduct === 'all'
+                                        ? 'Todos los productos'
+                                        : productOptions.find(p => p.value === selectedProduct)?.label || 'Seleccionar producto...'}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[300px] p-0">
+                                <Command>
+                                    <CommandInput placeholder="Buscar producto..." />
+                                    <CommandList>
+                                        <CommandEmpty>No se encontraron productos.</CommandEmpty>
+                                        <CommandGroup>
+                                            {productOptions.map((option) => (
+                                                <CommandItem
+                                                    key={option.value}
+                                                    value={option.value}
+                                                    onSelect={(currentValue) => {
+                                                        setSelectedProduct(currentValue === selectedProduct ? 'all' : currentValue);
+                                                        setPopoverOpen(false);
+                                                    }}
+                                                >
+                                                    {option.label}
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
+                    </CardContent>
+                </Card>
+
                 <div>
                     <h3 className="text-2xl font-bold tracking-tight mb-4">Evolución de Unidades Vendidas</h3>
                     <div className={`grid gap-4 ${isComparing ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
