@@ -117,6 +117,23 @@ export async function undoLastChangeAction() {
     }
 }
 
+// Nueva acción para limpiar todos los backups
+export async function clearAllBackupsAction() {
+    try {
+        const { clearAllBackups } = await import('@repo/data-services/src/services/barfer/orderBackupService');
+        const result = await clearAllBackups();
+
+        if (!result.success) {
+            return { success: false, error: (result as any).error || 'Error al limpiar backups' };
+        }
+
+        revalidatePath('/admin/table');
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: (error as Error).message };
+    }
+}
+
 // Nueva acción para obtener la cantidad de backups disponibles
 export async function getBackupsCountAction() {
     try {

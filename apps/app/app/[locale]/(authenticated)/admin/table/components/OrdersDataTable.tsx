@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { Input } from '@repo/design-system/components/ui/input';
 import { Button } from '@repo/design-system/components/ui/button';
-import { updateOrderAction, deleteOrderAction, createOrderAction, updateOrdersStatusBulkAction, undoLastChangeAction, getBackupsCountAction } from '../actions';
+import { updateOrderAction, deleteOrderAction, createOrderAction, updateOrdersStatusBulkAction, undoLastChangeAction, getBackupsCountAction, clearAllBackupsAction } from '../actions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@repo/design-system/components/ui/dialog';
 import { Label } from '@repo/design-system/components/ui/label';
 import { Textarea } from '@repo/design-system/components/ui/textarea';
@@ -16,7 +16,7 @@ import { Calendar } from '@repo/design-system/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@repo/design-system/components/ui/popover';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Trash2 } from 'lucide-react';
 
 // Imports de constantes y helpers
 import { STATUS_OPTIONS, PAYMENT_METHOD_OPTIONS, ORDER_TYPE_OPTIONS } from '../constants';
@@ -319,6 +319,29 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
         }
     };
 
+    // Función para limpiar todos los backups
+    const handleClearHistory = async () => {
+        if (!confirm('¿Estás seguro de que quieres limpiar todo el historial de cambios? Esta acción no se puede deshacer.')) {
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const result = await clearAllBackupsAction();
+            if (!result.success) {
+                alert(result.error || 'Error al limpiar el historial');
+                return;
+            }
+
+            setBackupsCount(0);
+            alert('Historial de cambios limpiado correctamente');
+        } catch (e) {
+            alert(e instanceof Error ? e.message : 'Error al limpiar el historial');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // Actualizar contador de backups al cargar
     useEffect(() => {
         updateBackupsCount();
@@ -358,6 +381,19 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                         >
                             <RotateCcw className="w-4 h-4 mr-2" />
                             Deshacer último cambio ({backupsCount})
+                        </Button>
+                    )}
+
+                    {/* Botón de Limpiar Historial */}
+                    {backupsCount > 0 && (
+                        <Button
+                            onClick={handleClearHistory}
+                            disabled={loading}
+                            variant="outline"
+                            className="text-red-600 hover:text-red-700 border-red-600"
+                        >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Limpiar historial
                         </Button>
                     )}
 

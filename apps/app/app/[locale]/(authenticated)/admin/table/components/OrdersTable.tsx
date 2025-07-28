@@ -304,7 +304,11 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
 }
 
 function renderEditableCell(cell: any, index: number, editValues: any, onEditValueChange: (field: string, value: any) => void, productSearchFilter: string, onProductSearchChange: (value: string) => void) {
+    console.log('renderEditableCell - cell.column.id:', cell.column.id);
+    console.log('renderEditableCell - editValues:', editValues);
+    console.log('renderEditableCell - Checking conditions for:', cell.column.id);
     if (cell.column.id === 'notesOwn') {
+        console.log('Matched notesOwn condition');
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <Input
@@ -317,6 +321,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
     }
 
     if (cell.column.id === 'status') {
+        console.log('Matched status condition');
         const bgColor = getStatusCellBackgroundColor(editValues.status, editValues.paymentMethod);
         return (
             <TableCell key={cell.id} className={`px-0 py-1 border-r border-border ${bgColor}`}>
@@ -336,6 +341,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
     }
 
     if (cell.column.id === 'orderType') {
+        console.log('Matched orderType condition');
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <select
@@ -354,6 +360,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
     }
 
     if (cell.column.id === 'paymentMethod') {
+        console.log('Matched paymentMethod condition');
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <select
@@ -372,6 +379,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
     }
 
     if (cell.column.id === 'deliveryDay' || cell.column.id === 'fecha') {
+        console.log('Matched deliveryDay condition');
         const bgColor = getDateCellBackgroundColor(editValues.deliveryDay || '');
         return (
             <TableCell key={cell.id} className={`px-0 py-1 border-r border-border ${bgColor}`}>
@@ -411,6 +419,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
     }
 
     if (cell.column.id === 'items') {
+        console.log('Matched items condition');
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <div className="space-y-1">
@@ -492,18 +501,117 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
         );
     }
 
+    // Caso especial para la columna Cliente (user_name) - mostrar nombre y apellido
+    if (cell.column.id === 'user_name') {
+        console.log('Matched user_name condition');
+        console.log('Rendering user_name cell - editValues.userName:', editValues.userName, 'editValues.userLastName:', editValues.userLastName);
+        return (
+            <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
+                <div className="space-y-1">
+                    <Input
+                        placeholder="Nombre"
+                        value={editValues.userName || ''}
+                        onChange={e => onEditValueChange('userName', e.target.value)}
+                        className="w-full p-1 text-xs"
+                    />
+                    <Input
+                        placeholder="Apellido"
+                        value={editValues.userLastName || ''}
+                        onChange={e => onEditValueChange('userLastName', e.target.value)}
+                        className="w-full p-1 text-xs"
+                    />
+                </div>
+            </TableCell>
+        );
+    }
+
+    // Caso especial para la columna Dirección (address_address) - mostrar dirección y ciudad
+    if (cell.column.id === 'address_address') {
+        console.log('Matched address_address condition');
+        console.log('Rendering address_address cell - editValues.address:', editValues.address, 'editValues.city:', editValues.city);
+        return (
+            <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
+                <div className="space-y-1">
+                    <Input
+                        placeholder="Dirección"
+                        value={editValues.address || ''}
+                        onChange={e => onEditValueChange('address', e.target.value)}
+                        className="w-full p-1 text-xs"
+                    />
+                    <Input
+                        placeholder="Ciudad"
+                        value={editValues.city || ''}
+                        onChange={e => onEditValueChange('city', e.target.value)}
+                        className="w-full p-1 text-xs"
+                    />
+                </div>
+            </TableCell>
+        );
+    }
+
+    // Caso especial para la columna Rango Horario (deliveryArea_schedule)
+    if (cell.column.id === 'deliveryArea_schedule') {
+        console.log('Matched deliveryArea_schedule condition');
+        console.log('Rendering deliveryArea_schedule cell - editValues.deliveryAreaSchedule:', editValues.deliveryAreaSchedule);
+        return (
+            <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
+                <Input
+                    placeholder="Ej: Lunes a Viernes de 10hs a 17hs"
+                    value={editValues.deliveryAreaSchedule || ''}
+                    onChange={e => onEditValueChange('deliveryAreaSchedule', e.target.value)}
+                    className="w-full p-1 text-xs"
+                />
+            </TableCell>
+        );
+    }
+
+    // Caso especial para la columna Teléfono (address_phone)
+    if (cell.column.id === 'address_phone') {
+        console.log('Matched address_phone condition');
+        console.log('Rendering address_phone cell - editValues.phone:', editValues.phone);
+        return (
+            <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
+                <Input
+                    placeholder="Teléfono"
+                    value={editValues.phone || ''}
+                    onChange={e => onEditValueChange('phone', e.target.value)}
+                    className="w-full p-1 text-xs"
+                />
+            </TableCell>
+        );
+    }
+
+    // Caso especial para la columna Email (user_email)
+    if (cell.column.id === 'user_email') {
+        console.log('Matched user_email condition');
+        console.log('Rendering user_email cell - editValues.userEmail:', editValues.userEmail);
+        return (
+            <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
+                <Input
+                    placeholder="Email"
+                    value={editValues.userEmail || ''}
+                    onChange={e => onEditValueChange('userEmail', e.target.value)}
+                    className="w-full p-1 text-xs"
+                />
+            </TableCell>
+        );
+    }
+
     // Campos de entrada básicos
     const fieldMapping: Record<string, string> = {
         'total': 'total',
-        'user.name': 'userName',
-        'user.email': 'userEmail',
-        'address.address': 'address',
-        'address.phone': 'phone',
-        'deliveryArea.schedule': 'deliveryAreaSchedule',
+        'user_name': 'userName',
+        'user_lastName': 'userLastName',
+        'user_email': 'userEmail',
+        'address_address': 'address',
+        'address_city': 'city',
+        'address_phone': 'phone',
+        'deliveryArea_schedule': 'deliveryAreaSchedule',
         'notes': 'notes',
     };
 
     const fieldKey = fieldMapping[cell.column.id] || cell.column.id;
+    console.log('General mapping - cell.column.id:', cell.column.id, 'fieldKey:', fieldKey, 'fieldKey in editValues:', fieldKey in editValues);
 
     if (fieldKey in editValues) {
         return (

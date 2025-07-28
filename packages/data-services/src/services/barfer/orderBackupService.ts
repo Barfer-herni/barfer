@@ -20,6 +20,7 @@ interface OrderBackup {
 
 /**
  * Guarda un backup de una orden antes de modificarla
+ * Mantiene un máximo de 10 backups y elimina los más antiguos
  */
 export async function saveOrderBackup(
     orderId: string,
@@ -41,7 +42,26 @@ export async function saveOrderBackup(
         };
 
         const backupCollection = await getCollection('orderBackups');
+
+        // Insertar el nuevo backup
         await backupCollection.insertOne(backupEntry);
+
+        // Mantener solo los últimos 10 backups
+        const totalBackups = await backupCollection.countDocuments();
+        if (totalBackups > 10) {
+            // Obtener los backups más antiguos para eliminar
+            const backupsToDelete = await backupCollection
+                .find({})
+                .sort({ timestamp: 1 }) // Ordenar por timestamp ascendente (más antiguos primero)
+                .limit(totalBackups - 10) // Mantener solo los últimos 10
+                .toArray();
+
+            if (backupsToDelete.length > 0) {
+                const backupIdsToDelete = backupsToDelete.map(backup => backup._id);
+                await backupCollection.deleteMany({ _id: { $in: backupIdsToDelete } });
+            }
+        }
+
         return { success: true };
     } catch (error) {
         console.error('Error saving order backup:', error);
@@ -151,6 +171,23 @@ export async function getBackupsCount() {
         return { success: true, count };
     } catch (error) {
         console.error('Error getting backups count:', error);
+        return { success: false, error: (error as Error).message };
+    }
+}
+
+/**
+ * Limpia todos los backups (resetea el historial)
+ */
+export async function clearAllBackups() {
+    try {
+        const { getCollection } = await getDatabaseConnection();
+
+        const backupCollection = await getCollection('orderBackups');
+        await backupCollection.deleteMany({});
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error clearing all backups:', error);
         return { success: false, error: (error as Error).message };
     }
 } 
