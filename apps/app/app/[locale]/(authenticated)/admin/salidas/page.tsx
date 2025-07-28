@@ -2,7 +2,7 @@ import { getDictionary } from '@repo/internationalization';
 import type { Locale } from '@repo/internationalization';
 import { getAllSalidasAction } from './actions';
 import { SalidasPageClient } from './components/SalidasPageClient';
-import { getCurrentUserWithPermissions } from '@repo/auth/server-permissions';
+import { getCurrentUserWithPermissions, canViewSalidaStatistics } from '@repo/auth/server-permissions';
 
 interface SalidasPageProps {
     params: Promise<{ locale: Locale }>;
@@ -17,6 +17,9 @@ export default async function SalidasPage({ params }: SalidasPageProps) {
     const userPermissions = Array.isArray(userWithPermissions?.permissions)
         ? userWithPermissions.permissions.filter((p): p is string => typeof p === 'string')
         : [];
+
+    // Verificar si puede ver estadísticas
+    const canViewStats = await canViewSalidaStatistics();
 
     // Obtener todas las salidas
     const result = await getAllSalidasAction();
@@ -37,6 +40,7 @@ export default async function SalidasPage({ params }: SalidasPageProps) {
                 salidas={salidas}
                 dictionary={dictionary}
                 userPermissions={userPermissions}
+                canViewStatistics={canViewStats}
             />
         </div>
     );

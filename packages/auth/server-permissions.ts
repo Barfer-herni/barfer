@@ -47,6 +47,7 @@ export type Permission =
     | 'outputs:create'
     | 'outputs:edit'
     | 'outputs:delete'
+    | 'outputs:view_statistics'
     // Permisos dinámicos por categoría (se generan automáticamente)
     | 'outputs:view_all_categories'
     | `outputs:view_category:${string}`
@@ -82,6 +83,7 @@ export const ADMIN_PERMISSIONS: Permission[] = [
     'outputs:create',
     'outputs:edit',
     'outputs:delete',
+    'outputs:view_statistics',
     'outputs:view_all_categories',
 ];
 
@@ -219,6 +221,20 @@ export async function canViewSalidaCategory(categoryName: string): Promise<boole
     // Si no tiene permisos específicos para esta categoría, no puede verla
     console.log(`  ❌ No tiene permisos para esta categoría`);
     return false;
+}
+
+/**
+ * Verifica si el usuario actual puede ver las estadísticas de salidas
+ */
+export async function canViewSalidaStatistics(): Promise<boolean> {
+    const userWithPermissions = await getCurrentUserWithPermissions();
+    if (!userWithPermissions) return false;
+
+    // Los admins pueden ver las estadísticas
+    if (userWithPermissions.isAdmin) return true;
+
+    // Verificar si tiene el permiso específico para ver estadísticas
+    return userWithPermissions.permissions.includes('outputs:view_statistics');
 }
 
 /**

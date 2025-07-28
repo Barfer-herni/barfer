@@ -62,6 +62,7 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
                 'outputs:create',      // Crear salidas
                 'outputs:edit',        // Editar salidas
                 'outputs:delete',      // Eliminar salidas
+                'outputs:view_statistics', // Ver estadísticas de salidas
             ], // Permisos básicos por defecto para usuarios normales
         });
         setIsUserDialogOpen(true);
@@ -513,6 +514,17 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
                                                 disabled={isPending}
                                             />
                                             <Label className="text-sm">Eliminar salidas</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                checked={userForm.permissions.includes('outputs:view_statistics')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) setUserForm(prev => ({ ...prev, permissions: [...prev.permissions, 'outputs:view_statistics'] }));
+                                                    else setUserForm(prev => ({ ...prev, permissions: prev.permissions.filter(p => p !== 'outputs:view_statistics') }));
+                                                }}
+                                                disabled={isPending}
+                                            />
+                                            <Label className="text-sm">Ver estadísticas de salidas</Label>
                                         </div>
                                     </div>
                                 </div>

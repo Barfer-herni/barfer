@@ -15,9 +15,10 @@ interface SalidasPageClientProps {
     salidas: SalidaData[];
     dictionary: Dictionary;
     userPermissions?: string[];
+    canViewStatistics?: boolean;
 }
 
-export function SalidasPageClient({ salidas: initialSalidas, dictionary, userPermissions = [] }: SalidasPageClientProps) {
+export function SalidasPageClient({ salidas: initialSalidas, dictionary, userPermissions = [], canViewStatistics = false }: SalidasPageClientProps) {
     const [activeTab, setActiveTab] = useState<'tabla' | 'estadisticas' | 'categorias'>('tabla');
     const [salidas, setSalidas] = useState<SalidaData[]>(initialSalidas);
     const [isLoading, setIsLoading] = useState(false);
@@ -49,14 +50,16 @@ export function SalidasPageClient({ salidas: initialSalidas, dictionary, userPer
                         <Table2 className="h-4 w-4" />
                         Tabla
                     </Button>
-                    <Button
-                        onClick={() => setActiveTab('estadisticas')}
-                        variant={activeTab === 'estadisticas' ? 'default' : 'outline'}
-                        className="flex items-center gap-2"
-                    >
-                        <BarChart3 className="h-4 w-4" />
-                        Estadísticas
-                    </Button>
+                    {canViewStatistics && (
+                        <Button
+                            onClick={() => setActiveTab('estadisticas')}
+                            variant={activeTab === 'estadisticas' ? 'default' : 'outline'}
+                            className="flex items-center gap-2"
+                        >
+                            <BarChart3 className="h-4 w-4" />
+                            Estadísticas
+                        </Button>
+                    )}
                     <Button
                         onClick={() => setActiveTab('categorias')}
                         variant={activeTab === 'categorias' ? 'default' : 'outline'}
@@ -85,7 +88,7 @@ export function SalidasPageClient({ salidas: initialSalidas, dictionary, userPer
                     </Card>
                 )}
 
-                {activeTab === 'estadisticas' && (
+                {activeTab === 'estadisticas' && canViewStatistics && (
                     <SalidasEstadisticas onRefreshData={refreshSalidas} />
                 )}
 
