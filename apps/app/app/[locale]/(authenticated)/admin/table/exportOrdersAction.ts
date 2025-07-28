@@ -32,7 +32,7 @@ export async function exportOrdersAction({
         // Mapeo y aplanamiento de los datos para el Excel
         const dataToExport = orders.map(order => ({
             'Fecha Entrega': order.deliveryDay ? new Date(order.deliveryDay).toLocaleDateString('es-AR') : 'Sin fecha',
-            'Fecha Creación': new Date(order.createdAt).toLocaleDateString('es-AR'),
+            'Rango Horario': order.deliveryArea?.schedule || 'N/A',
             'Notas Propias': order.notesOwn || '',
             'Cliente': `${order.user?.name || ''} ${order.user?.lastName || ''}`.trim(),
             'Direccion': `${order.address?.address || ''}, ${order.address?.city || ''}`,
@@ -52,7 +52,7 @@ export async function exportOrdersAction({
         // Ajustar el ancho de las columnas
         const columnWidths = [
             { wch: 12 }, // Fecha Entrega
-            { wch: 12 }, // Fecha Creación
+            { wch: 25 }, // Rango Horario
             { wch: 40 }, // Notas Propias
             { wch: 30 }, // Cliente
             { wch: 40 }, // Direccion
