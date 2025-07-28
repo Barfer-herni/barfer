@@ -9,6 +9,7 @@ import {
     Receipt,
     Tags,
     TrendingUp,
+    MinusCircle,
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -31,6 +32,7 @@ const ICON_MAP = {
     Receipt,
     Tags,
     TrendingUp,
+    MinusCircle,
 } as const;
 
 type AdminSidebarClientProps = {
