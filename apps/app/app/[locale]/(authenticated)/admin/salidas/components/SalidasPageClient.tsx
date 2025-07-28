@@ -60,14 +60,16 @@ export function SalidasPageClient({ salidas: initialSalidas, dictionary, userPer
                             Estadísticas
                         </Button>
                     )}
-                    <Button
-                        onClick={() => setActiveTab('categorias')}
-                        variant={activeTab === 'categorias' ? 'default' : 'outline'}
-                        className="flex items-center gap-2"
-                    >
-                        <Tag className="h-4 w-4" />
-                        Categorías
-                    </Button>
+                    {canViewStatistics && (
+                        <Button
+                            onClick={() => setActiveTab('categorias')}
+                            variant={activeTab === 'categorias' ? 'default' : 'outline'}
+                            className="flex items-center gap-2"
+                        >
+                            <Tag className="h-4 w-4" />
+                            Categorías
+                        </Button>
+                    )}
                 </div>
             </div>
 
@@ -92,7 +94,7 @@ export function SalidasPageClient({ salidas: initialSalidas, dictionary, userPer
                     <SalidasEstadisticas onRefreshData={refreshSalidas} />
                 )}
 
-                {activeTab === 'categorias' && (
+                {activeTab === 'categorias' && canViewStatistics && (
                     <CategoriasManager />
                 )}
             </div>
