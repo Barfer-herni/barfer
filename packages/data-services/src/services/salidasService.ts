@@ -1,5 +1,6 @@
 import { database } from '@repo/database';
 import type { TipoSalida, TipoRegistro } from '@repo/database';
+import { canViewSalidaCategory } from '@repo/auth/server-permissions';
 
 // Tipos para el servicio
 export interface SalidaData {
@@ -91,6 +92,61 @@ export async function getAllSalidas(): Promise<{
             success: false,
             message: 'Error al obtener las salidas',
             error: 'GET_ALL_SALIDAS_ERROR'
+        };
+    }
+}
+
+/**
+ * Obtener todas las salidas filtradas por permisos de categorías del usuario
+ */
+export async function getAllSalidasWithPermissionFilter(): Promise<{
+    success: boolean;
+    salidas?: SalidaData[];
+    total?: number;
+    message?: string;
+    error?: string;
+}> {
+    try {
+        const salidas = await database.salida.findMany({
+            include: {
+                categoria: {
+                    select: {
+                        id: true,
+                        nombre: true
+                    }
+                },
+                metodoPago: {
+                    select: {
+                        id: true,
+                        nombre: true
+                    }
+                }
+            },
+            orderBy: {
+                fecha: 'desc'
+            }
+        });
+
+        // Filtrar salidas según permisos de categorías
+        const filteredSalidas = [];
+        for (const salida of salidas) {
+            const canView = await canViewSalidaCategory(salida.categoria.nombre);
+            if (canView) {
+                filteredSalidas.push(salida);
+            }
+        }
+
+        return {
+            success: true,
+            salidas: filteredSalidas as SalidaData[],
+            total: filteredSalidas.length
+        };
+    } catch (error) {
+        console.error('Error in getAllSalidasWithPermissionFilter:', error);
+        return {
+            success: false,
+            message: 'Error al obtener las salidas',
+            error: 'GET_ALL_SALIDAS_WITH_PERMISSION_FILTER_ERROR'
         };
     }
 }
@@ -490,6 +546,15 @@ export async function getSalidasDetailsByCategory(
                 { monto: 'desc' }
             ]
         });
+
+        // Verificar si el usuario puede ver esta categoría
+        if (salidas.length > 0) {
+            const categoriaNombre = salidas[0].categoria.nombre;
+            const canView = await canViewSalidaCategory(categoriaNombre);
+            if (!canView) {
+                return { success: false, error: 'No tienes permisos para ver esta categoría' };
+            }
+        }
 
         return { success: true, salidas };
     } catch (error) {

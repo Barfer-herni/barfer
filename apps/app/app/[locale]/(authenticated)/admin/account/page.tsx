@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@repo/design-system/co
 import { ProfileSection } from './components/ProfileSection';
 import { PasswordSection } from './components/PasswordSection';
 import { UsersSection } from './components/UsersSection';
+import { CategoryPermissionsManager } from './components/CategoryPermissionsManager';
 
 interface AccountPageProps {
     params: Promise<{ locale: string }>;
@@ -49,14 +50,19 @@ export default async function AccountPage({ params }: AccountPageProps) {
 
             <Tabs defaultValue="profile" className="space-y-4">
                 <div className="overflow-x-auto">
-                    <TabsList className={`grid w-full ${canManageUsers ? 'grid-cols-2' : 'grid-cols-1'} min-w-[300px] md:min-w-0`}>
+                    <TabsList className={`grid w-full ${canManageUsers ? 'grid-cols-3' : 'grid-cols-1'} min-w-[300px] md:min-w-0`}>
                         <TabsTrigger value="profile" className="text-sm">
                             Mi Perfil
                         </TabsTrigger>
                         {canManageUsers && (
-                            <TabsTrigger value="users" className="text-sm">
-                                Gestión de Usuarios
-                            </TabsTrigger>
+                            <>
+                                <TabsTrigger value="users" className="text-sm">
+                                    Gestión de Usuarios
+                                </TabsTrigger>
+                                <TabsTrigger value="permissions" className="text-sm">
+                                    Permisos por Categoría
+                                </TabsTrigger>
+                            </>
                         )}
                     </TabsList>
                 </div>
@@ -67,13 +73,22 @@ export default async function AccountPage({ params }: AccountPageProps) {
                 </TabsContent>
 
                 {canManageUsers && (
-                    <TabsContent value="users" className="space-y-4">
-                        <UsersSection
-                            users={users}
-                            currentUser={currentUser}
-                            dictionary={dictionary}
-                        />
-                    </TabsContent>
+                    <>
+                        <TabsContent value="users" className="space-y-4">
+                            <UsersSection
+                                users={users}
+                                currentUser={currentUser}
+                                dictionary={dictionary}
+                            />
+                        </TabsContent>
+                        <TabsContent value="permissions" className="space-y-4">
+                            <CategoryPermissionsManager
+                                users={users}
+                                currentUser={currentUser}
+                                dictionary={dictionary}
+                            />
+                        </TabsContent>
+                    </>
                 )}
             </Tabs>
         </div>

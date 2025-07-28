@@ -2,6 +2,7 @@
 
 import {
     getAllSalidas,
+    getAllSalidasWithPermissionFilter,
     createSalida,
     updateSalida,
     deleteSalida,
@@ -17,6 +18,7 @@ import {
     getSalidasMonthlyAnalytics,
     getSalidasOverviewAnalytics,
     getSalidasDetailsByCategory,
+    ensureSueldosCategory,
     type CreateSalidaInput
 } from '@repo/data-services';
 import { revalidatePath } from 'next/cache';
@@ -30,7 +32,7 @@ export type { CreateSalidaInput as CreateSalidaData };
 
 // Obtener todas las salidas
 export async function getAllSalidasAction() {
-    const result = await getAllSalidas();
+    const result = await getAllSalidasWithPermissionFilter();
     return result;
 }
 
@@ -110,6 +112,20 @@ export async function deleteCategoriaAction(categoriaId: string) {
     }
 
     const result = await deleteCategoria(categoriaId);
+    if (result.success) {
+        revalidatePath('/admin/salidas');
+    }
+    return result;
+}
+
+// Inicializar categoría SUELDOS
+export async function initializeSueldosCategoryAction() {
+    // Verificar permisos de admin
+    if (!await hasPermission('admin:full_access')) {
+        return { success: false, error: 'No tienes permisos para inicializar categorías' };
+    }
+
+    const result = await ensureSueldosCategory();
     if (result.success) {
         revalidatePath('/admin/salidas');
     }

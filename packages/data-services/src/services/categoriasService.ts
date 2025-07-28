@@ -233,4 +233,66 @@ export async function initializeCategorias(): Promise<{
             error: 'INITIALIZE_CATEGORIAS_ERROR'
         };
     }
+}
+
+/**
+ * Crear categoría SUELDOS si no existe
+ */
+export async function ensureSueldosCategory(): Promise<{
+    success: boolean;
+    categoria?: CategoriaData;
+    message?: string;
+    error?: string;
+}> {
+    try {
+        // Verificar si ya existe la categoría SUELDOS
+        const existingCategory = await database.categoria.findUnique({
+            where: { nombre: 'SUELDOS' }
+        });
+
+        if (existingCategory) {
+            return {
+                success: true,
+                categoria: {
+                    id: existingCategory.id,
+                    nombre: existingCategory.nombre,
+                    descripcion: existingCategory.descripcion,
+                    isActive: existingCategory.isActive,
+                    createdAt: existingCategory.createdAt,
+                    updatedAt: existingCategory.updatedAt
+                },
+                message: 'La categoría SUELDOS ya existe'
+            };
+        }
+
+        // Crear la categoría SUELDOS
+        const newCategory = await database.categoria.create({
+            data: {
+                nombre: 'SUELDOS',
+                descripcion: 'Gastos relacionados con salarios y remuneraciones',
+                isActive: true
+            }
+        });
+
+        return {
+            success: true,
+            categoria: {
+                id: newCategory.id,
+                nombre: newCategory.nombre,
+                descripcion: newCategory.descripcion,
+                isActive: newCategory.isActive,
+                createdAt: newCategory.createdAt,
+                updatedAt: newCategory.updatedAt
+            },
+            message: 'Categoría SUELDOS creada exitosamente'
+        };
+
+    } catch (error) {
+        console.error('Error ensuring SUELDOS category:', error);
+        return {
+            success: false,
+            message: 'Error al crear la categoría SUELDOS',
+            error: 'CREATE_SUELDOS_CATEGORY_ERROR'
+        };
+    }
 } 

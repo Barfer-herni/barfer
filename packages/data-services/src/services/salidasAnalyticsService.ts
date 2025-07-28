@@ -1,5 +1,6 @@
 import 'server-only';
 import { database } from '@repo/database';
+import { canViewSalidaCategory } from '@repo/auth/server-permissions';
 
 // ==========================================
 // TIPOS PARA ANALYTICS DE SALIDAS
@@ -93,11 +94,20 @@ export async function getSalidasCategoryAnalytics(startDate?: Date, endDate?: Da
             }
         });
 
-        // Calcular total para porcentajes
-        const totalMonto = result.reduce((acc, item) => acc + (item._sum.monto || 0), 0);
+        // Filtrar categorías según permisos del usuario
+        const filteredResult = [];
+        for (const item of result) {
+            const categoria = categorias.find(cat => cat.id === item.categoriaId);
+            if (categoria && await canViewSalidaCategory(categoria.nombre)) {
+                filteredResult.push(item);
+            }
+        }
+
+        // Calcular total para porcentajes (solo de las categorías visibles)
+        const totalMonto = filteredResult.reduce((acc, item) => acc + (item._sum.monto || 0), 0);
 
         // Mapear resultados con información de categorías
-        const stats: SalidaCategoryStats[] = result.map(item => {
+        const stats: SalidaCategoryStats[] = filteredResult.map(item => {
             const categoria = categorias.find(cat => cat.id === item.categoriaId);
             const monto = item._sum.monto || 0;
             const cantidad = item._count.id;
@@ -177,33 +187,49 @@ export async function getSalidasMonthlyAnalytics(
     endDate?: Date
 ): Promise<SalidaMonthlyStats[]> {
     try {
+        // Construir el filtro base
         const whereClause: any = {};
 
+        // Agregar filtro de categoría si se proporciona
         if (categoriaId) {
             whereClause.categoriaId = categoriaId;
         }
 
+        // Agregar filtro de fechas si se proporciona
         if (startDate || endDate) {
             whereClause.fecha = {};
             if (startDate) whereClause.fecha.gte = startDate;
             if (endDate) whereClause.fecha.lte = endDate;
         }
 
-        // Obtener todas las salidas con información de categoría
+        // Obtener todas las salidas con información de categorías
         const salidas = await database.salida.findMany({
             where: whereClause,
             include: {
-                categoria: true
+                categoria: {
+                    select: {
+                        id: true,
+                        nombre: true
+                    }
+                }
             },
             orderBy: {
                 fecha: 'asc'
             }
         });
 
-        // Agrupar por mes
-        const monthlyData: { [key: string]: SalidaMonthlyStats } = {};
+        // Filtrar salidas según permisos del usuario
+        const filteredSalidas = [];
+        for (const salida of salidas) {
+            if (await canViewSalidaCategory(salida.categoria.nombre)) {
+                filteredSalidas.push(salida);
+            }
+        }
 
-        salidas.forEach(salida => {
+        // Agrupar por mes
+        const monthlyData: Record<string, SalidaMonthlyStats> = {};
+
+        filteredSalidas.forEach(salida => {
             const date = new Date(salida.fecha);
             const year = date.getFullYear();
             const month = date.getMonth() + 1; // getMonth() es 0-indexed
@@ -258,7 +284,7 @@ export async function getSalidasMonthlyAnalytics(
 }
 
 /**
- * Obtiene resumen general de analytics de salidas
+ * Obtiene resumen general de salidas con filtros de permisos
  */
 export async function getSalidasOverviewAnalytics(startDate?: Date, endDate?: Date): Promise<SalidasAnalyticsSummary> {
     try {
@@ -270,95 +296,86 @@ export async function getSalidasOverviewAnalytics(startDate?: Date, endDate?: Da
             if (endDate) whereClause.fecha.lte = endDate;
         }
 
-        // Estadísticas generales
-        const generalStats = await database.salida.aggregate({
+        // Obtener todas las salidas con información de categorías
+        const salidas = await database.salida.findMany({
             where: whereClause,
-            _sum: {
-                monto: true
-            },
-            _count: {
-                id: true
-            },
-            _avg: {
-                monto: true
+            include: {
+                categoria: {
+                    select: {
+                        id: true,
+                        nombre: true
+                    }
+                }
             }
         });
 
-        // Estadísticas por tipo
-        const tipoStats = await database.salida.groupBy({
-            by: ['tipo'],
-            where: whereClause,
-            _sum: {
-                monto: true
-            },
-            _count: {
-                id: true
+        // Filtrar salidas según permisos del usuario
+        const filteredSalidas = [];
+        for (const salida of salidas) {
+            if (await canViewSalidaCategory(salida.categoria.nombre)) {
+                filteredSalidas.push(salida);
             }
-        });
+        }
 
-        // Estadísticas por tipo de registro
-        const registroStats = await database.salida.groupBy({
-            by: ['tipoRegistro'],
-            where: whereClause,
-            _sum: {
-                monto: true
-            },
-            _count: {
-                id: true
-            }
-        });
+        // Calcular estadísticas
+        const totalSalidas = filteredSalidas.length;
+        const totalMonto = filteredSalidas.reduce((sum, salida) => sum + salida.monto, 0);
+        const salidasOrdinarias = filteredSalidas.filter(s => s.tipo === 'ORDINARIO').length;
+        const salidasExtraordinarias = filteredSalidas.filter(s => s.tipo === 'EXTRAORDINARIO').length;
+        const montoOrdinario = filteredSalidas
+            .filter(s => s.tipo === 'ORDINARIO')
+            .reduce((sum, s) => sum + s.monto, 0);
+        const montoExtraordinario = filteredSalidas
+            .filter(s => s.tipo === 'EXTRAORDINARIO')
+            .reduce((sum, s) => sum + s.monto, 0);
+        const salidasBlancas = filteredSalidas.filter(s => s.tipoRegistro === 'BLANCO').length;
+        const salidasNegras = filteredSalidas.filter(s => s.tipoRegistro === 'NEGRO').length;
+        const montoBlanco = filteredSalidas
+            .filter(s => s.tipoRegistro === 'BLANCO')
+            .reduce((sum, s) => sum + s.monto, 0);
+        const montoNegro = filteredSalidas
+            .filter(s => s.tipoRegistro === 'NEGRO')
+            .reduce((sum, s) => sum + s.monto, 0);
 
-        const totalMonto = generalStats._sum.monto || 0;
-        const totalCount = generalStats._count.id || 0;
+        // Calcular promedios
+        const promedioPorSalida = totalSalidas > 0 ? totalMonto / totalSalidas : 0;
+        const porcentajeOrdinarias = totalSalidas > 0 ? (salidasOrdinarias / totalSalidas) * 100 : 0;
+        const porcentajeExtraordinarias = totalSalidas > 0 ? (salidasExtraordinarias / totalSalidas) * 100 : 0;
+        const porcentajeBlancas = totalSalidas > 0 ? (salidasBlancas / totalSalidas) * 100 : 0;
+        const porcentajeNegras = totalSalidas > 0 ? (salidasNegras / totalSalidas) * 100 : 0;
 
-        // Procesar datos de tipo
-        const ordinarioData = tipoStats.find(item => item.tipo === 'ORDINARIO');
-        const extraordinarioData = tipoStats.find(item => item.tipo === 'EXTRAORDINARIO');
-
-        const ordinarioMonto = ordinarioData?._sum.monto || 0;
-        const extraordinarioMonto = extraordinarioData?._sum.monto || 0;
-
-        // Procesar datos de registro
-        const blancoData = registroStats.find(item => item.tipoRegistro === 'BLANCO');
-        const negroData = registroStats.find(item => item.tipoRegistro === 'NEGRO');
-
-        const blancoMonto = blancoData?._sum.monto || 0;
-        const negroMonto = negroData?._sum.monto || 0;
-
-        const summary: SalidasAnalyticsSummary = {
+        return {
             totalGasto: totalMonto,
-            totalSalidas: totalCount,
-            gastoPromedio: generalStats._avg.monto || 0,
+            totalSalidas,
+            gastoPromedio: promedioPorSalida,
             ordinarioVsExtraordinario: {
                 ordinario: {
-                    monto: ordinarioMonto,
-                    cantidad: ordinarioData?._count.id || 0,
-                    porcentaje: totalMonto > 0 ? Math.round((ordinarioMonto / totalMonto) * 10000) / 100 : 0
+                    monto: montoOrdinario,
+                    cantidad: salidasOrdinarias,
+                    porcentaje: porcentajeOrdinarias
                 },
                 extraordinario: {
-                    monto: extraordinarioMonto,
-                    cantidad: extraordinarioData?._count.id || 0,
-                    porcentaje: totalMonto > 0 ? Math.round((extraordinarioMonto / totalMonto) * 10000) / 100 : 0
+                    monto: montoExtraordinario,
+                    cantidad: salidasExtraordinarias,
+                    porcentaje: porcentajeExtraordinarias
                 }
             },
             blancoVsNegro: {
                 blanco: {
-                    monto: blancoMonto,
-                    cantidad: blancoData?._count.id || 0,
-                    porcentaje: totalMonto > 0 ? Math.round((blancoMonto / totalMonto) * 10000) / 100 : 0
+                    monto: montoBlanco,
+                    cantidad: salidasBlancas,
+                    porcentaje: porcentajeBlancas
                 },
                 negro: {
-                    monto: negroMonto,
-                    cantidad: negroData?._count.id || 0,
-                    porcentaje: totalMonto > 0 ? Math.round((negroMonto / totalMonto) * 10000) / 100 : 0
+                    monto: montoNegro,
+                    cantidad: salidasNegras,
+                    porcentaje: porcentajeNegras
                 }
             }
         };
 
-        return summary;
-
     } catch (error) {
-        console.error('Error fetching salidas analytics summary:', error);
+        console.error('Error fetching salidas overview:', error);
         throw error;
     }
 } 

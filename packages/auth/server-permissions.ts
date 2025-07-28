@@ -1,5 +1,3 @@
-import 'server-only';
-
 import { getCurrentUser } from '@repo/data-services/src/services/authService';
 
 /**
@@ -49,6 +47,9 @@ export type Permission =
     | 'outputs:create'
     | 'outputs:edit'
     | 'outputs:delete'
+    // Permisos dinámicos por categoría (se generan automáticamente)
+    | 'outputs:view_all_categories'
+    | `outputs:view_category:${string}`
 
 // Permisos por defecto para admins (siempre tienen todos)
 export const ADMIN_PERMISSIONS: Permission[] = [
@@ -81,6 +82,7 @@ export const ADMIN_PERMISSIONS: Permission[] = [
     'outputs:create',
     'outputs:edit',
     'outputs:delete',
+    'outputs:view_all_categories',
 ];
 
 /**
@@ -179,6 +181,98 @@ export async function requireAdmin(): Promise<void> {
     const userIsAdmin = await isAdmin();
     if (!userIsAdmin) {
         throw new Error('Access denied: Admin privileges required');
+    }
+}
+
+/**
+ * Verifica si el usuario puede ver una categoría específica de salidas
+ */
+export async function canViewSalidaCategory(categoryName: string): Promise<boolean> {
+    const userWithPermissions = await getCurrentUserWithPermissions();
+    if (!userWithPermissions) {
+        return false;
+    }
+
+    // Log temporal para debug
+    console.log(`🔍 Verificando categoría "${categoryName}" para usuario ${userWithPermissions.name}`);
+    console.log(`  Permisos: ${userWithPermissions.permissions.join(', ')}`);
+
+    // Los admins pueden ver todo
+    if (userWithPermissions.isAdmin) {
+        console.log(`  ✅ Admin - puede ver todo`);
+        return true;
+    }
+
+    // Verificar si tiene el permiso general para ver todas las categorías
+    if (userWithPermissions.permissions.includes('outputs:view_all_categories')) {
+        console.log(`  ✅ Tiene permiso para ver todas las categorías`);
+        return true;
+    }
+
+    // Verificar permisos específicos por categoría
+    const categoryPermission = `outputs:view_category:${categoryName.toUpperCase()}`;
+    if (userWithPermissions.permissions.includes(categoryPermission)) {
+        console.log(`  ✅ Tiene permiso específico: ${categoryPermission}`);
+        return true;
+    }
+
+    // Si no tiene permisos específicos para esta categoría, no puede verla
+    console.log(`  ❌ No tiene permisos para esta categoría`);
+    return false;
+}
+
+/**
+ * Obtiene las categorías que el usuario puede ver
+ */
+export async function getViewableCategories(): Promise<string[]> {
+    const userWithPermissions = await getCurrentUserWithPermissions();
+    if (!userWithPermissions) return [];
+
+    // Los admins pueden ver todas las categorías
+    if (userWithPermissions.isAdmin) return ['*']; // '*' significa todas las categorías
+
+    const viewableCategories: string[] = [];
+
+    // Si tiene permiso para ver todas las categorías
+    if (userWithPermissions.permissions.includes('outputs:view_all_categories')) {
+        viewableCategories.push('*');
+        return viewableCategories;
+    }
+
+    // Obtener permisos específicos por categoría
+    for (const permission of userWithPermissions.permissions) {
+        if (typeof permission === 'string' && permission.startsWith('outputs:view_category:')) {
+            const categoryName = permission.replace('outputs:view_category:', '');
+            viewableCategories.push(categoryName);
+        }
+    }
+
+    return viewableCategories;
+}
+
+/**
+ * Genera el permiso para una categoría específica
+ */
+export function getCategoryPermission(categoryName: string): string {
+    return `outputs:view_category:${categoryName.toUpperCase()}`;
+}
+
+/**
+ * Obtiene todas las categorías disponibles para asignar permisos
+ */
+export async function getAvailableCategoriesForPermissions(): Promise<string[]> {
+    try {
+        const { getAllCategorias } = await import('@repo/data-services');
+        const result = await getAllCategorias();
+
+        if (result.success && result.categorias) {
+            return result.categorias.map(cat => cat.nombre);
+        }
+
+        return [];
+    } catch (error) {
+        console.error('Error getting available categories:', error);
+        return [];
     }
 }
 

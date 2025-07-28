@@ -22,6 +22,15 @@ import { EditSalidaModal } from './EditSalidaModal';
 import { DeleteSalidaDialog } from './DeleteSalidaDialog';
 import { SalidaData } from '@repo/data-services';
 
+// Funciones de permisos del cliente (definidas localmente)
+function hasAllCategoriesPermission(permissions: string[]): boolean {
+    return permissions.includes('outputs:view_all_categories');
+}
+
+function getCategoryPermissions(permissions: string[]): string[] {
+    return permissions.filter(p => p.startsWith('outputs:view_category:'));
+}
+
 interface SalidasTableProps {
     salidas?: SalidaData[];
     onRefreshSalidas?: () => void;
@@ -475,6 +484,16 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                 <p>• Usa el filtro "Fecha" para mostrar solo salidas de una fecha específica</p>
                 <p>• El tipo "ORDINARIO" representa gastos habituales, "EXTRAORDINARIO" gastos excepcionales</p>
                 <p>• "BLANCO" son gastos declarados, "NEGRO" son gastos no declarados</p>
+                {!hasAllCategoriesPermission(userPermissions) &&
+                    getCategoryPermissions(userPermissions).length === 0 && (
+                        <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                            <p className="text-amber-800 font-medium">⚠️ Información sobre permisos</p>
+                            <p className="text-amber-700 text-xs mt-1">
+                                Solo puedes ver las categorías para las que tienes permisos específicos.
+                                Contacta al administrador si necesitas acceso a categorías adicionales.
+                            </p>
+                        </div>
+                    )}
             </div>
 
             {/* Modal para agregar salida */}

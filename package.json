@@ -8,18 +8,15 @@
     "dist/index.js"
   ],
   "scripts": {
-    "build": "turbo build",
-    "dev": "turbo dev",
-    "start": "turbo start",
-    "lint": "ultracite lint",
-    "format": "ultracite format",
-    "test": "turbo test",
-    "analyze": "turbo analyze",
-    "translate": "turbo translate",
-    "bump-deps": "npx npm-check-updates --deep -u -x react-day-picker,tailwindcss && pnpm install",
-    "bump-ui": "npx shadcn@latest add --all --overwrite -c packages/design-system",
-    "migrate": "cd packages/database && npx prisma format && npx prisma generate && npx prisma db push",
-    "clean": "git clean -xdf node_modules"
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "clean": "turbo run clean",
+    "init-categories": "tsx scripts/initialize-categories.ts",
+    "migrate-permissions": "tsx scripts/migrate-category-permissions.ts",
+    "test-permissions": "tsx scripts/test-permissions.ts",
+    "debug-permissions": "tsx scripts/debug-permissions.ts"
   },
   "devDependencies": {
     "@auto-it/first-time-contributor": "^11.3.0",
@@ -28,6 +25,7 @@
     "@turbo/gen": "^2.4.4",
     "@types/node": "^22.13.9",
     "tsup": "^8.4.0",
+    "tsx": "^4.20.3",
     "turbo": "^2.4.4",
     "typescript": "^5.8.2",
     "ultracite": "^4.1.20",
