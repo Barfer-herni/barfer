@@ -24,19 +24,19 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
     // Await searchParams ya que es una promesa en Next.js 15
     const params = await searchParams;
 
-    // Convertir searchParams a fechas o usar últimos 30 días por defecto
+    // Convertir searchParams a fechas o usar un rango más amplio por defecto
     const dateFilter = params.from && params.to ? {
         from: new Date(params.from + 'T00:00:00.000Z'), // Forzar UTC
         to: new Date(params.to + 'T23:59:59.999Z')     // Forzar UTC
     } : {
-        // Por defecto: últimos 90 días para incluir más datos históricos
+        // Por defecto: últimos 365 días para incluir más datos históricos y categorías como BIG DOG
         from: (() => {
             const now = new Date();
-            const ninetyDaysAgo = subDays(now, 90);
+            const oneYearAgo = subDays(now, 365);
             return new Date(Date.UTC(
-                ninetyDaysAgo.getUTCFullYear(),
-                ninetyDaysAgo.getUTCMonth(),
-                ninetyDaysAgo.getUTCDate(),
+                oneYearAgo.getUTCFullYear(),
+                oneYearAgo.getUTCMonth(),
+                oneYearAgo.getUTCDate(),
                 0, 0, 0, 0
             ));
         })(),

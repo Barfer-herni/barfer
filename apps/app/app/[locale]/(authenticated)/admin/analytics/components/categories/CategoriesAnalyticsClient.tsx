@@ -5,11 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo
 import { Badge } from '@repo/design-system/components/ui/badge';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Separator } from '@repo/design-system/components/ui/separator';
-import { Tag, Filter } from 'lucide-react';
+import { Tag, Filter, Bug } from 'lucide-react';
 import { useInitStore } from '../../../../../../../store/initStore';
 import { CategoriesChart } from '../charts/CategoriesChart';
 import { CategoryProgressChart } from '../charts/CategoryProgressChart';
 import type { ProductByTimePeriod } from '@repo/data-services/src/services/barfer';
+import { debugBigDogAction } from '../../actions';
 
 interface CategorySale {
     categoryName: string;
@@ -52,6 +53,7 @@ interface CategoriesAnalyticsClientProps {
 }
 
 const CATEGORY_KEYS: { [key: string]: { quantity: string; revenue: string } } = {
+    'BIG DOG': { quantity: 'bigDogQuantity', revenue: 'bigDogRevenue' },
     Perros: { quantity: 'perroQuantity', revenue: 'perroRevenue' },
     Gatos: { quantity: 'gatoQuantity', revenue: 'gatoRevenue' },
     Huesos: { quantity: 'huesosQuantity', revenue: 'huesosRevenue' },
@@ -93,14 +95,22 @@ export function CategoriesAnalyticsClient({
     const [categoryFilter, setCategoryFilter] = useState('all');
 
     const allCategoryNames = useMemo(() => {
-        if (!progressData || progressData.length === 0) return [];
         const names = new Set<string>();
-        // Usamos los nombres de CATEGORY_KEYS para asegurar consistencia
+
+        // Agregar categorías de los datos reales
+        if (allCategories && allCategories.length > 0) {
+            allCategories.forEach(category => {
+                names.add(category.categoryName);
+            });
+        }
+
+        // Agregar categorías de CATEGORY_KEYS como respaldo
         for (const key in CATEGORY_KEYS) {
             names.add(key);
         }
+
         return ['all', ...Array.from(names)];
-    }, [progressData]);
+    }, [allCategories]);
 
     const filteredProgressData = useMemo(() => {
         return filterDataForChart(progressData, categoryFilter);
@@ -122,7 +132,8 @@ export function CategoriesAnalyticsClient({
         }
 
         // Reordenar por cantidad (descendente)
-        return [...categories].sort((a, b) => b.quantity - a.quantity);
+        const sortedCategories = [...categories].sort((a, b) => b.quantity - a.quantity);
+        return sortedCategories;
     };
 
     const getCompareCategories = () => {
@@ -259,6 +270,23 @@ export function CategoriesAnalyticsClient({
 
     return (
         <div className="space-y-4" key={`categories-filter-${statusFilter}`}>
+            {/* Botón de debug temporal */}
+            <div className="flex justify-end">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                        const result = await debugBigDogAction();
+                        console.log('Debug result:', result);
+                        alert(result.message);
+                    }}
+                    className="flex items-center gap-2"
+                >
+                    <Bug className="h-4 w-4" />
+                    Debug BIG DOG
+                </Button>
+            </div>
+
             {/* Resumen de comparación */}
             {isComparing && (
                 <div className="grid gap-4 md:grid-cols-3">
