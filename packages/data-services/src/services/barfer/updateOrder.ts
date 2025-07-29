@@ -19,24 +19,72 @@ const updateOrderSchema = z.object({
     subTotal: z.number().optional(),
     shippingPrice: z.number().optional(),
     updatedAt: z.string().optional(),
-    deliveryDay: z.string().optional(),
+    deliveryDay: z.union([z.string(), z.date()]).optional(),
     // Agrega aquí otros campos editables si es necesario
 });
 
+// Función para normalizar el formato de fecha deliveryDay
+function normalizeDeliveryDay(dateInput: string | Date | { $date: string }): Date {
+    if (!dateInput) return new Date();
+
+    let date: Date;
+
+    // Si es un objeto con $date, extraer el string y parsear
+    if (typeof dateInput === 'object' && '$date' in dateInput) {
+        date = new Date(dateInput.$date);
+    }
+    // Si es un objeto Date, usar directamente
+    else if (dateInput instanceof Date) {
+        date = dateInput;
+    } else {
+        // Si es string, parsear
+        date = new Date(dateInput);
+    }
+
+    // Validar que la fecha sea válida
+    if (isNaN(date.getTime())) {
+        throw new Error('Invalid date');
+    }
+
+    // Crear fecha local (solo año, mes, día) y retornar como objeto Date
+    const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+    return localDate;
+}
+
 export async function updateOrder(id: string, data: any) {
-    console.log('data', data);
-    console.log('id', id);
     const updateData = updateOrderSchema.parse(data);
     updateData.updatedAt = format(new Date(), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
+
+    // Normalizar el formato de deliveryDay si está presente
+    if (updateData.deliveryDay) {
+        updateData.deliveryDay = normalizeDeliveryDay(updateData.deliveryDay);
+    }
+
     const collection = await getCollection('orders');
-    console.log('updateData', updateData);
+
+    // Crear el objeto de actualización manualmente para asegurar que deliveryDay se incluya
+    const updateObject: any = {};
+
+    // Copiar todos los campos excepto deliveryDay
+    Object.keys(updateData).forEach(key => {
+        if (key !== 'deliveryDay') {
+            updateObject[key] = (updateData as any)[key];
+        }
+    });
+
+    // Agregar deliveryDay por separado si existe
+    if (updateData.deliveryDay) {
+        updateObject.deliveryDay = updateData.deliveryDay;
+    }
+
     const result = await collection.findOneAndUpdate(
         { _id: new ObjectId(id) },
-        { $set: updateData },
+        { $set: updateObject },
         { returnDocument: 'after' }
     );
-    console.log('result', result);
     if (!result) throw new Error('Order not found');
+
     return result.value;
 }
 

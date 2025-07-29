@@ -57,8 +57,37 @@ const createOrderSchema = z.object({
         discount: z.number(),
         type: z.enum(['percentage', 'fixed']),
     }).optional(),
-    deliveryDay: z.string(),
+    deliveryDay: z.union([z.string(), z.date()]),
 });
+
+// Función para normalizar el formato de fecha deliveryDay
+function normalizeDeliveryDay(dateInput: string | Date | { $date: string }): Date {
+    if (!dateInput) return new Date();
+
+    let date: Date;
+
+    // Si es un objeto con $date, extraer el string y parsear
+    if (typeof dateInput === 'object' && '$date' in dateInput) {
+        date = new Date(dateInput.$date);
+    }
+    // Si es un objeto Date, usar directamente
+    else if (dateInput instanceof Date) {
+        date = dateInput;
+    } else {
+        // Si es string, parsear
+        date = new Date(dateInput);
+    }
+
+    // Validar que la fecha sea válida
+    if (isNaN(date.getTime())) {
+        throw new Error('Invalid date');
+    }
+
+    // Crear fecha local (solo año, mes, día) y retornar como objeto Date
+    const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+    return localDate;
+}
 
 export async function createOrder(data: z.infer<typeof createOrderSchema>): Promise<{ success: boolean; order?: Order; error?: string }> {
     try {
@@ -66,6 +95,11 @@ export async function createOrder(data: z.infer<typeof createOrderSchema>): Prom
         const validatedData = createOrderSchema.parse(data);
 
         const collection = await getCollection('orders');
+
+        // Normalizar el formato de deliveryDay si está presente
+        if (validatedData.deliveryDay) {
+            validatedData.deliveryDay = normalizeDeliveryDay(validatedData.deliveryDay);
+        }
 
         // Crear la nueva orden con timestamps
         const newOrder = {

@@ -134,7 +134,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             shippingPrice: row.original.shippingPrice || 0,
             deliveryAreaSchedule: row.original.deliveryArea?.schedule || '',
             items: row.original.items || [],
-            deliveryDay: row.original.deliveryDay ? new Date(row.original.deliveryDay).toISOString() : '',
+            deliveryDay: row.original.deliveryDay || '',
         });
     };
 
@@ -154,7 +154,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             // Filtrar items: eliminar los que no tienen nombre o tienen cantidad 0
             const filteredItems = filterValidItems(editValues.items);
 
-            const result = await updateOrderAction(row.id, {
+            const updateData = {
                 notes: editValues.notes,
                 notesOwn: editValues.notesOwn,
                 status: editValues.status,
@@ -181,12 +181,18 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 },
                 items: filteredItems,
                 deliveryDay: editValues.deliveryDay,
-            });
+            };
+
+            const result = await updateOrderAction(row.id, updateData);
             if (!result.success) throw new Error(result.error || 'Error al guardar');
+
             setEditingRowId(null);
             setEditValues({});
             setProductSearchFilter('');
+
+            // Hacer refresh para mostrar los cambios actualizados
             router.refresh();
+
             updateBackupsCount(); // Actualizar contador después de guardar
         } catch (e) {
             alert(e instanceof Error ? e.message : 'Error al guardar los cambios');

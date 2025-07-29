@@ -35,7 +35,7 @@ export const shouldHighlightRow = (row: any) => {
 };
 
 // Función para determinar el color de fondo de la celda de fecha
-export const getDateCellBackgroundColor = (deliveryDay: string | Date) => {
+export const getDateCellBackgroundColor = (deliveryDay: string | Date | { $date: string }) => {
     if (!deliveryDay) return '';
 
     // Usar la función helper para crear una fecha local
@@ -153,11 +153,15 @@ export const downloadBase64File = (base64Data: string, fileName: string) => {
 };
 
 // Función para crear una fecha local preservando la fecha original
-export const createLocalDate = (dateInput: string | Date): Date => {
+export const createLocalDate = (dateInput: string | Date | { $date: string }): Date => {
     let date: Date;
 
-    if (dateInput && typeof dateInput === 'object' && 'getTime' in dateInput) {
-        // Si ya es un Date, usar directamente
+    // Si es un objeto con $date, extraer el string
+    if (typeof dateInput === 'object' && '$date' in dateInput) {
+        date = new Date(dateInput.$date);
+    }
+    // Si ya es un Date, usar directamente
+    else if (dateInput && typeof dateInput === 'object' && 'getTime' in dateInput) {
         date = dateInput as Date;
     } else if (typeof dateInput === 'string') {
         // Si es string, parsear
@@ -175,7 +179,8 @@ export const createLocalDate = (dateInput: string | Date): Date => {
 };
 
 // Función para crear una fecha ISO preservando la fecha local
-export const createLocalDateISO = (date: Date): string => {
+export const createLocalDateISO = (date: Date): Date => {
     const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    return localDate.toISOString();
+
+    return localDate;
 }; 
