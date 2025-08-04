@@ -9,6 +9,7 @@ interface GetAllOrdersParams {
     from?: string;
     to?: string;
     orderType?: string;
+    limit?: number; // Límite opcional para evitar problemas de memoria
 }
 
 /**
@@ -28,6 +29,7 @@ export async function getAllOrders({
     from,
     to,
     orderType,
+    limit,
 }: GetAllOrdersParams): Promise<Order[]> {
     try {
         const collection = await getCollection('orders');
@@ -100,7 +102,15 @@ export async function getAllOrders({
             sortQuery[sort.id] = sort.desc ? -1 : 1;
         });
 
-        const ordersFromDB = await collection.find(matchQuery).sort(sortQuery).toArray();
+        // Construir la consulta base
+        let query = collection.find(matchQuery).sort(sortQuery).allowDiskUse();
+
+        // Aplicar límite si se especifica
+        if (limit && limit > 0) {
+            query = query.limit(limit);
+        }
+
+        const ordersFromDB = await query.toArray();
 
         // Medida de seguridad: Eliminar duplicados por _id antes de serializar.
         const uniqueOrdersMap = new Map();

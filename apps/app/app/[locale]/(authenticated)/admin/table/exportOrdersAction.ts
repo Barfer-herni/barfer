@@ -23,10 +23,16 @@ export async function exportOrdersAction({
             from: from && from.trim() !== '' ? from : undefined,
             to: to && to.trim() !== '' ? to : undefined,
             orderType: orderType && orderType.trim() !== '' && orderType !== 'all' ? orderType : undefined,
+            limit: 10000, // Límite de 10,000 órdenes para evitar problemas de memoria
         });
 
         if (orders.length === 0) {
             return { success: false, error: 'No se encontraron órdenes para exportar con los filtros seleccionados.' };
+        }
+
+        // Verificar si se alcanzó el límite
+        if (orders.length === 10000) {
+            console.warn('Se alcanzó el límite de 10,000 órdenes para la exportación. Considera usar filtros más específicos.');
         }
 
         // Mapeo y aplanamiento de los datos para el Excel
@@ -39,7 +45,7 @@ export async function exportOrdersAction({
             'Telefono': order.address?.phone || '',
             'Email': order.user?.email || '',
             'Notas Cliente': order.notes || '',
-            'Productos': order.items.map(item => `${item.name} x${(item.options[0] as any)?.quantity || 1}`).join('\n'),
+            'Productos': order.items.map(item => `${item.name} x${(item.options[0] as any)?.quantity || 1}`).join('\r\n'),
             'Total': order.total,
             'Medio de Pago': order.paymentMethod || '',
             'Estado': order.status,
@@ -68,19 +74,30 @@ export async function exportOrdersAction({
 
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Órdenes');
 
-        // Forzar alineación a la izquierda en las columnas 'Total' y 'Telefono'
-        const leftAlignCols = ['Total', 'Telefono'];
+        // Configurar formato de celdas
         if (worksheet['!ref']) {
             const range = XLSX.utils.decode_range(worksheet['!ref']);
             for (let C = range.s.c; C <= range.e.c; ++C) {
                 const headerCell = worksheet[XLSX.utils.encode_col(C) + '1'];
                 const header = headerCell?.v;
-                if (typeof header === 'string' && leftAlignCols.includes(header)) {
-                    for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-                        const cellAddress = XLSX.utils.encode_col(C) + (R + 1);
-                        if (!worksheet[cellAddress]) continue;
-                        if (!worksheet[cellAddress].s) worksheet[cellAddress].s = {};
+
+                for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+                    const cellAddress = XLSX.utils.encode_col(C) + (R + 1);
+                    if (!worksheet[cellAddress]) continue;
+                    if (!worksheet[cellAddress].s) worksheet[cellAddress].s = {};
+
+                    // Alineación a la izquierda para Total y Telefono
+                    if (typeof header === 'string' && ['Total', 'Telefono'].includes(header)) {
                         worksheet[cellAddress].s.alignment = { horizontal: 'left' };
+                    }
+
+                    // Configurar formato de texto con saltos de línea para Productos
+                    if (typeof header === 'string' && header === 'Productos') {
+                        worksheet[cellAddress].s.alignment = {
+                            horizontal: 'left',
+                            vertical: 'top'
+                        };
+                        worksheet[cellAddress].s.wrapText = true;
                     }
                 }
             }
