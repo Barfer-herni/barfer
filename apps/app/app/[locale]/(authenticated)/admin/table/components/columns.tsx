@@ -208,13 +208,23 @@ export const columns: ColumnDef<Order>[] = [
             let addressInfo = '';
             if (address) {
                 const parts = [];
-                if (address.betweenStreets) parts.push(`Entre: ${address.betweenStreets}`);
-                if (address.floorNumber) parts.push(`Piso: ${address.floorNumber}`);
-                if (address.departmentNumber) parts.push(`Depto: ${address.departmentNumber}`);
-                addressInfo = parts.join(' | ');
+
+                // Agregar reference si existe
+                if (address.reference) parts.push(address.reference);
+
+                // Agregar piso y departamento
+                if (address.floorNumber || address.departmentNumber) {
+                    const floorDept = [address.floorNumber, address.departmentNumber].filter(Boolean).join(' ');
+                    if (floorDept) parts.push(floorDept);
+                }
+
+                // Agregar entre calles
+                if (address.betweenStreets) parts.push(`Entre calles: ${address.betweenStreets}`);
+
+                addressInfo = parts.join(' / ');
             }
 
-            const allNotes = [notes, addressInfo].filter(Boolean).join(' | ');
+            const allNotes = [notes, addressInfo].filter(Boolean).join(' / ');
             return <div className="min-w-[120px] text-sm whitespace-normal break-words">{allNotes || 'N/A'}</div>;
         }
     },

@@ -307,14 +307,31 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
     console.log('renderEditableCell - cell.column.id:', cell.column.id);
     console.log('renderEditableCell - editValues:', editValues);
     console.log('renderEditableCell - Checking conditions for:', cell.column.id);
+    console.log('renderEditableCell - cell.column.accessorKey:', cell.column.columnDef.accessorKey);
     if (cell.column.id === 'notesOwn') {
         console.log('Matched notesOwn condition');
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <Input
-                    value={editValues.notesOwn}
+                    value={editValues.notesOwn || ''}
                     onChange={e => onEditValueChange('notesOwn', e.target.value)}
                     className="w-full text-xs text-center"
+                />
+            </TableCell>
+        );
+    }
+
+    if (cell.column.id === 'notes' || cell.column.columnDef.accessorKey === 'notes' || cell.column.id.includes('notes')) {
+        console.log('Matched notes condition');
+        console.log('editValues.notes:', editValues.notes);
+        console.log('editValues:', editValues);
+        return (
+            <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
+                <Input
+                    value={editValues.notes || ''}
+                    onChange={e => onEditValueChange('notes', e.target.value)}
+                    className="w-full text-xs text-center"
+                    placeholder="Notas..."
                 />
             </TableCell>
         );
@@ -607,13 +624,15 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
         'address_city': 'city',
         'address_phone': 'phone',
         'deliveryArea_schedule': 'deliveryAreaSchedule',
-        'notes': 'notes',
+        // 'notes': 'notes', // Removido para evitar conflictos con el caso específico
     };
 
     const fieldKey = fieldMapping[cell.column.id] || cell.column.id;
     console.log('General mapping - cell.column.id:', cell.column.id, 'fieldKey:', fieldKey, 'fieldKey in editValues:', fieldKey in editValues);
+    console.log('All editValues keys:', Object.keys(editValues));
 
     if (fieldKey in editValues) {
+        console.log('Using general mapping for:', cell.column.id, 'with fieldKey:', fieldKey);
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <Input

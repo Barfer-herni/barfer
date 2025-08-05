@@ -51,6 +51,33 @@ export async function exportOrdersAction({
             return schedule;
         };
 
+        // Función para formatear las notas con información de dirección
+        const formatNotes = (order: any): string => {
+            const notes = order.notes || '';
+            const address = order.address;
+
+            if (!address) return notes;
+
+            const parts = [];
+
+            // Agregar reference si existe
+            if (address.reference) parts.push(address.reference);
+
+            // Agregar piso y departamento
+            if (address.floorNumber || address.departmentNumber) {
+                const floorDept = [address.floorNumber, address.departmentNumber].filter(Boolean).join(' ');
+                if (floorDept) parts.push(floorDept);
+            }
+
+            // Agregar entre calles
+            if (address.betweenStreets) parts.push(`Entre calles: ${address.betweenStreets}`);
+
+            const addressInfo = parts.join(' / ');
+            const allNotes = [notes, addressInfo].filter(Boolean).join(' / ');
+
+            return allNotes || 'N/A';
+        };
+
         // Mapeo y aplanamiento de los datos para el Excel
         const dataToExport = orders.map(order => ({
             'Fecha Entrega': order.deliveryDay ? new Date(order.deliveryDay).toLocaleDateString('es-AR') : 'Sin fecha',
@@ -60,7 +87,7 @@ export async function exportOrdersAction({
             'Direccion': `${order.address?.address || ''}, ${order.address?.city || ''}`,
             'Telefono': order.address?.phone || '',
             'Email': order.user?.email || '',
-            'Notas Cliente': order.notes || '',
+            'Notas Cliente': formatNotes(order),
             'Productos': order.items.map(item => `${item.name} x${(item.options[0] as any)?.quantity || 1}`).join('\r\n'),
             'Total': order.total,
             'Medio de Pago': order.paymentMethod || '',
