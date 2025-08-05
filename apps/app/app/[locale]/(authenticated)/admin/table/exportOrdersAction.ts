@@ -35,10 +35,26 @@ export async function exportOrdersAction({
             console.warn('Se alcanzó el límite de 10,000 órdenes para la exportación. Considera usar filtros más específicos.');
         }
 
+        // Función para extraer solo el horario sin el día
+        const extractTimeOnly = (schedule: string): string => {
+            if (!schedule) return 'N/A';
+
+            // Buscar el patrón de horario (ej: "17hs a 20hs APROXIMADAMENTE")
+            const timePattern = /(\d{1,2}hs\s+a\s+\d{1,2}hs\s+APROXIMADAMENTE)/i;
+            const match = schedule.match(timePattern);
+
+            if (match) {
+                return match[1];
+            }
+
+            // Si no encuentra el patrón, devolver el schedule original
+            return schedule;
+        };
+
         // Mapeo y aplanamiento de los datos para el Excel
         const dataToExport = orders.map(order => ({
             'Fecha Entrega': order.deliveryDay ? new Date(order.deliveryDay).toLocaleDateString('es-AR') : 'Sin fecha',
-            'Rango Horario': order.deliveryArea?.schedule || 'N/A',
+            'Rango Horario': extractTimeOnly(order.deliveryArea?.schedule),
             'Notas Propias': order.notesOwn || '',
             'Cliente': `${order.user?.name || ''} ${order.user?.lastName || ''}`.trim(),
             'Direccion': `${order.address?.address || ''}, ${order.address?.city || ''}`,
