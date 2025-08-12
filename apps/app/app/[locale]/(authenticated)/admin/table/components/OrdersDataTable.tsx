@@ -115,14 +115,25 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     }, [debouncedSearch]);
 
     const handleEditClick = (row: any) => {
+        console.log('handleEditClick - row.original:', row.original);
+        console.log('handleEditClick - row.original.notes:', row.original.notes);
+        console.log('handleEditClick - typeof row.original.notes:', typeof row.original.notes);
         setEditingRowId(row.id);
         setProductSearchFilter('');
-        setEditValues({
-            notes: row.original.notes || '',
-            notesOwn: row.original.notesOwn || '',
+        const editValuesData = {
+            notes: row.original.notes !== undefined && row.original.notes !== null ? row.original.notes : '',
+            notesOwn: row.original.notesOwn !== undefined && row.original.notesOwn !== null ? row.original.notesOwn : '',
             status: row.original.status || '',
             orderType: row.original.orderType || 'minorista',
-            address: row.original.address?.address || '',
+            address: {
+                reference: row.original.address?.reference || '',
+                floorNumber: row.original.address?.floorNumber || '',
+                departmentNumber: row.original.address?.departmentNumber || '',
+                betweenStreets: row.original.address?.betweenStreets || '',
+                address: row.original.address?.address || '',
+                city: row.original.address?.city || '',
+                phone: row.original.address?.phone || '',
+            },
             city: row.original.address?.city || '',
             phone: row.original.address?.phone || '',
             paymentMethod: row.original.paymentMethod || '',
@@ -135,7 +146,9 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             deliveryAreaSchedule: row.original.deliveryArea?.schedule || '',
             items: row.original.items || [],
             deliveryDay: row.original.deliveryDay || '',
-        });
+        };
+        console.log('handleEditClick - editValuesData:', editValuesData);
+        setEditValues(editValuesData);
     };
 
     const handleCancel = () => {
@@ -165,9 +178,13 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 shippingPrice: Number(editValues.shippingPrice),
                 address: {
                     ...row.original.address,
-                    address: editValues.address,
-                    city: editValues.city,
-                    phone: editValues.phone,
+                    address: editValues.address.address,
+                    city: editValues.address.city,
+                    phone: editValues.address.phone,
+                    reference: editValues.address.reference,
+                    floorNumber: editValues.address.floorNumber,
+                    departmentNumber: editValues.address.departmentNumber,
+                    betweenStreets: editValues.address.betweenStreets,
                 },
                 user: {
                     ...row.original.user,

@@ -16,7 +16,15 @@ export interface EditValues {
     notesOwn: string;
     status: string;
     orderType: 'minorista' | 'mayorista';
-    address: string;
+    address: {
+        reference: string;
+        floorNumber: string;
+        departmentNumber: string;
+        betweenStreets: string;
+        address: string;
+        city: string;
+        phone: string;
+    };
     city: string;
     phone: string;
     paymentMethod: string;

@@ -321,18 +321,69 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
         );
     }
 
+    // Detectar la columna notes de manera más robusta
     if (cell.column.id === 'notes' || cell.column.columnDef.accessorKey === 'notes' || cell.column.id.includes('notes')) {
         console.log('Matched notes condition');
         console.log('editValues.notes:', editValues.notes);
         console.log('editValues:', editValues);
+        console.log('cell.column.id:', cell.column.id);
+        console.log('cell.column.columnDef.accessorKey:', cell.column.columnDef.accessorKey);
+
         return (
-            <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
-                <Input
-                    value={editValues.notes || ''}
-                    onChange={e => onEditValueChange('notes', e.target.value)}
-                    className="w-full text-xs text-center"
-                    placeholder="Notas..."
-                />
+            <TableCell key={cell.id} className="px-3 py-3 border-r border-border min-w-[220px] bg-gray-50">
+                <div className="space-y-2">
+                    {/* Campo para notas generales */}
+                    <div>
+                        <label className="text-xs font-medium text-gray-700 block mb-1.5">📝 Notas:</label>
+                        <Input
+                            value={editValues.notes || ''}
+                            onChange={e => onEditValueChange('notes', e.target.value)}
+                            className="w-full text-xs h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                            placeholder="Notas generales..."
+                        />
+                    </div>
+
+                    {/* Campo para referencia */}
+                    <div>
+                        <label className="text-xs font-medium text-gray-700 block mb-1.5">📍 Referencia:</label>
+                        <Input
+                            value={editValues.address?.reference || ''}
+                            onChange={e => onEditValueChange('address', { ...editValues.address, reference: e.target.value })}
+                            className="w-full text-xs h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                            placeholder="Referencia..."
+                        />
+                    </div>
+
+                    {/* Campo para piso y departamento */}
+                    <div>
+                        <label className="text-xs font-medium text-gray-700 block mb-1.5">🏢 Piso/Depto:</label>
+                        <div className="flex gap-2">
+                            <Input
+                                value={editValues.address?.floorNumber || ''}
+                                onChange={e => onEditValueChange('address', { ...editValues.address, floorNumber: e.target.value })}
+                                className="w-1/2 text-xs h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                placeholder="Piso..."
+                            />
+                            <Input
+                                value={editValues.address?.departmentNumber || ''}
+                                onChange={e => onEditValueChange('address', { ...editValues.address, departmentNumber: e.target.value })}
+                                className="w-1/2 text-xs h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                placeholder="Depto..."
+                            />
+                        </div>
+                    </div>
+
+                    {/* Campo para entre calles */}
+                    <div>
+                        <label className="text-xs font-medium text-gray-700 block mb-1.5">🚦 Entre calles:</label>
+                        <Input
+                            value={editValues.address?.betweenStreets || ''}
+                            onChange={e => onEditValueChange('address', { ...editValues.address, betweenStreets: e.target.value })}
+                            className="w-full text-xs h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                            placeholder="Entre calles..."
+                        />
+                    </div>
+                </div>
             </TableCell>
         );
     }
