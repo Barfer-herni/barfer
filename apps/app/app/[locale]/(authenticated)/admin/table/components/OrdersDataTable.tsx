@@ -115,9 +115,6 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     }, [debouncedSearch]);
 
     const handleEditClick = (row: any) => {
-        console.log('handleEditClick - row.original:', row.original);
-        console.log('handleEditClick - row.original.notes:', row.original.notes);
-        console.log('handleEditClick - typeof row.original.notes:', typeof row.original.notes);
         setEditingRowId(row.id);
         setProductSearchFilter('');
         const editValuesData = {
@@ -147,7 +144,6 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             items: row.original.items || [],
             deliveryDay: row.original.deliveryDay || '',
         };
-        console.log('handleEditClick - editValuesData:', editValuesData);
         setEditValues(editValuesData);
     };
 

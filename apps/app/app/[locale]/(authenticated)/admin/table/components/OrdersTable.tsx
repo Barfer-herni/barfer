@@ -303,11 +303,49 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
     );
 }
 
+// Función helper para encontrar el producto coincidente
+function findMatchingProduct(itemName: string, availableProducts: string[]): string {
+    if (!itemName) return '';
+
+    // Buscar coincidencia exacta primero
+    const exactMatch = availableProducts.find(product => product === itemName);
+    if (exactMatch) return exactMatch;
+
+    // Buscar coincidencia parcial (case insensitive)
+    const normalizedItemName = itemName.toLowerCase();
+    const partialMatch = availableProducts.find(product => {
+        const normalizedProduct = product.toLowerCase();
+        // Comprobar si el producto contiene las palabras clave del item
+        const itemWords = normalizedItemName.split(' ').filter(word => word.length > 2);
+        return itemWords.every(word => normalizedProduct.includes(word));
+    });
+
+    if (partialMatch) return partialMatch;
+
+    // Buscar por palabras clave específicas
+    const keywordMatches: { [key: string]: string[] } = {
+        'gato cordero': ['Barfer box Gato Cordero 5kg'],
+        'gato pollo': ['Barfer box Gato Pollo 5kg'],
+        'gato vaca': ['Barfer box Gato Vaca 5kg'],
+        'perro pollo': ['Barfer box Perro Pollo 5kg', 'Barfer box Perro Pollo 10kg'],
+        'perro vaca': ['Barfer box Perro Vaca 5kg', 'Barfer box Perro Vaca 10kg'],
+        'perro cerdo': ['Barfer box Perro Cerdo 5kg', 'Barfer box Perro Cerdo 10kg'],
+        'perro cordero': ['Barfer box Perro Cordero 5kg', 'Barfer box Perro Cordero 10kg'],
+        'big dog': ['BIG DOG (15kg) - POLLO', 'BIG DOG (15kg) - VACA'],
+    };
+
+    for (const [keyword, products] of Object.entries(keywordMatches)) {
+        if (normalizedItemName.includes(keyword)) {
+            // Si hay múltiples opciones, devolver la primera (5kg por defecto)
+            return products[0];
+        }
+    }
+
+    // Si no se encuentra coincidencia, devolver el nombre original
+    return itemName;
+}
+
 function renderEditableCell(cell: any, index: number, editValues: any, onEditValueChange: (field: string, value: any) => void, productSearchFilter: string, onProductSearchChange: (value: string) => void) {
-    console.log('renderEditableCell - cell.column.id:', cell.column.id);
-    console.log('renderEditableCell - editValues:', editValues);
-    console.log('renderEditableCell - Checking conditions for:', cell.column.id);
-    console.log('renderEditableCell - cell.column.accessorKey:', cell.column.columnDef.accessorKey);
     if (cell.column.id === 'notesOwn') {
         console.log('Matched notesOwn condition');
         return (
@@ -323,12 +361,6 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
 
     // Detectar la columna notes de manera más robusta
     if (cell.column.id === 'notes' || cell.column.columnDef.accessorKey === 'notes' || cell.column.id.includes('notes')) {
-        console.log('Matched notes condition');
-        console.log('editValues.notes:', editValues.notes);
-        console.log('editValues:', editValues);
-        console.log('cell.column.id:', cell.column.id);
-        console.log('cell.column.columnDef.accessorKey:', cell.column.columnDef.accessorKey);
-
         return (
             <TableCell key={cell.id} className="px-3 py-3 border-r border-border min-w-[220px] bg-gray-50">
                 <div className="space-y-2">
@@ -488,6 +520,27 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
 
     if (cell.column.id === 'items') {
         console.log('Matched items condition');
+        console.log('renderEditableCell - editValues.items:', editValues.items);
+        console.log('renderEditableCell - available products:', getFilteredProducts(editValues.orderType, productSearchFilter));
+        console.log('renderEditableCell - orderType:', editValues.orderType);
+        console.log('renderEditableCell - productSearchFilter:', productSearchFilter);
+
+        editValues.items?.forEach((item: any, index: number) => {
+            console.log(`renderEditableCell - Item ${index} FULL:`, item);
+            console.log(`renderEditableCell - Item ${index} ANALYSIS:`, {
+                id: item.id,
+                name: item.name,
+                options: item.options,
+                hasName: !!item.name,
+                hasId: !!item.id,
+                nameValue: item.name,
+                idValue: item.id,
+                selectValue: item.name || item.id || '',
+                quantity: item.options?.[0]?.quantity,
+                allKeys: Object.keys(item || {}),
+                rawItem: JSON.stringify(item)
+            });
+        });
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <div className="space-y-1">
@@ -498,50 +551,52 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                         className="w-full p-1 text-xs"
                     />
                     {editValues.items?.map((item: any, itemIndex: number) => (
-                        <div key={itemIndex} className="flex gap-1">
-                            <select
-                                value={item.name || ''}
-                                onChange={e => {
-                                    const newItems = [...editValues.items];
-                                    newItems[itemIndex] = {
-                                        ...newItems[itemIndex],
-                                        name: e.target.value,
-                                        id: e.target.value
-                                    };
-                                    onEditValueChange('items', newItems);
-                                }}
-                                className="flex-1 p-1 text-xs border border-gray-300 rounded-md text-center"
-                            >
-                                <option value="">Seleccionar producto</option>
-                                {getFilteredProducts(editValues.orderType, productSearchFilter).map(product => (
-                                    <option key={product} value={product}>
-                                        {product}
-                                    </option>
-                                ))}
-                            </select>
-                            <Input
-                                type="number"
-                                value={item.options?.[0]?.quantity || 1}
-                                onChange={e => {
-                                    const quantity = parseInt(e.target.value) || 0;
-                                    if (quantity <= 0) {
-                                        const newItems = editValues.items.filter((_: any, i: number) => i !== itemIndex);
-                                        onEditValueChange('items', newItems);
-                                    } else {
+                        <div key={itemIndex} className="space-y-1">
+                            <div className="flex gap-1">
+                                <select
+                                    value={findMatchingProduct(item.name || item.id || '', getFilteredProducts(editValues.orderType, productSearchFilter))}
+                                    onChange={e => {
                                         const newItems = [...editValues.items];
                                         newItems[itemIndex] = {
                                             ...newItems[itemIndex],
-                                            options: [{
-                                                ...newItems[itemIndex].options?.[0],
-                                                quantity: quantity
-                                            }]
+                                            name: e.target.value,
+                                            id: e.target.value
                                         };
                                         onEditValueChange('items', newItems);
-                                    }
-                                }}
-                                className="w-12 p-1 text-xs text-center"
-                                placeholder="Qty"
-                            />
+                                    }}
+                                    className="flex-1 p-1 text-xs border border-gray-300 rounded-md text-center"
+                                >
+                                    <option value="">Seleccionar producto</option>
+                                    {getFilteredProducts(editValues.orderType, productSearchFilter).map(product => (
+                                        <option key={product} value={product}>
+                                            {product}
+                                        </option>
+                                    ))}
+                                </select>
+                                <Input
+                                    type="number"
+                                    value={item.options?.[0]?.quantity || 1}
+                                    onChange={e => {
+                                        const quantity = parseInt(e.target.value) || 0;
+                                        if (quantity <= 0) {
+                                            const newItems = editValues.items.filter((_: any, i: number) => i !== itemIndex);
+                                            onEditValueChange('items', newItems);
+                                        } else {
+                                            const newItems = [...editValues.items];
+                                            newItems[itemIndex] = {
+                                                ...newItems[itemIndex],
+                                                options: [{
+                                                    ...newItems[itemIndex].options?.[0],
+                                                    quantity: quantity
+                                                }]
+                                            };
+                                            onEditValueChange('items', newItems);
+                                        }
+                                    }}
+                                    className="w-12 p-1 text-xs text-center"
+                                    placeholder="Qty"
+                                />
+                            </div>
                         </div>
                     ))}
                     <Button
