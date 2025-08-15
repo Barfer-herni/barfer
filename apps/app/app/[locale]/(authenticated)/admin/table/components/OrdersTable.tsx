@@ -347,7 +347,6 @@ function findMatchingProduct(itemName: string, availableProducts: string[]): str
 
 function renderEditableCell(cell: any, index: number, editValues: any, onEditValueChange: (field: string, value: any) => void, productSearchFilter: string, onProductSearchChange: (value: string) => void) {
     if (cell.column.id === 'notesOwn') {
-        console.log('Matched notesOwn condition');
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <Input
@@ -650,21 +649,24 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
 
     // Caso especial para la columna Dirección (address_address) - mostrar dirección y ciudad
     if (cell.column.id === 'address_address') {
-        console.log('Matched address_address condition');
-        console.log('Rendering address_address cell - editValues.address:', editValues.address, 'editValues.city:', editValues.city);
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <div className="space-y-1">
                     <Input
                         placeholder="Dirección"
-                        value={editValues.address || ''}
-                        onChange={e => onEditValueChange('address', e.target.value)}
+                        value={editValues.address?.address || ''}
+                        onChange={e => {
+                            console.log('🔥 DIRECCION onChange - new value:', e.target.value);
+                            console.log('🔥 DIRECCION onChange - current editValues.address:', editValues.address);
+                            console.log('🔥 DIRECCION onChange - will call onEditValueChange with:', { ...editValues.address, address: e.target.value });
+                            onEditValueChange('address', { ...editValues.address, address: e.target.value });
+                        }}
                         className="w-full p-1 text-xs"
                     />
                     <Input
                         placeholder="Ciudad"
-                        value={editValues.city || ''}
-                        onChange={e => onEditValueChange('city', e.target.value)}
+                        value={editValues.address?.city || ''}
+                        onChange={e => onEditValueChange('address', { ...editValues.address, city: e.target.value })}
                         className="w-full p-1 text-xs"
                     />
                 </div>
@@ -674,8 +676,6 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
 
     // Caso especial para la columna Rango Horario (deliveryArea_schedule)
     if (cell.column.id === 'deliveryArea_schedule') {
-        console.log('Matched deliveryArea_schedule condition');
-        console.log('Rendering deliveryArea_schedule cell - editValues.deliveryAreaSchedule:', editValues.deliveryAreaSchedule);
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <Input
@@ -690,14 +690,12 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
 
     // Caso especial para la columna Teléfono (address_phone)
     if (cell.column.id === 'address_phone') {
-        console.log('Matched address_phone condition');
-        console.log('Rendering address_phone cell - editValues.phone:', editValues.phone);
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <Input
                     placeholder="Teléfono"
-                    value={editValues.phone || ''}
-                    onChange={e => onEditValueChange('phone', e.target.value)}
+                    value={editValues.address?.phone || ''}
+                    onChange={e => onEditValueChange('address', { ...editValues.address, phone: e.target.value })}
                     className="w-full p-1 text-xs"
                 />
             </TableCell>
@@ -706,8 +704,6 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
 
     // Caso especial para la columna Email (user_email)
     if (cell.column.id === 'user_email') {
-        console.log('Matched user_email condition');
-        console.log('Rendering user_email cell - editValues.userEmail:', editValues.userEmail);
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <Input
@@ -726,19 +722,16 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
         'user_name': 'userName',
         'user_lastName': 'userLastName',
         'user_email': 'userEmail',
-        'address_address': 'address',
-        'address_city': 'city',
-        'address_phone': 'phone',
+        // 'address_address': 'address', // ← REMOVIDO: Conflicto con caso específico
+        // 'address_city': 'city',       // ← REMOVIDO: Conflicto con caso específico  
+        // 'address_phone': 'phone',     // ← REMOVIDO: Conflicto con caso específico
         'deliveryArea_schedule': 'deliveryAreaSchedule',
         // 'notes': 'notes', // Removido para evitar conflictos con el caso específico
     };
 
     const fieldKey = fieldMapping[cell.column.id] || cell.column.id;
-    console.log('General mapping - cell.column.id:', cell.column.id, 'fieldKey:', fieldKey, 'fieldKey in editValues:', fieldKey in editValues);
-    console.log('All editValues keys:', Object.keys(editValues));
 
     if (fieldKey in editValues) {
-        console.log('Using general mapping for:', cell.column.id, 'with fieldKey:', fieldKey);
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <Input

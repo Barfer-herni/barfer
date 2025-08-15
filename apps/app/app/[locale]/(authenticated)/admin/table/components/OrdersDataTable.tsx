@@ -144,7 +144,19 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             items: row.original.items || [],
             deliveryDay: row.original.deliveryDay || '',
         };
+
+        console.log('🔥 handleEditClick - editValuesData.address BEFORE setEditValues:', editValuesData.address);
+        console.log('🔥 handleEditClick - typeof editValuesData.address:', typeof editValuesData.address);
+        console.log('🔥 handleEditClick - editValuesData.address JSON:', JSON.stringify(editValuesData.address));
+        console.log('🔥 handleEditClick - FULL editValuesData:', editValuesData);
+
         setEditValues(editValuesData);
+
+        // Log inmediato para ver si se corrompe al asignar
+        setTimeout(() => {
+            console.log('🔥 handleEditClick - editValues.address AFTER setEditValues (async):', editValues.address);
+            console.log('🔥 handleEditClick - typeof editValues.address AFTER:', typeof editValues.address);
+        }, 100);
     };
 
     const handleCancel = () => {
@@ -154,7 +166,38 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     };
 
     const handleChange = (field: string, value: any) => {
-        setEditValues((prev: any) => ({ ...prev, [field]: value }));
+        console.log('🔥 handleChange called - field:', field, 'value:', value);
+        console.log('🔥 handleChange - typeof value:', typeof value);
+        console.log('🔥 handleChange - prev editValues before update:', editValues);
+
+        setEditValues((prev: any) => {
+            console.log('🔥 handleChange setEditValues - prev:', prev);
+            console.log('🔥 handleChange setEditValues - prev.address:', prev.address);
+            console.log('🔥 handleChange setEditValues - prev.address type:', typeof prev.address);
+
+            // Verificar si el campo es 'address' y es un objeto
+            if (field === 'address' && typeof value === 'object' && value !== null) {
+                console.log('🔥 SPECIAL CASE: updating address object');
+                console.log('🔥 prev.address before merge:', prev.address);
+                console.log('🔥 value to merge:', value);
+
+                const newState = {
+                    ...prev,
+                    [field]: {
+                        ...prev.address, // Preserve existing address properties
+                        ...value         // Merge in new properties
+                    }
+                };
+                console.log('🔥 handleChange setEditValues - newState (merged address):', newState);
+                console.log('🔥 handleChange setEditValues - newState.address:', newState.address);
+                return newState;
+            }
+
+            // Para otros campos, usar el comportamiento normal
+            const newState = { ...prev, [field]: value };
+            console.log('🔥 handleChange setEditValues - newState (normal):', newState);
+            return newState;
+        });
     };
 
     const handleSave = async (row: any) => {
