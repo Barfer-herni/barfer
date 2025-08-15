@@ -16,7 +16,9 @@
     "init-categories": "tsx scripts/initialize-categories.ts",
     "migrate-permissions": "tsx scripts/migrate-category-permissions.ts",
     "test-permissions": "tsx scripts/test-permissions.ts",
-    "debug-permissions": "tsx scripts/debug-permissions.ts"
+    "debug-permissions": "tsx scripts/debug-permissions.ts",
+    "analytics:optimize": "tsx scripts/run-analytics-optimization.ts",
+    "analytics:drop-indexes": "tsx scripts/run-analytics-optimization.ts drop"
   },
   "devDependencies": {
     "@auto-it/first-time-contributor": "^11.3.0",

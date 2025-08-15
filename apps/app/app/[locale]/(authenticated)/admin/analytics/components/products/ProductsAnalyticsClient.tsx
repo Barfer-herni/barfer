@@ -73,7 +73,7 @@ export function ProductsAnalyticsClient({
     const [popoverOpen, setPopoverOpen] = useState(false);
 
     const productOptions = useMemo(() => {
-        const products = allProducts.map(p => ({
+        const products = allProducts.map((p, index) => ({
             value: `${p.productId}-${p.optionName}`,
             label: `${p.productName} (${p.optionName})`,
         }));
@@ -142,7 +142,7 @@ export function ProductsAnalyticsClient({
                     <CardHeader><CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" /> Ranking (Período Actual)</CardTitle></CardHeader>
                     <CardContent className="space-y-3 max-h-[400px] overflow-y-auto">
                         {currentProducts.map((p, i) => (
-                            <div key={`${p.productId}-${p.optionName}`} className="flex items-center justify-between p-2 border rounded-md"><div className="flex items-center gap-3"><Badge variant="outline">#{i + 1}</Badge><div><p className="font-medium text-sm">{p.productName} ({p.optionName})</p><p className="text-xs text-muted-foreground">{p.orders} órdenes</p></div></div><div className="text-right"><p className="font-bold text-sm">{p.quantity} un.</p>{p.totalWeight && <p className="font-bold text-sm text-blue-600">{p.totalWeight.toLocaleString('es-AR')} kg</p>}<p className="text-xs text-muted-foreground">{currencyFormatter(p.revenue)}</p></div></div>
+                            <div key={`current-${statusFilter}-${p.productId}-${p.optionName}-${i}`} className="flex items-center justify-between p-2 border rounded-md"><div className="flex items-center gap-3"><Badge variant="outline">#{i + 1}</Badge><div><p className="font-medium text-sm">{p.productName} ({p.optionName})</p><p className="text-xs text-muted-foreground">{p.orders} órdenes</p></div></div><div className="text-right"><p className="font-bold text-sm">{p.quantity} un.</p>{p.totalWeight && <p className="font-bold text-sm text-blue-600">{p.totalWeight.toLocaleString('es-AR')} kg</p>}<p className="text-xs text-muted-foreground">{currencyFormatter(p.revenue)}</p></div></div>
                         ))}
                         {currentProducts.length === 0 && <p className="text-center text-muted-foreground py-4">No hay productos.</p>}
                     </CardContent>
@@ -152,7 +152,7 @@ export function ProductsAnalyticsClient({
                         <CardHeader><CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" /> Ranking (Comparación)</CardTitle></CardHeader>
                         <CardContent className="space-y-3 max-h-[400px] overflow-y-auto">
                             {compareProducts.map((p, i) => (
-                                <div key={`comp-${p.productId}-${p.optionName}`} className="flex items-center justify-between p-2 border rounded-md"><div className="flex items-center gap-3"><Badge variant="outline">#{i + 1}</Badge><div><p className="font-medium text-sm">{p.productName} ({p.optionName})</p><p className="text-xs text-muted-foreground">{p.orders} órdenes</p></div></div><div className="text-right"><p className="font-bold text-sm">{p.quantity} un.</p>{p.totalWeight && <p className="font-bold text-sm text-blue-600">{p.totalWeight.toLocaleString('es-AR')} kg</p>}<p className="text-xs text-muted-foreground">{currencyFormatter(p.revenue)}</p></div></div>
+                                <div key={`compare-${statusFilter}-${p.productId}-${p.optionName}-${i}`} className="flex items-center justify-between p-2 border rounded-md"><div className="flex items-center gap-3"><Badge variant="outline">#{i + 1}</Badge><div><p className="font-medium text-sm">{p.productName} ({p.optionName})</p><p className="text-xs text-muted-foreground">{p.orders} órdenes</p></div></div><div className="text-right"><p className="font-bold text-sm">{p.quantity} un.</p>{p.totalWeight && <p className="font-bold text-sm text-blue-600">{p.totalWeight.toLocaleString('es-AR')} kg</p>}<p className="text-xs text-muted-foreground">{currencyFormatter(p.revenue)}</p></div></div>
                             ))}
                             {compareProducts.length === 0 && <p className="text-center text-muted-foreground py-4">No hay productos para comparar.</p>}
                         </CardContent>
@@ -184,9 +184,9 @@ export function ProductsAnalyticsClient({
                                     <CommandList>
                                         <CommandEmpty>No se encontraron productos.</CommandEmpty>
                                         <CommandGroup>
-                                            {productOptions.map((option) => (
+                                            {productOptions.map((option, index) => (
                                                 <CommandItem
-                                                    key={option.value}
+                                                    key={`product-option-${index}-${option.value}`}
                                                     value={option.value}
                                                     onSelect={(currentValue) => {
                                                         setSelectedProduct(currentValue === selectedProduct ? 'all' : currentValue);

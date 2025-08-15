@@ -450,7 +450,7 @@ export function CategoriesAnalyticsClient({
                     ) : (
                         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
                             {currentCategories.map((category, index) => (
-                                <div key={`${statusFilter}-${category.categoryName}`} className="p-4 border rounded-lg">
+                                <div key={`current-${statusFilter}-${category.categoryName}-${index}`} className="p-4 border rounded-lg">
                                     <div className="flex items-center justify-between mb-3">
                                         <div className="flex items-center gap-2 min-w-0">
                                             <span className="text-lg flex-shrink-0">{getCategoryIcon(category.categoryName)}</span>
@@ -519,7 +519,7 @@ export function CategoriesAnalyticsClient({
                     <CardContent>
                         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
                             {compareCategories.map((category, index) => (
-                                <div key={`compare-${statusFilter}-${category.categoryName}`} className="p-4 border rounded-lg">
+                                <div key={`compare-${statusFilter}-${category.categoryName}-${index}`} className="p-4 border rounded-lg">
                                     <div className="flex items-center justify-between mb-3">
                                         <div className="flex items-center gap-2 min-w-0">
                                             <span className="text-lg flex-shrink-0">{getCategoryIcon(category.categoryName)}</span>

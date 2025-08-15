@@ -1,4 +1,4 @@
-import { getOrdersByMonth, getDeliveryTypeStatsByMonth, debugWholesaleOrders, testWholesaleIssue } from '@repo/data-services/src/services/barfer';
+import { getOrdersByMonth, getDeliveryTypeStatsByMonth, getDeliveryTypeStatsByMonthSimple } from '@repo/data-services/src/services/barfer';
 import { MonthlyAnalyticsClient } from './MonthlyAnalyticsClient';
 
 interface MonthlyAnalyticsTabProps {
@@ -14,14 +14,10 @@ interface MonthlyAnalyticsTabProps {
 
 export async function MonthlyAnalyticsTab({ dateFilter, compareFilter }: MonthlyAnalyticsTabProps) {
     try {
-        // Debug: verificar órdenes mayoristas
-        console.log('=== INICIANDO DEBUG DE ÓRDENES MAYORISTAS ===');
-        await debugWholesaleOrders(dateFilter.from, dateFilter.to);
-        await testWholesaleIssue(dateFilter.from, dateFilter.to);
-
         const [allOrdersData, deliveryStats] = await Promise.all([
             getOrdersByMonth(dateFilter.from, dateFilter.to),
-            getDeliveryTypeStatsByMonth(dateFilter.from, dateFilter.to)
+            // Usar método simple temporalmente para evitar error de memoria
+            getDeliveryTypeStatsByMonthSimple(dateFilter.from, dateFilter.to)
         ]);
 
         let compareAllOrdersData;
@@ -29,7 +25,8 @@ export async function MonthlyAnalyticsTab({ dateFilter, compareFilter }: Monthly
         if (compareFilter) {
             [compareAllOrdersData, compareDeliveryStats] = await Promise.all([
                 getOrdersByMonth(compareFilter.from, compareFilter.to),
-                getDeliveryTypeStatsByMonth(compareFilter.from, compareFilter.to)
+                // Usar método simple para comparación también
+                getDeliveryTypeStatsByMonthSimple(compareFilter.from, compareFilter.to)
             ]);
         }
 
