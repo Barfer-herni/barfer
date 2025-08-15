@@ -82,16 +82,14 @@ export async function exportOrdersAction({
         const dataToExport = orders.map(order => ({
             'Fecha Entrega': order.deliveryDay ? new Date(order.deliveryDay).toLocaleDateString('es-AR') : 'Sin fecha',
             'Rango Horario': extractTimeOnly(order.deliveryArea?.schedule),
-            'Notas Propias': order.notesOwn || '',
             'Cliente': `${order.user?.name || ''} ${order.user?.lastName || ''}`.trim(),
             'Direccion': `${order.address?.address || ''}, ${order.address?.city || ''}`,
-            'Telefono': order.address?.phone || '',
-            'Email': order.user?.email || '',
             'Notas Cliente': formatNotes(order),
             'Productos': order.items.map(item => `${item.name} x${(item.options[0] as any)?.quantity || 1}`).join('\r\n'),
             'Total': order.total,
             'Medio de Pago': order.paymentMethod || '',
-            'Estado': order.status,
+            'Telefono': order.address?.phone || '',
+            'Email': order.user?.email || '',
         }));
 
         // Crear el libro de trabajo y la hoja
@@ -102,16 +100,14 @@ export async function exportOrdersAction({
         const columnWidths = [
             { wch: 12 }, // Fecha Entrega
             { wch: 25 }, // Rango Horario
-            { wch: 40 }, // Notas Propias
             { wch: 30 }, // Cliente
             { wch: 40 }, // Direccion
-            { wch: 15 }, // Telefono
-            { wch: 30 }, // Email
             { wch: 40 }, // Notas Cliente
             { wch: 60 }, // Productos
             { wch: 12 }, // Total
             { wch: 20 }, // Medio de Pago
-            { wch: 15 }, // Estado
+            { wch: 15 }, // Telefono
+            { wch: 30 }, // Email
         ];
         worksheet['!cols'] = columnWidths;
 
