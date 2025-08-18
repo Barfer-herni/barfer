@@ -319,25 +319,48 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
 }
 
 // Función helper para encontrar el producto coincidente
-function findMatchingProduct(itemName: string, availableProducts: string[]): string {
+function findMatchingProduct(itemName: string, availableProducts: string[], itemOption?: string): string {
     if (!itemName) return '';
 
     // Buscar coincidencia exacta primero
     const exactMatch = availableProducts.find(product => product === itemName);
-    if (exactMatch) return exactMatch;
+    if (exactMatch) {
+        return exactMatch;
+    }
 
     // Buscar coincidencia parcial (case insensitive)
     const normalizedItemName = itemName.toLowerCase();
-    const partialMatch = availableProducts.find(product => {
+
+    // Primero, encontrar todos los productos que coincidan parcialmente
+    const allPartialMatches = availableProducts.filter(product => {
         const normalizedProduct = product.toLowerCase();
         // Comprobar si el producto contiene las palabras clave del item
         const itemWords = normalizedItemName.split(' ').filter(word => word.length > 2);
-        return itemWords.every(word => normalizedProduct.includes(word));
+        const matches = itemWords.every(word => normalizedProduct.includes(word));
+        return matches;
     });
 
-    if (partialMatch) return partialMatch;
+    if (allPartialMatches.length > 0) {
+        // Si hay múltiples coincidencias parciales y tenemos una opción, intentar encontrar la que coincida con la opción
+        if (allPartialMatches.length > 1 && itemOption) {
+            const normalizedOption = itemOption.toLowerCase();
 
-    // Buscar por palabras clave específicas
+            const matchingOption = allPartialMatches.find(product => {
+                const productLower = product.toLowerCase();
+                const hasOption = productLower.includes(normalizedOption);
+                return hasOption;
+            });
+
+            if (matchingOption) {
+                return matchingOption;
+            }
+        }
+
+        // Si no se encuentra la opción específica o no hay opción, devolver la primera
+        return allPartialMatches[0];
+    }
+
+    // Buscar por palabras clave específicas considerando la opción
     const keywordMatches: { [key: string]: string[] } = {
         'gato cordero': ['Barfer box Gato Cordero 5kg'],
         'gato pollo': ['Barfer box Gato Pollo 5kg'],
@@ -351,7 +374,17 @@ function findMatchingProduct(itemName: string, availableProducts: string[]): str
 
     for (const [keyword, products] of Object.entries(keywordMatches)) {
         if (normalizedItemName.includes(keyword)) {
-            // Si hay múltiples opciones, devolver la primera (5kg por defecto)
+            // Si hay múltiples opciones, intentar encontrar la que coincida con la opción del item
+            if (itemOption && products.length > 1) {
+                const normalizedOption = itemOption.toLowerCase();
+                const matchingOption = products.find(product => {
+                    const productLower = product.toLowerCase();
+                    const hasOption = productLower.includes(normalizedOption);
+                    return hasOption;
+                });
+                if (matchingOption) return matchingOption;
+            }
+            // Si no se encuentra la opción específica o no hay opción, devolver la primera (5kg por defecto)
             return products[0];
         }
     }
@@ -435,7 +468,6 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
     }
 
     if (cell.column.id === 'status') {
-        console.log('Matched status condition');
         const bgColor = getStatusCellBackgroundColor(editValues.status, editValues.paymentMethod);
         return (
             <TableCell key={cell.id} className={`px-0 py-1 border-r border-border ${bgColor}`}>
@@ -455,7 +487,6 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
     }
 
     if (cell.column.id === 'orderType') {
-        console.log('Matched orderType condition');
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <select
@@ -474,7 +505,6 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
     }
 
     if (cell.column.id === 'paymentMethod') {
-        console.log('Matched paymentMethod condition');
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <select
@@ -493,7 +523,6 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
     }
 
     if (cell.column.id === 'deliveryDay' || cell.column.id === 'fecha') {
-        console.log('Matched deliveryDay condition');
         const bgColor = getDateCellBackgroundColor(editValues.deliveryDay || '');
         return (
             <TableCell key={cell.id} className={`px-0 py-1 border-r border-border ${bgColor}`}>
@@ -533,28 +562,6 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
     }
 
     if (cell.column.id === 'items') {
-        console.log('Matched items condition');
-        console.log('renderEditableCell - editValues.items:', editValues.items);
-        console.log('renderEditableCell - available products:', getFilteredProducts(editValues.orderType, productSearchFilter));
-        console.log('renderEditableCell - orderType:', editValues.orderType);
-        console.log('renderEditableCell - productSearchFilter:', productSearchFilter);
-
-        editValues.items?.forEach((item: any, index: number) => {
-            console.log(`renderEditableCell - Item ${index} FULL:`, item);
-            console.log(`renderEditableCell - Item ${index} ANALYSIS:`, {
-                id: item.id,
-                name: item.name,
-                options: item.options,
-                hasName: !!item.name,
-                hasId: !!item.id,
-                nameValue: item.name,
-                idValue: item.id,
-                selectValue: item.name || item.id || '',
-                quantity: item.options?.[0]?.quantity,
-                allKeys: Object.keys(item || {}),
-                rawItem: JSON.stringify(item)
-            });
-        });
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <div className="space-y-1">
@@ -568,7 +575,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                         <div key={itemIndex} className="space-y-1">
                             <div className="flex gap-1">
                                 <select
-                                    value={findMatchingProduct(item.name || item.id || '', getFilteredProducts(editValues.orderType, productSearchFilter))}
+                                    value={findMatchingProduct(item.name || item.id || '', getFilteredProducts(editValues.orderType, productSearchFilter), item.options?.[0]?.name)}
                                     onChange={e => {
                                         const newItems = [...editValues.items];
                                         newItems[itemIndex] = {
@@ -640,8 +647,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
 
     // Caso especial para la columna Cliente (user_name) - mostrar nombre y apellido
     if (cell.column.id === 'user_name') {
-        console.log('Matched user_name condition');
-        console.log('Rendering user_name cell - editValues.userName:', editValues.userName, 'editValues.userLastName:', editValues.userLastName);
+
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <div className="space-y-1">

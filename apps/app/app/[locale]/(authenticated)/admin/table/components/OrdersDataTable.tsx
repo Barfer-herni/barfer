@@ -145,18 +145,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             deliveryDay: row.original.deliveryDay || '',
         };
 
-        console.log('🔥 handleEditClick - editValuesData.address BEFORE setEditValues:', editValuesData.address);
-        console.log('🔥 handleEditClick - typeof editValuesData.address:', typeof editValuesData.address);
-        console.log('🔥 handleEditClick - editValuesData.address JSON:', JSON.stringify(editValuesData.address));
-        console.log('🔥 handleEditClick - FULL editValuesData:', editValuesData);
-
         setEditValues(editValuesData);
-
-        // Log inmediato para ver si se corrompe al asignar
-        setTimeout(() => {
-            console.log('🔥 handleEditClick - editValues.address AFTER setEditValues (async):', editValues.address);
-            console.log('🔥 handleEditClick - typeof editValues.address AFTER:', typeof editValues.address);
-        }, 100);
     };
 
     const handleCancel = () => {

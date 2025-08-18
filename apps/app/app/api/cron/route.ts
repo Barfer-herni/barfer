@@ -34,23 +34,12 @@ export async function GET() {
 
                 const isDue = timeSincePrev < twoMinutes || (timeToNext > 0 && timeToNext < twoMinutes);
 
-                console.log(`\n[Campaign Cron] Checking campaign "${campaign.name}"...`);
-                console.log(` -> Current time:           ${format(now, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx")}`);
-                console.log(` -> Cron expression:        ${campaign.scheduleCron}`);
-                console.log(` -> Previous scheduled run: ${format(previousRun, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx")}`);
-                console.log(` -> Next scheduled run:     ${format(nextRun, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx")}`);
-                console.log(` -> Time since last run:    ${Math.round(timeSincePrev / 1000)} seconds`);
-                console.log(` -> Time to next run:       ${Math.round(timeToNext / 1000)} seconds`);
-                console.log(` -> Is due (within 2 min):   ${isDue}`);
-
                 if (isDue) {
-                    console.log(`[Campaign Cron] ✔️ Campaign "${campaign.name}" is due. Preparing to send.`);
 
                     const audience = campaign.targetAudience as { type: 'behavior' | 'spending'; category: string };
                     const clients = await getClientsByCategory(audience.category, audience.type);
 
                     if (clients && clients.length > 0) {
-                        console.log(`[Campaign Cron] Audience matched. Found ${clients.length} real clients for campaign "${campaign.name}".`);
 
                         const emailPayloads = clients.map(client => ({
                             to: client.email,
