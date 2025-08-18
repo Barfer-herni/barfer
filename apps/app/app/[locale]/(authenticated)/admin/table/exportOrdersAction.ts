@@ -10,6 +10,33 @@ interface ExportParams {
     orderType?: string;
 }
 
+/**
+ * Helper function to extract weight from product option name
+ */
+function getWeightFromOption(productName: string, optionName: string): string {
+    const lowerProductName = productName.toLowerCase();
+
+    if (lowerProductName.includes('big dog')) {
+        return '15kg';
+    }
+    if (lowerProductName.includes('complemento')) {
+        return '';
+    }
+
+    const match = optionName.match(/(\d+(?:\.\d+)?)\s*KG/i);
+    if (match && match[1]) {
+        return `${match[1]}kg`;
+    }
+
+    // Buscar peso en el nombre del producto también
+    const productWeightMatch = lowerProductName.match(/(\d+(?:\.\d+)?)\s*k?g?/i);
+    if (productWeightMatch && productWeightMatch[1]) {
+        return `${productWeightMatch[1]}kg`;
+    }
+
+    return '';
+}
+
 export async function exportOrdersAction({
     search = '',
     from = '',
@@ -85,7 +112,12 @@ export async function exportOrdersAction({
             'Cliente': `${order.user?.name || ''} ${order.user?.lastName || ''}`.trim(),
             'Direccion': `${order.address?.address || ''}, ${order.address?.city || ''}`,
             'Notas Cliente': formatNotes(order),
-            'Productos': order.items.map(item => `${item.name} x${(item.options[0] as any)?.quantity || 1}`).join('\r\n'),
+            'Productos': order.items.map(item => {
+                const weight = getWeightFromOption(item.name, (item.options[0] as any)?.name || '');
+                const quantity = (item.options[0] as any)?.quantity || 1;
+                const weightText = weight ? ` - ${weight}` : '';
+                return `${item.name}${weightText} - x${quantity}`;
+            }).join('\r\n'),
             'Total': order.total,
             'Medio de Pago': order.paymentMethod || '',
             'Telefono': order.address?.phone || '',
