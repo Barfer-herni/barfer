@@ -78,6 +78,7 @@ export const createDefaultOrderData = () => ({
     items: [{
         id: '',
         name: '',
+        fullName: '',
         description: '',
         images: [],
         options: [{
@@ -104,13 +105,148 @@ export const createDefaultOrderData = () => ({
     deliveryDay: '',
 });
 
+// Función para extraer el peso del nombre del producto
+export const extractWeightFromProductName = (productName: string): string => {
+    if (!productName) return 'Default';
+
+    // Buscar patrones de peso al final del nombre
+    const weightPatterns = [
+        /\b(\d+)\s*kg\b/i,           // 10kg, 5 kg, etc.
+        /\b(\d+)\s*KG\b/,            // 10KG, 5 KG, etc.
+        /\b(\d+)\s*Kg\b/,            // 10Kg, 5 Kg, etc.
+        /\b(\d+)\s*gramos?\b/i,      // 500 gramos, 500 gramo, etc.
+        /\b(\d+)\s*g\b/i,            // 500g, 500 g, etc.
+        /\b(\d+)\s*G\b/,             // 500G, 500 G, etc.
+        /\b(\d+)\s*litros?\b/i,      // 1 litro, 1 litros, etc.
+        /\b(\d+)\s*l\b/i,            // 1l, 1 l, etc.
+        /\b(\d+)\s*L\b/,             // 1L, 1 L, etc.
+    ];
+
+    for (const pattern of weightPatterns) {
+        const match = productName.match(pattern);
+        if (match) {
+            const weight = match[1];
+            const unit = match[0].replace(weight, '').trim();
+
+            // Normalizar la unidad
+            if (unit.toLowerCase().includes('kg') || unit.toLowerCase().includes('kilo')) {
+                return `${weight}KG`;
+            } else if (unit.toLowerCase().includes('gramo') || unit.toLowerCase().includes('g')) {
+                return `${weight}G`;
+            } else if (unit.toLowerCase().includes('litro') || unit.toLowerCase().includes('l')) {
+                return `${weight}L`;
+            }
+
+            // Si no se reconoce la unidad, devolver el valor encontrado
+            return match[0].toUpperCase();
+        }
+    }
+
+    // Si no se encuentra peso, buscar en patrones específicos conocidos
+    const knownPatterns = [
+        { pattern: /\bBIG DOG\b.*?\((\d+)\s*kg\)/i, unit: 'KG' },
+        { pattern: /\b(\d+)\s*medallones?\s*de\s*(\d+)\s*g/i, unit: 'G' },
+    ];
+
+    for (const { pattern, unit } of knownPatterns) {
+        const match = productName.match(pattern);
+        if (match) {
+            if (unit === 'G' && match[2]) {
+                // Para medallones, calcular el peso total
+                const medallones = parseInt(match[1]);
+                const pesoMedallon = parseInt(match[2]);
+                const pesoTotal = medallones * pesoMedallon;
+                return `${pesoTotal}G`;
+            } else if (match[1]) {
+                return `${match[1]}${unit}`;
+            }
+        }
+    }
+
+    // Si no se encuentra nada, devolver 'Default'
+    return 'Default';
+};
+
+// Función para extraer el nombre base del producto (sin el peso)
+export const extractBaseProductName = (productName: string): string => {
+    if (!productName) return '';
+
+    // Buscar patrones de peso al final del nombre y removerlos
+    const weightPatterns = [
+        /\s+\d+\s*kg\b/i,           // 10kg, 5 kg, etc.
+        /\s+\d+\s*KG\b/,            // 10KG, 5 KG, etc.
+        /\s+\d+\s*Kg\b/,            // 10Kg, 5 Kg, etc.
+        /\s+\d+\s*gramos?\b/i,      // 500 gramos, 500 gramo, etc.
+        /\s+\d+\s*g\b/i,            // 500g, 500 g, etc.
+        /\s+\d+\s*G\b/,             // 500G, 500 G, etc.
+        /\s+\d+\s*litros?\b/i,      // 1 litro, 1 litros, etc.
+        /\s+\d+\s*l\b/i,            // 1l, 1 l, etc.
+        /\s+\d+\s*L\b/,             // 1L, 1 L, etc.
+    ];
+
+    let baseName = productName;
+
+    // Remover patrones de peso encontrados
+    for (const pattern of weightPatterns) {
+        baseName = baseName.replace(pattern, '');
+    }
+
+    // Remover patrones específicos conocidos
+    const specificPatterns = [
+        /\s*\([^)]*\)/g,            // Remover paréntesis y su contenido
+        /\s*-\s*[^-]*$/g,           // Remover guiones y contenido después del último guión
+    ];
+
+    for (const pattern of specificPatterns) {
+        baseName = baseName.replace(pattern, '');
+    }
+
+    // Limpiar espacios extra y retornar
+    return baseName.trim();
+};
+
 // Función para filtrar items válidos
 export const filterValidItems = (items: any[]) => {
-    return items?.filter((item: any) => {
-        const hasName = item.name && item.name.trim() !== '';
-        const hasQuantity = item.options?.[0]?.quantity > 0;
-        return hasName && hasQuantity;
-    }) || [];
+    console.log('🔍 filterValidItems - Items recibidos:', items);
+
+    return items.filter(item => {
+        // Verificar que el item tenga nombre y cantidad válida
+        const hasValidName = item.name && item.name.trim() !== '';
+        const hasValidQuantity = item.options?.[0]?.quantity > 0;
+
+        console.log(`📦 Item "${item.name}":`, {
+            hasValidName,
+            hasValidQuantity,
+            currentOptionName: item.options?.[0]?.name
+        });
+
+        if (hasValidName && hasValidQuantity) {
+            // Si no tenemos fullName, usar el nombre actual
+            const originalName = item.fullName || item.name;
+
+            // Extraer el peso del nombre del producto y asignarlo a la opción
+            const weight = extractWeightFromProductName(originalName);
+            // Extraer el nombre base del producto (sin peso)
+            const baseName = extractBaseProductName(originalName);
+
+            console.log(`⚖️ Peso extraído de "${originalName}": ${weight}`);
+            console.log(`🏷️ Nombre base extraído: "${baseName}"`);
+
+            if (item.options && item.options[0]) {
+                item.options[0].name = weight;
+                console.log(`✅ Opción actualizada: ${weight}`);
+            }
+
+            // Actualizar el nombre del item con el nombre base (sin peso)
+            item.name = baseName;
+            // Preservar el nombre completo para el select
+            item.fullName = originalName;
+            console.log(`✅ Nombre del item actualizado: "${baseName}"`);
+            console.log(`✅ Nombre completo preservado: "${originalName}"`);
+        }
+
+        return hasValidName && hasValidQuantity;
+    });
 };
 
 // Función para validar entrada del campo de búsqueda

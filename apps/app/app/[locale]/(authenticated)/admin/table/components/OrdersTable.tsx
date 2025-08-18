@@ -32,7 +32,9 @@ import {
     getDateCellBackgroundColor,
     getStatusCellBackgroundColor,
     createLocalDate,
-    createLocalDateISO
+    createLocalDateISO,
+    extractWeightFromProductName,
+    extractBaseProductName
 } from '../helpers';
 import type { DataTableProps } from '../types';
 
@@ -575,13 +577,22 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                         <div key={itemIndex} className="space-y-1">
                             <div className="flex gap-1">
                                 <select
-                                    value={findMatchingProduct(item.name || item.id || '', getFilteredProducts(editValues.orderType, productSearchFilter), item.options?.[0]?.name)}
+                                    value={item.fullName || findMatchingProduct(item.name || item.id || '', getFilteredProducts(editValues.orderType, productSearchFilter), item.options?.[0]?.name)}
                                     onChange={e => {
                                         const newItems = [...editValues.items];
+                                        const selectedProductName = e.target.value;
+                                        const extractedWeight = extractWeightFromProductName(selectedProductName);
+                                        const baseProductName = extractBaseProductName(selectedProductName);
+
                                         newItems[itemIndex] = {
                                             ...newItems[itemIndex],
-                                            name: e.target.value,
-                                            id: e.target.value
+                                            name: baseProductName, // Guardar solo el nombre base
+                                            id: selectedProductName, // Mantener el ID completo para referencia
+                                            fullName: selectedProductName, // Guardar el nombre completo para el select
+                                            options: [{
+                                                ...newItems[itemIndex].options?.[0],
+                                                name: extractedWeight
+                                            }]
                                         };
                                         onEditValueChange('items', newItems);
                                     }}
@@ -627,6 +638,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                             const newItems = [...editValues.items, {
                                 id: '',
                                 name: '',
+                                fullName: '',
                                 description: '',
                                 images: [],
                                 options: [{ name: 'Default', price: 0, quantity: 1 }],

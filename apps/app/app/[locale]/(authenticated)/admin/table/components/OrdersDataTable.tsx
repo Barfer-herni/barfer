@@ -28,7 +28,9 @@ import {
     buildExportFileName,
     downloadBase64File,
     createLocalDate,
-    createLocalDateISO
+    createLocalDateISO,
+    extractWeightFromProductName,
+    extractBaseProductName
 } from '../helpers';
 import type { DataTableProps } from '../types';
 import { OrdersTable } from './OrdersTable';
@@ -621,13 +623,22 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                         {createFormData.items?.map((item: any, index: number) => (
                                             <div key={index} className="flex gap-2">
                                                 <select
-                                                    value={item.name || ''}
+                                                    value={item.fullName || item.name || ''}
                                                     onChange={(e) => {
                                                         const newItems = [...createFormData.items];
+                                                        const selectedProductName = e.target.value;
+                                                        const extractedWeight = extractWeightFromProductName(selectedProductName);
+                                                        const baseProductName = extractBaseProductName(selectedProductName);
+
                                                         newItems[index] = {
                                                             ...newItems[index],
-                                                            name: e.target.value,
-                                                            id: e.target.value
+                                                            name: baseProductName, // Guardar solo el nombre base
+                                                            id: selectedProductName, // Mantener el ID completo para referencia
+                                                            fullName: selectedProductName, // Guardar el nombre completo para el select
+                                                            options: [{
+                                                                ...newItems[index].options?.[0],
+                                                                name: extractedWeight
+                                                            }]
                                                         };
                                                         handleCreateFormChange('items', newItems);
                                                     }}
@@ -684,6 +695,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                                 const newItems = [...createFormData.items, {
                                                     id: '',
                                                     name: '',
+                                                    fullName: '',
                                                     description: '',
                                                     images: [],
                                                     options: [{ name: 'Default', price: 0, quantity: 1 }],
