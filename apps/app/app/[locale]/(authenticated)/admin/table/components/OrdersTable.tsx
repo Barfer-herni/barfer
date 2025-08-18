@@ -277,8 +277,23 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                 </TableBody>
             </Table>
             <div className="flex items-center justify-between space-x-2 py-4">
-                <div className="text-sm text-muted-foreground">
-                    Mostrando {table.getRowModel().rows.length} de {total} órdenes.
+                <div className="flex items-center gap-4">
+                    <div className="text-sm text-muted-foreground">
+                        Mostrando {table.getRowModel().rows.length} de {total} órdenes.
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Mostrar:</span>
+                        <select
+                            value={pagination.pageSize}
+                            onChange={e => onPaginationChange(0, Number(e.target.value))}
+                            className="p-1 text-sm border rounded-md"
+                        >
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                            <option value={200}>200</option>
+                        </select>
+                        <span className="text-sm text-muted-foreground">registros</span>
+                    </div>
                 </div>
                 <div className="space-x-2">
                     <Button
@@ -736,8 +751,9 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <Input
                     type={cell.column.id === 'total' ? 'number' : 'text'}
-                    value={editValues[fieldKey] || ''}
-                    onChange={e => onEditValueChange(fieldKey, e.target.value)}
+                    value={editValues[fieldKey] === undefined ? '' : editValues[fieldKey]}
+                    placeholder={cell.column.id === 'total' ? '0' : ''}
+                    onChange={e => onEditValueChange(fieldKey, e.target.value || undefined)}
                     className="w-full text-xs text-center"
                 />
             </TableCell>

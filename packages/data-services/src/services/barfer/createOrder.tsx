@@ -6,7 +6,7 @@ import type { Order } from '../../types/barfer';
 
 const createOrderSchema = z.object({
     status: z.enum(['pending', 'confirmed', 'delivered', 'cancelled']).default('pending'),
-    total: z.number().positive(),
+    total: z.number().min(0),
     subTotal: z.number().min(0).optional().default(0),
     shippingPrice: z.number().min(0).optional().default(0),
     notes: z.string().optional(),
@@ -24,7 +24,7 @@ const createOrderSchema = z.object({
     user: z.object({
         name: z.string(),
         lastName: z.string(),
-        email: z.string().email(),
+        email: z.string().email().optional().or(z.literal('')),
     }),
     items: z.array(z.object({
         id: z.string(),
