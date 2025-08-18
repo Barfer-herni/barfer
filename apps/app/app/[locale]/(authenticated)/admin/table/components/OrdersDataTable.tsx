@@ -563,8 +563,18 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                     <Label>Total</Label>
                                     <Input
                                         type="number"
-                                        value={createFormData.total}
-                                        onChange={(e) => handleCreateFormChange('total', Number(e.target.value))}
+                                        value={createFormData.total || ''}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            if (value === '') {
+                                                handleCreateFormChange('total', '');
+                                            } else {
+                                                const numValue = Number(value);
+                                                if (!isNaN(numValue)) {
+                                                    handleCreateFormChange('total', numValue);
+                                                }
+                                            }
+                                        }}
                                         placeholder="0"
                                     />
                                 </div>
