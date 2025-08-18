@@ -150,9 +150,16 @@ export const columns: ColumnDef<Order>[] = [
             const items = row.original.items as Order['items'];
             return (
                 <div className="min-w-[120px] text-sm whitespace-normal break-words">
-                    {items.map((item, index) => (
-                        <div key={`${item.id}-${index}`}>{item.name} x{(item.options[0] as any)?.quantity || 1}</div>
-                    ))}
+                    {items.map((item, index) => {
+                        const option = item.options[0] as any;
+                        const optionName = option?.name?.toLowerCase() || '';
+                        const quantity = option?.quantity || 1;
+                        return (
+                            <div key={`${item.id}-${index}`}>
+                                {item.name} - {optionName} - x{quantity}
+                            </div>
+                        );
+                    })}
                 </div>
             );
         }
