@@ -149,7 +149,7 @@ export const columns: ColumnDef<Order>[] = [
         cell: ({ row }: CellContext<Order, unknown>) => {
             const items = row.original.items as Order['items'];
             return (
-                <div className="min-w-[170px] text-sm whitespace-normal break-words">
+                <div className="min-w-[200px] text-sm whitespace-normal break-words">
                     {items.map((item, index) => {
                         const option = item.options[0] as any;
                         const optionName = option?.name || '';
@@ -265,7 +265,7 @@ export const columns: ColumnDef<Order>[] = [
 
             return (
                 <div
-                    className="min-w-[10px] max-w-[80px] text-xs truncate"
+                    className="min-w-[10px] max-w-[60px] text-xs truncate"
                     title={user.email}
                 >
                     {displayEmail}

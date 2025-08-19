@@ -69,12 +69,12 @@ export const COLUMN_WIDTHS = {
     client: 130,
     address: 180,
     phone: 100,
-    items: 170,
+    items: 200,
     paymentMethod: 100,
     status: 85,
     total: 100,
     notes: 200,
-    email: 80,
+    email: 60,
     actions: 80,
 };
 
