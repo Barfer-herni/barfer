@@ -194,13 +194,6 @@ export const extractBaseProductName = (productName: string): string => {
     // Patrones que NO son peso (productos que no necesitan extracción)
     const nonWeightPatterns = [
         /\b\d+\s*x\s*\d+\b/i,        // "traquea x1", "producto x2", etc.
-        /\b\d+\s*U\b/i,               // "1 U", "2 U", etc.
-        /\b\d+\s*unidades?\b/i,       // "1 unidad", "2 unidades", etc.
-        /\b\d+\s*pcs?\b/i,            // "1 pc", "2 pcs", etc.
-        /\b\d+\s*piezas?\b/i,         // "1 pieza", "2 piezas", etc.
-        /\b\d+\s*capsulas?\b/i,       // "1 capsula", "2 capsulas", etc.
-        /\b\d+\s*tabletas?\b/i,       // "1 tableta", "2 tabletas", etc.
-        /\b\d+\s*comprimidos?\b/i,    // "1 comprimido", "2 comprimidos", etc.
     ];
 
     // Si el producto coincide con patrones que NO son peso, devolver el nombre original
@@ -211,11 +204,40 @@ export const extractBaseProductName = (productName: string): string => {
         }
     }
 
+    let baseName = productName;
+
+    // NORMALIZACIÓN: Convertir nombres "Barfer box Perro Pollo 5kg" a "BOX PERRO POLLO"
+    // Patrón para productos Barfer
+    const barferPattern = /^barfer\s+box\s+(.+?)(?:\s+\d+\s*kg|\s*$)/i;
+    const barferMatch = baseName.match(barferPattern);
+
+    if (barferMatch) {
+        // Extraer la parte después de "barfer box" y convertir a formato estándar
+        const productType = barferMatch[1].trim();
+        const words = productType.split(' ').map(word => word.toUpperCase());
+        baseName = `BOX ${words.join(' ')}`;
+        console.log(`🔄 Normalizando producto Barfer: "${productName}" → "${baseName}"`);
+        return baseName;
+    }
+
+    // NORMALIZACIÓN: Convertir nombres "BIG DOG (15kg) - POLLO" a "BIG DOG POLLO"
+    const bigDogPattern = /^big\s+dog\s*\([^)]*\)\s*-\s*(.+?)$/i;
+    const bigDogMatch = baseName.match(bigDogPattern);
+
+    if (bigDogMatch) {
+        const variant = bigDogMatch[1].trim().toUpperCase();
+        baseName = `BIG DOG ${variant}`;
+        console.log(`🔄 Normalizando producto Big Dog: "${productName}" → "${baseName}"`);
+        return baseName;
+    }
+
+    // NORMALIZACIÓN: Para productos que ya están en formato "BOX PERRO POLLO 5KG", remover solo el peso
     // Buscar patrones de peso al final del nombre y removerlos
     const weightPatterns = [
         /\s+\d+\s*kg\b/i,           // 10kg, 5 kg, etc.
         /\s+\d+\s*KG\b/,            // 10KG, 5 KG, etc.
         /\s+\d+\s*Kg\b/,            // 10Kg, 5 Kg, etc.
+        /\s+\d+\s*U\b/i,            // 1U, 2 U, etc.
         /\s+\d+\s*gramos?\b/i,      // 500 gramos, 500 gramo, etc.
         /\s+\d+\s*g\b/i,            // 500g, 500 g, etc.
         /\s+\d+\s*G\b/,             // 500G, 500 G, etc.
@@ -223,8 +245,6 @@ export const extractBaseProductName = (productName: string): string => {
         /\s+\d+\s*l\b/i,            // 1l, 1 l, etc.
         /\s+\d+\s*L\b/,             // 1L, 1 L, etc.
     ];
-
-    let baseName = productName;
 
     // Remover patrones de peso encontrados
     for (const pattern of weightPatterns) {
@@ -239,6 +259,11 @@ export const extractBaseProductName = (productName: string): string => {
 
     for (const pattern of specificPatterns) {
         baseName = baseName.replace(pattern, '');
+    }
+
+    // Normalizar a mayúsculas si es un producto BOX o BIG DOG
+    if (baseName.toUpperCase().startsWith('BOX ') || baseName.toUpperCase().startsWith('BIG DOG')) {
+        baseName = baseName.toUpperCase();
     }
 
     // Limpiar espacios extra y retornar
@@ -270,11 +295,12 @@ export const processSingleItem = (item: any): any => {
     // Crear una copia del item para no modificar el original
     const processedItem = {
         ...item,
-        name: baseName,
-        fullName: originalName,
+        id: baseName,        // ID también debe ser el nombre base (sin peso)
+        name: baseName,      // Nombre base (sin peso)
+        fullName: originalName, // Nombre completo original para referencia
         options: [{
             ...item.options?.[0],
-            name: weight
+            name: weight     // Peso extraído (5KG, 10KG, etc.)
         }]
     };
 
@@ -371,4 +397,53 @@ export const createLocalDateISO = (date: Date): Date => {
     const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
     return localDate;
+};
+
+// Función para probar la normalización de nombres de productos
+export const testProductNameNormalization = () => {
+    const testCases = [
+        'Barfer box Perro Pollo 5kg',
+        'Barfer box Gato Vaca 5kg',
+        'Barfer box Perro Cerdo 10kg',
+        'BIG DOG (15kg) - POLLO',
+        'BIG DOG (15kg) - VACA',
+        'BOX PERRO POLLO 5KG',
+        'BOX GATO CORDERO 5KG',
+        'BOX PERRO POLLO 10KG',
+        'HUESOS CARNOSOS 5KG',
+        'BOX COMPLEMENTOS 1U'
+    ];
+
+    console.log('🧪 Probando normalización de nombres de productos:');
+    testCases.forEach(testCase => {
+        const normalized = extractBaseProductName(testCase);
+        const weight = extractWeightFromProductName(testCase);
+        console.log(`  "${testCase}" → nombre: "${normalized}", peso: "${weight}"`);
+    });
+};
+
+// Función para probar el procesamiento completo de items
+export const testItemProcessing = () => {
+    const testItems = [
+        {
+            name: 'BOX PERRO POLLO 10KG',
+            options: [{ name: 'Default', price: 0, quantity: 1 }]
+        },
+        {
+            name: 'Barfer box Gato Vaca 5kg',
+            options: [{ name: 'Default', price: 0, quantity: 2 }]
+        }
+    ];
+
+    console.log('🧪 Probando procesamiento completo de items:');
+    testItems.forEach((item, index) => {
+        console.log(`\n📦 Item ${index + 1} original:`, item);
+        const processed = processSingleItem(item);
+        console.log(`✅ Item ${index + 1} procesado:`, {
+            id: processed.id,
+            name: processed.name,
+            fullName: processed.fullName,
+            options: processed.options
+        });
+    });
 }; 

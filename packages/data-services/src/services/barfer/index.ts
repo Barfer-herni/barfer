@@ -20,7 +20,7 @@ export type {
 export { getCustomerFrequency } from './analytics/getCustomerFrequency';
 export { getCustomerInsights } from './analytics/getCustomerInsights';
 export { getOrdersByDay } from './analytics/getOrdersByDay';
-export { getOrdersByMonth } from './analytics/getOrdersByMonth';
+export { getOrdersByMonth, debugOrdersByMonth } from './analytics/getOrdersByMonth';
 export { getPaymentMethodStats } from './analytics/getPaymentMethodStats';
 export { getPaymentsByTimePeriod } from './analytics/getPaymentsByTimePeriod';
 export { getProductSales } from './analytics/getProductSales';

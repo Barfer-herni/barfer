@@ -76,6 +76,77 @@ export async function getOrdersByMonth(startDate?: Date, endDate?: Date) {
 }
 
 /**
+ * Función de debug para verificar órdenes de mayoristas
+ */
+export async function debugOrdersByMonth(startDate?: Date, endDate?: Date): Promise<{
+    totalOrders: number;
+    orderTypeCounts: Record<string, number>;
+    ordersWithoutType: number;
+    sampleOrders: any[];
+}> {
+    try {
+        const collection = await getCollection('orders');
+
+        // Obtener todas las órdenes en el rango de fechas
+        const baseFilter: any = {};
+        if (startDate || endDate) {
+            baseFilter.createdAt = {};
+            if (startDate) baseFilter.createdAt.$gte = startDate;
+            if (endDate) baseFilter.createdAt.$lte = endDate;
+        }
+
+        console.log('🔍 Debug: Filtro base:', JSON.stringify(baseFilter, null, 2));
+
+        const allOrders = await collection.find(baseFilter, {
+            projection: {
+                _id: 1,
+                createdAt: 1,
+                orderType: 1,
+                total: 1,
+                status: 1
+            }
+        }).toArray();
+
+        console.log(`📊 Debug: Total de órdenes encontradas: ${allOrders.length}`);
+
+        // Contar por tipo de orden - asumir minorista si no tiene orderType
+        const orderTypeCounts = allOrders.reduce((acc: any, order) => {
+            const orderType = order.orderType || 'minorista'; // Asumir minorista por defecto
+            acc[orderType] = (acc[orderType] || 0) + 1;
+            return acc;
+        }, {});
+
+        console.log('📈 Debug: Conteo por tipo de orden:', orderTypeCounts);
+
+        // Mostrar órdenes que no tienen orderType configurado
+        const ordersWithoutType = allOrders.filter(order => !order.orderType);
+        if (ordersWithoutType.length > 0) {
+            console.log(`⚠️ Debug: ${ordersWithoutType.length} órdenes sin orderType (asumiendo minorista)`);
+        }
+
+        // Mostrar algunas órdenes de ejemplo
+        const sampleOrders = allOrders.slice(0, 5);
+        console.log('📝 Debug: Órdenes de ejemplo:', sampleOrders.map(order => ({
+            _id: order._id,
+            createdAt: order.createdAt,
+            orderType: order.orderType || 'minorista (por defecto)',
+            total: order.total,
+            status: order.status
+        })));
+
+        return {
+            totalOrders: allOrders.length,
+            orderTypeCounts,
+            ordersWithoutType: ordersWithoutType.length,
+            sampleOrders
+        };
+    } catch (error) {
+        console.error('Error en debugOrdersByMonth:', error);
+        throw error;
+    }
+}
+
+/**
  * Obtiene estadísticas de órdenes confirmadas agrupadas por mes
  */
 export async function getConfirmedOrdersByMonth() {
@@ -117,6 +188,8 @@ export async function getConfirmedOrdersByMonth() {
         throw error;
     }
 }
+
+
 
 // EJEMPLO DE DATOS QUE RETORNA ESTA FUNCIÓN
 export const EXAMPLE_DATA = {

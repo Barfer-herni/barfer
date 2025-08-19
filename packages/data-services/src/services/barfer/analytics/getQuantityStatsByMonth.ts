@@ -278,7 +278,11 @@ export async function getQuantityStatsByMonth(startDate?: Date, endDate?: Date):
                         ]
                     },
                     isWholesale: {
-                        $eq: ["$orderType", "mayorista"]
+                        $cond: [
+                            { $eq: ["$orderType", "mayorista"] },
+                            true,
+                            false
+                        ]
                     }
                 }
             },

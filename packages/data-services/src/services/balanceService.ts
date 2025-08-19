@@ -68,6 +68,21 @@ export async function getBalanceMonthly(
 
 
         const ordersPipeline: any[] = [];
+
+        // Primero convertir createdAt a Date si es string (para compatibilidad con órdenes mayoristas)
+        ordersPipeline.push({
+            $addFields: {
+                createdAt: {
+                    $cond: [
+                        { $eq: [{ $type: "$createdAt" }, "string"] },
+                        { $toDate: "$createdAt" },
+                        "$createdAt"
+                    ]
+                }
+            }
+        });
+
+        // Luego aplicar el filtro de fechas
         if (Object.keys(ordersMatchCondition).length > 0) {
             ordersPipeline.push({ $match: ordersMatchCondition });
         }

@@ -363,16 +363,18 @@ function findMatchingProduct(itemName: string, availableProducts: string[], item
         return allPartialMatches[0];
     }
 
-    // Buscar por palabras clave específicas considerando la opción
+    // Buscar por palabras clave específicas para productos normalizados
     const keywordMatches: { [key: string]: string[] } = {
-        'gato cordero': ['Barfer box Gato Cordero 5kg'],
-        'gato pollo': ['Barfer box Gato Pollo 5kg'],
-        'gato vaca': ['Barfer box Gato Vaca 5kg'],
-        'perro pollo': ['Barfer box Perro Pollo 5kg', 'Barfer box Perro Pollo 10kg'],
-        'perro vaca': ['Barfer box Perro Vaca 5kg', 'Barfer box Perro Vaca 10kg'],
-        'perro cerdo': ['Barfer box Perro Cerdo 5kg', 'Barfer box Perro Cerdo 10kg'],
-        'perro cordero': ['Barfer box Perro Cordero 5kg', 'Barfer box Perro Cordero 10kg'],
-        'big dog': ['BIG DOG (15kg) - POLLO', 'BIG DOG (15kg) - VACA'],
+        'gato cordero': ['BOX GATO CORDERO 5KG'],
+        'gato pollo': ['BOX GATO POLLO 5KG'],
+        'gato vaca': ['BOX GATO VACA 5KG'],
+        'perro pollo': ['BOX PERRO POLLO 5KG', 'BOX PERRO POLLO 10KG'],
+        'perro vaca': ['BOX PERRO VACA 5KG', 'BOX PERRO VACA 10KG'],
+        'perro cerdo': ['BOX PERRO CERDO 5KG', 'BOX PERRO CERDO 10KG'],
+        'perro cordero': ['BOX PERRO CORDERO 5KG', 'BOX PERRO CORDERO 10KG'],
+        'big dog': ['BIG DOG POLLO 15KG', 'BIG DOG VACA 15KG'],
+        'huesos carnosos': ['HUESOS CARNOSOS 5KG'],
+        'complementos': ['BOX COMPLEMENTOS 1U'],
     };
 
     for (const [keyword, products] of Object.entries(keywordMatches)) {
@@ -387,7 +389,7 @@ function findMatchingProduct(itemName: string, availableProducts: string[], item
                 });
                 if (matchingOption) return matchingOption;
             }
-            // Si no se encuentra la opción específica o no hay opción, devolver la primera (5kg por defecto)
+            // Si no se encuentra la opción específica o no hay opción, devolver la primera
             return products[0];
         }
     }
@@ -587,7 +589,6 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                                         const tempItem = {
                                             ...newItems[itemIndex],
                                             name: selectedProductName,
-                                            id: selectedProductName,
                                             fullName: selectedProductName
                                         };
 

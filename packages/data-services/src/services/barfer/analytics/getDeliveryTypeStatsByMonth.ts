@@ -464,19 +464,155 @@ export async function getDeliveryTypeStatsByMonthSimple(startDate?: Date, endDat
 
         console.log('🔧 Usando método alternativo super simplificado...');
 
-        // Crear filtro básico
+        // Crear filtro básico - compatible con Date objects y strings
         const baseFilter: any = {};
         if (startDate || endDate) {
-            baseFilter.createdAt = {};
-            if (startDate) baseFilter.createdAt.$gte = startDate;
-            if (endDate) baseFilter.createdAt.$lte = endDate;
+            // Usar $or para manejar tanto Date objects como strings
+            baseFilter.$or = [
+                // Filtro para Date objects
+                {
+                    createdAt: {
+                        ...(startDate && { $gte: startDate }),
+                        ...(endDate && { $lte: endDate })
+                    }
+                },
+                // Filtro para strings
+                {
+                    createdAt: {
+                        ...(startDate && { $gte: startDate.toISOString() }),
+                        ...(endDate && { $lte: endDate.toISOString() })
+                    }
+                }
+            ];
         }
+
+        console.log('🔍 Debug: Filtro aplicado en getDeliveryTypeStatsByMonth:', JSON.stringify(baseFilter, null, 2));
+        console.log('📅 Debug: Rango de fechas consultado:', {
+            startDate: startDate?.toISOString(),
+            endDate: endDate?.toISOString()
+        });
 
         // ESTRATEGIA: Obtener datos mes por mes usando find() simple
         const months = new Map<string, DeliveryTypeStats>();
 
         // Obtener todas las órdenes de manera simple sin agregación
         console.log('📊 Obteniendo órdenes con consulta básica...');
+
+        // Debug: verificar si hay órdenes de mayoristas en toda la BD
+        const allWholesaleOrders = await collection.find({ orderType: 'mayorista' }).toArray();
+        console.log(`🏪 Debug: Total de órdenes mayoristas en toda la BD: ${allWholesaleOrders.length}`);
+        if (allWholesaleOrders.length > 0) {
+            console.log('🏪 Debug: Ejemplos de órdenes mayoristas en BD:', allWholesaleOrders.slice(0, 3).map(order => ({
+                _id: order._id,
+                createdAt: order.createdAt,
+                orderType: order.orderType,
+                total: order.total
+            })));
+
+            // Debug: verificar fechas de órdenes mayoristas vs rango consultado
+            const startDateISO = startDate?.toISOString();
+            const endDateISO = endDate?.toISOString();
+            console.log('📅 Debug: Rango consultado vs fechas de mayoristas:');
+            console.log(`  - Rango consultado: ${startDateISO} a ${endDateISO}`);
+            allWholesaleOrders.forEach((order, index) => {
+                // Convertir createdAt a Date si es string
+                let orderDate = order.createdAt;
+                if (typeof orderDate === 'string') {
+                    orderDate = new Date(orderDate);
+                }
+
+                const orderDateISO = orderDate?.toISOString?.() || 'Fecha inválida';
+                const isInRange = startDate && endDate && orderDate && !isNaN(orderDate.getTime())
+                    ? (orderDate >= startDate && orderDate <= endDate)
+                    : 'N/A';
+                console.log(`  - Mayorista ${index + 1}: ${orderDateISO} (en rango: ${isInRange})`);
+            });
+        }
+
+        // Debug: verificar si hay órdenes de mayoristas con el filtro de fechas
+        const wholesaleWithDateFilter = await collection.find({
+            orderType: 'mayorista',
+            ...baseFilter
+        }).toArray();
+        console.log(`🏪 Debug: Órdenes mayoristas con filtro de fechas: ${wholesaleWithDateFilter.length}`);
+        if (wholesaleWithDateFilter.length > 0) {
+            console.log('🏪 Debug: Órdenes mayoristas con filtro de fechas:', wholesaleWithDateFilter.map(order => ({
+                _id: order._id,
+                createdAt: order.createdAt,
+                orderType: order.orderType,
+                total: order.total
+            })));
+        }
+
+        // Debug: verificar el filtro baseFilter paso a paso
+        console.log('🔍 Debug: Filtro baseFilter completo:', JSON.stringify(baseFilter, null, 2));
+
+        // Debug: verificar tipos de datos de las fechas
+        console.log('🔍 Debug: Tipos de datos de fechas:');
+        console.log(`  - startDate: ${typeof startDate} - ${startDate?.constructor?.name} - ${startDate?.toISOString?.()}`);
+        console.log(`  - endDate: ${typeof endDate} - ${endDate?.constructor?.name} - ${endDate?.toISOString?.()}`);
+
+        // Debug: probar filtros individuales
+        if (baseFilter.createdAt) {
+            console.log('🔍 Debug: Probando filtros de fecha individuales...');
+
+            // Probar solo con startDate
+            if (baseFilter.createdAt.$gte) {
+                const testStartDate = await collection.find({
+                    orderType: 'mayorista',
+                    createdAt: { $gte: baseFilter.createdAt.$gte }
+                }).toArray();
+                console.log(`🏪 Debug: Con solo startDate (>=): ${testStartDate.length} órdenes mayoristas`);
+            }
+
+            // Probar solo con endDate
+            if (baseFilter.createdAt.$lte) {
+                const testEndDate = await collection.find({
+                    orderType: 'mayorista',
+                    createdAt: { $lte: baseFilter.createdAt.$lte }
+                }).toArray();
+                console.log(`🏪 Debug: Con solo endDate (<=): ${testEndDate.length} órdenes mayoristas`);
+            }
+        }
+
+        // Debug: probar con filtro de fecha como string
+        console.log('🔍 Debug: Probando filtro de fecha como string...');
+        const testStringFilter = await collection.find({
+            orderType: 'mayorista',
+            createdAt: {
+                $gte: '2024-08-19T00:00:00.000Z',
+                $lte: '2025-08-19T23:59:59.999Z'
+            }
+        }).toArray();
+        console.log(`🏪 Debug: Con filtro de fecha como string: ${testStringFilter.length} órdenes mayoristas`);
+
+        // Debug: comparar estructura de órdenes minoristas vs mayoristas
+        console.log('🔍 Debug: Comparando estructura de órdenes...');
+
+        // Obtener una orden minorista de ejemplo
+        const sampleMinorista = await collection.findOne({ orderType: 'minorista' });
+        if (sampleMinorista) {
+            console.log('🏪 Debug: Estructura orden minorista:', {
+                _id: sampleMinorista._id,
+                createdAt: sampleMinorista.createdAt,
+                createdAtType: typeof sampleMinorista.createdAt,
+                orderType: sampleMinorista.orderType,
+                total: sampleMinorista.total
+            });
+        }
+
+        // Obtener una orden mayorista de ejemplo
+        const sampleMayorista = await collection.findOne({ orderType: 'mayorista' });
+        if (sampleMayorista) {
+            console.log('🏪 Debug: Estructura orden mayorista:', {
+                _id: sampleMayorista._id,
+                createdAt: sampleMayorista.createdAt,
+                createdAtType: typeof sampleMayorista.createdAt,
+                orderType: sampleMayorista.orderType,
+                total: sampleMayorista.total
+            });
+        }
+
         const orders = await collection.find(baseFilter, {
             projection: {
                 createdAt: 1,
@@ -487,7 +623,40 @@ export async function getDeliveryTypeStatsByMonthSimple(startDate?: Date, endDat
             }
         }).toArray();
 
+        // Debug: verificar si hay órdenes de mayoristas en el rango consultado
+        const wholesaleInRange = orders.filter(order => order.orderType === 'mayorista');
+        console.log(`🏪 Debug: Órdenes mayoristas en el rango consultado: ${wholesaleInRange.length}`);
+        if (wholesaleInRange.length > 0) {
+            console.log('🏪 Debug: Órdenes mayoristas en rango:', wholesaleInRange.map(order => ({
+                _id: order._id,
+                createdAt: order.createdAt,
+                orderType: order.orderType,
+                total: order.total
+            })));
+        }
+
         console.log(`📝 Procesando ${orders.length} órdenes...`);
+
+        // Debug: contar órdenes por tipo antes de procesar
+        const orderTypeCounts = orders.reduce((acc: any, order) => {
+            const orderType = order.orderType || 'minorista';
+            acc[orderType] = (acc[orderType] || 0) + 1;
+            return acc;
+        }, {});
+        console.log('🔍 Debug: Conteo de órdenes por tipo antes de procesar:', orderTypeCounts);
+
+        // Debug: mostrar algunas órdenes de mayoristas para verificar
+        const wholesaleOrders = orders.filter(order => order.orderType === 'mayorista');
+        if (wholesaleOrders.length > 0) {
+            console.log(`🏪 Debug: Encontradas ${wholesaleOrders.length} órdenes de mayoristas:`, wholesaleOrders.slice(0, 3).map(order => ({
+                _id: order._id,
+                createdAt: order.createdAt,
+                orderType: order.orderType,
+                total: order.total
+            })));
+        } else {
+            console.log('⚠️ Debug: NO se encontraron órdenes de mayoristas en la consulta');
+        }
 
         // Procesar órdenes una por una
         orders.forEach((order: any) => {
@@ -525,8 +694,9 @@ export async function getDeliveryTypeStatsByMonthSimple(startDate?: Date, endDat
                 const monthStats = months.get(monthKey)!;
                 const total = order.total || 0;
 
-                // Clasificar orden
-                const isWholesale = order.orderType === "mayorista";
+                // Clasificar orden - asumir minorista si no tiene orderType (consistente con debug)
+                const orderType = order.orderType || 'minorista';
+                const isWholesale = orderType === "mayorista";
                 const isSameDay = order.deliveryArea?.sameDayDelivery ||
                     (order.items && order.items.some((item: any) => item.sameDayDelivery));
 
@@ -534,6 +704,7 @@ export async function getDeliveryTypeStatsByMonthSimple(startDate?: Date, endDat
                     monthStats.wholesaleOrders++;
                     monthStats.wholesaleRevenue += total;
                     monthStats.wholesaleWeight += 25; // Estimación simple
+                    console.log(`🏪 Debug: Orden mayorista procesada - Mes: ${monthKey}, Total: ${total}`);
                 } else if (isSameDay) {
                     monthStats.sameDayOrders++;
                     monthStats.sameDayRevenue += total;
@@ -550,6 +721,20 @@ export async function getDeliveryTypeStatsByMonthSimple(startDate?: Date, endDat
 
         // Convertir a array y ordenar
         const result = Array.from(months.values()).sort((a, b) => a.month.localeCompare(b.month));
+
+
+
+        console.log('🔍 Debug: ResultadoOOOO:', result);
+        // Debug: mostrar resumen final
+        const totalWholesale = result.reduce((sum, month) => sum + month.wholesaleOrders, 0);
+        const totalNormal = result.reduce((sum, month) => sum + month.normalOrders, 0);
+        const totalSameDay = result.reduce((sum, month) => sum + month.sameDayOrders, 0);
+
+        console.log(`📊 Debug: Resumen final del procesamiento:`);
+        console.log(`  - Órdenes mayoristas: ${totalWholesale}`);
+        console.log(`  - Órdenes normales: ${totalNormal}`);
+        console.log(`  - Órdenes same day: ${totalSameDay}`);
+        console.log(`  - Total procesado: ${totalWholesale + totalNormal + totalSameDay}`);
 
         console.log(`✅ Procesamiento simple completado: ${result.length} meses`);
         return result;

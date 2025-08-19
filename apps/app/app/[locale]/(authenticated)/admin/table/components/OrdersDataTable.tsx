@@ -643,7 +643,6 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                                         const tempItem = {
                                                             ...newItems[index],
                                                             name: selectedProductName,
-                                                            id: selectedProductName,
                                                             fullName: selectedProductName
                                                         };
 

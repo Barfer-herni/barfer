@@ -1,4 +1,4 @@
-import { getOrdersByMonth, getDeliveryTypeStatsByMonth, getDeliveryTypeStatsByMonthSimple } from '@repo/data-services/src/services/barfer';
+import { getOrdersByMonth, getDeliveryTypeStatsByMonth, getDeliveryTypeStatsByMonthSimple, debugOrdersByMonth } from '@repo/data-services/src/services/barfer';
 import { MonthlyAnalyticsClient } from './MonthlyAnalyticsClient';
 
 interface MonthlyAnalyticsTabProps {
@@ -14,6 +14,10 @@ interface MonthlyAnalyticsTabProps {
 
 export async function MonthlyAnalyticsTab({ dateFilter, compareFilter }: MonthlyAnalyticsTabProps) {
     try {
+        // Debug: Verificar órdenes de mayoristas
+        console.log('🔍 Debug: Verificando órdenes en analytics...');
+        await debugOrdersByMonth(dateFilter.from, dateFilter.to);
+
         const [allOrdersData, deliveryStats] = await Promise.all([
             getOrdersByMonth(dateFilter.from, dateFilter.to),
             // Usar método simple temporalmente para evitar error de memoria
