@@ -131,7 +131,7 @@ export const columns: ColumnDef<Order>[] = [
         header: 'Dirección',
         cell: ({ row }: CellContext<Order, unknown>) => {
             const address = row.original.address as Order['address'];
-            return <div className="min-w-[40px] text-sm whitespace-normal break-words">{address ? `${address.address}, ${address.city}` : 'N/A'}</div>;
+            return <div className="min-w-[180px] text-sm whitespace-normal break-words">{address ? `${address.address}, ${address.city}` : 'N/A'}</div>;
         }
     },
     {
@@ -149,7 +149,7 @@ export const columns: ColumnDef<Order>[] = [
         cell: ({ row }: CellContext<Order, unknown>) => {
             const items = row.original.items as Order['items'];
             return (
-                <div className="min-w-[120px] text-sm whitespace-normal break-words">
+                <div className="min-w-[170px] text-sm whitespace-normal break-words">
                     {items.map((item, index) => {
                         const option = item.options[0] as any;
                         const optionName = option?.name || '';
@@ -240,7 +240,7 @@ export const columns: ColumnDef<Order>[] = [
             }
 
             const allNotes = [notes, addressInfo].filter(Boolean).join(' / ');
-            return <div className="min-w-[120px] text-sm whitespace-normal break-words">{allNotes || 'N/A'}</div>;
+            return <div className="min-w-[200px] text-sm whitespace-normal break-words">{allNotes || 'N/A'}</div>;
         }
     },
     {
@@ -257,7 +257,20 @@ export const columns: ColumnDef<Order>[] = [
                 );
             }
             const user = row.original.user as Order['user'];
-            return <div className="min-w-[10px] text-sm whitespace-normal break-words">{user ? user.email : 'N/A'}</div>;
+            if (!user || !user.email) return <div className="min-w-[10px] text-sm">N/A</div>;
+
+            // Mostrar solo hasta el "@" del email
+            const emailParts = user.email.split('@');
+            const displayEmail = emailParts[0] + '@';
+
+            return (
+                <div
+                    className="min-w-[10px] max-w-[80px] text-xs truncate"
+                    title={user.email}
+                >
+                    {displayEmail}
+                </div>
+            );
         }
     },
 ]; 
