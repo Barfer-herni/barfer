@@ -109,6 +109,26 @@ export const createDefaultOrderData = () => ({
 export const extractWeightFromProductName = (productName: string): string => {
     if (!productName) return 'Default';
 
+    // Patrones que NO son peso (productos que no necesitan extracción)
+    const nonWeightPatterns = [
+        /\b\d+\s*x\s*\d+\b/i,        // "traquea x1", "producto x2", etc.
+        /\b\d+\s*U\b/i,               // "1 U", "2 U", etc.
+        /\b\d+\s*unidades?\b/i,       // "1 unidad", "2 unidades", etc.
+        /\b\d+\s*pcs?\b/i,            // "1 pc", "2 pcs", etc.
+        /\b\d+\s*piezas?\b/i,         // "1 pieza", "2 piezas", etc.
+        /\b\d+\s*capsulas?\b/i,       // "1 capsula", "2 capsulas", etc.
+        /\b\d+\s*tabletas?\b/i,       // "1 tableta", "2 tabletas", etc.
+        /\b\d+\s*comprimidos?\b/i,    // "1 comprimido", "2 comprimidos", etc.
+    ];
+
+    // Si el producto coincide con patrones que NO son peso, devolver el valor original
+    for (const pattern of nonWeightPatterns) {
+        if (pattern.test(productName)) {
+            console.log(`🚫 Producto "${productName}" no necesita extracción de peso`);
+            return 'Default';
+        }
+    }
+
     // Buscar patrones de peso al final del nombre
     const weightPatterns = [
         /\b(\d+)\s*kg\b/i,           // 10kg, 5 kg, etc.
@@ -163,13 +183,33 @@ export const extractWeightFromProductName = (productName: string): string => {
         }
     }
 
-    // Si no se encuentra nada, devolver 'Default'
+    // Si no se encuentra peso, devolver 'Default'
     return 'Default';
 };
 
 // Función para extraer el nombre base del producto (sin el peso)
 export const extractBaseProductName = (productName: string): string => {
     if (!productName) return '';
+
+    // Patrones que NO son peso (productos que no necesitan extracción)
+    const nonWeightPatterns = [
+        /\b\d+\s*x\s*\d+\b/i,        // "traquea x1", "producto x2", etc.
+        /\b\d+\s*U\b/i,               // "1 U", "2 U", etc.
+        /\b\d+\s*unidades?\b/i,       // "1 unidad", "2 unidades", etc.
+        /\b\d+\s*pcs?\b/i,            // "1 pc", "2 pcs", etc.
+        /\b\d+\s*piezas?\b/i,         // "1 pieza", "2 piezas", etc.
+        /\b\d+\s*capsulas?\b/i,       // "1 capsula", "2 capsulas", etc.
+        /\b\d+\s*tabletas?\b/i,       // "1 tableta", "2 tabletas", etc.
+        /\b\d+\s*comprimidos?\b/i,    // "1 comprimido", "2 comprimidos", etc.
+    ];
+
+    // Si el producto coincide con patrones que NO son peso, devolver el nombre original
+    for (const pattern of nonWeightPatterns) {
+        if (pattern.test(productName)) {
+            console.log(`🚫 Producto "${productName}" mantiene su nombre original`);
+            return productName;
+        }
+    }
 
     // Buscar patrones de peso al final del nombre y removerlos
     const weightPatterns = [

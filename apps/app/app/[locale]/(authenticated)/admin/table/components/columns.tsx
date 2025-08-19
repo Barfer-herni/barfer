@@ -152,11 +152,19 @@ export const columns: ColumnDef<Order>[] = [
                 <div className="min-w-[120px] text-sm whitespace-normal break-words">
                     {items.map((item, index) => {
                         const option = item.options[0] as any;
-                        const optionName = option?.name?.toLowerCase() || '';
+                        const optionName = option?.name || '';
                         const quantity = option?.quantity || 1;
+
+                        // Determinar qué mostrar en lugar de "Default"
+                        let displayOption = optionName;
+                        if (optionName === 'Default' || optionName === '') {
+                            // Si no hay peso extraído, mostrar solo el nombre del producto
+                            displayOption = '';
+                        }
+
                         return (
                             <div key={`${item.id}-${index}`}>
-                                {item.name} - {optionName} - x{quantity}
+                                {item.name}{displayOption ? ` - ${displayOption}` : ''} - x{quantity}
                             </div>
                         );
                     })}
