@@ -34,7 +34,8 @@ import {
     createLocalDate,
     createLocalDateISO,
     extractWeightFromProductName,
-    extractBaseProductName
+    extractBaseProductName,
+    processSingleItem
 } from '../helpers';
 import type { DataTableProps } from '../types';
 
@@ -581,19 +582,19 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                                     onChange={e => {
                                         const newItems = [...editValues.items];
                                         const selectedProductName = e.target.value;
-                                        const extractedWeight = extractWeightFromProductName(selectedProductName);
-                                        const baseProductName = extractBaseProductName(selectedProductName);
 
-                                        newItems[itemIndex] = {
+                                        // Crear un item temporal para procesar
+                                        const tempItem = {
                                             ...newItems[itemIndex],
-                                            name: baseProductName, // Guardar solo el nombre base
-                                            id: selectedProductName, // Mantener el ID completo para referencia
-                                            fullName: selectedProductName, // Guardar el nombre completo para el select
-                                            options: [{
-                                                ...newItems[itemIndex].options?.[0],
-                                                name: extractedWeight
-                                            }]
+                                            name: selectedProductName,
+                                            id: selectedProductName,
+                                            fullName: selectedProductName
                                         };
+
+                                        // Procesar solo este item
+                                        const processedItem = processSingleItem(tempItem);
+                                        newItems[itemIndex] = processedItem;
+
                                         onEditValueChange('items', newItems);
                                     }}
                                     className="flex-1 p-1 text-xs border border-gray-300 rounded-md text-center"
@@ -615,10 +616,15 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                                             onEditValueChange('items', newItems);
                                         } else {
                                             const newItems = [...editValues.items];
+
+                                            // Preservar las opciones existentes del item
+                                            const existingOptions = newItems[itemIndex].options || [];
+                                            const firstOption = existingOptions[0] || { name: 'Default', price: 0, quantity: 1 };
+
                                             newItems[itemIndex] = {
                                                 ...newItems[itemIndex],
                                                 options: [{
-                                                    ...newItems[itemIndex].options?.[0],
+                                                    ...firstOption,
                                                     quantity: quantity
                                                 }]
                                             };

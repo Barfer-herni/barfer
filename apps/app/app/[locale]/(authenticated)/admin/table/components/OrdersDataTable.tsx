@@ -30,7 +30,8 @@ import {
     createLocalDate,
     createLocalDateISO,
     extractWeightFromProductName,
-    extractBaseProductName
+    extractBaseProductName,
+    processSingleItem
 } from '../helpers';
 import type { DataTableProps } from '../types';
 import { OrdersTable } from './OrdersTable';
@@ -637,19 +638,19 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                                     onChange={(e) => {
                                                         const newItems = [...createFormData.items];
                                                         const selectedProductName = e.target.value;
-                                                        const extractedWeight = extractWeightFromProductName(selectedProductName);
-                                                        const baseProductName = extractBaseProductName(selectedProductName);
 
-                                                        newItems[index] = {
+                                                        // Crear un item temporal para procesar
+                                                        const tempItem = {
                                                             ...newItems[index],
-                                                            name: baseProductName, // Guardar solo el nombre base
-                                                            id: selectedProductName, // Mantener el ID completo para referencia
-                                                            fullName: selectedProductName, // Guardar el nombre completo para el select
-                                                            options: [{
-                                                                ...newItems[index].options?.[0],
-                                                                name: extractedWeight
-                                                            }]
+                                                            name: selectedProductName,
+                                                            id: selectedProductName,
+                                                            fullName: selectedProductName
                                                         };
+
+                                                        // Procesar solo este item
+                                                        const processedItem = processSingleItem(tempItem);
+                                                        newItems[index] = processedItem;
+
                                                         handleCreateFormChange('items', newItems);
                                                     }}
                                                     className="flex-1 p-2 border border-gray-300 rounded-md"
@@ -674,10 +675,15 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                                         } else {
                                                             // Actualizar la cantidad
                                                             const newItems = [...createFormData.items];
+
+                                                            // Preservar las opciones existentes del item
+                                                            const existingOptions = newItems[index].options || [];
+                                                            const firstOption = existingOptions[0] || { name: 'Default', price: 0, quantity: 1 };
+
                                                             newItems[index] = {
                                                                 ...newItems[index],
                                                                 options: [{
-                                                                    ...newItems[index].options?.[0],
+                                                                    ...firstOption,
                                                                     quantity: quantity
                                                                 }]
                                                             };

@@ -245,9 +245,46 @@ export const extractBaseProductName = (productName: string): string => {
     return baseName.trim();
 };
 
-// Función para filtrar items válidos
+// Función para procesar un solo item (extraer peso y nombre base)
+export const processSingleItem = (item: any): any => {
+    if (!item.name || !item.name.trim()) return item;
+
+    // Si ya tiene fullName y options.name no es 'Default', no procesar
+    if (item.fullName && item.options?.[0]?.name && item.options[0].name !== 'Default') {
+        console.log(`🔄 Item "${item.name}" ya procesado, saltando...`);
+        return item;
+    }
+
+    // Si no tenemos fullName, usar el nombre actual
+    const originalName = item.fullName || item.name;
+
+    // Extraer el peso del nombre del producto y asignarlo a la opción
+    const weight = extractWeightFromProductName(originalName);
+    // Extraer el nombre base del producto (sin peso)
+    const baseName = extractBaseProductName(originalName);
+
+    console.log(`⚖️ Procesando item "${originalName}":`);
+    console.log(`  → Peso extraído: ${weight}`);
+    console.log(`  → Nombre base: "${baseName}"`);
+
+    // Crear una copia del item para no modificar el original
+    const processedItem = {
+        ...item,
+        name: baseName,
+        fullName: originalName,
+        options: [{
+            ...item.options?.[0],
+            name: weight
+        }]
+    };
+
+    console.log(`✅ Item procesado: "${baseName}" con opción "${weight}"`);
+    return processedItem;
+};
+
+// Función para filtrar items válidos (solo valida, no procesa)
 export const filterValidItems = (items: any[]) => {
-    console.log('🔍 filterValidItems - Items recibidos:', items);
+    console.log('🔍 filterValidItems - Solo validando items, sin procesar');
 
     return items.filter(item => {
         // Verificar que el item tenga nombre y cantidad válida
@@ -259,31 +296,6 @@ export const filterValidItems = (items: any[]) => {
             hasValidQuantity,
             currentOptionName: item.options?.[0]?.name
         });
-
-        if (hasValidName && hasValidQuantity) {
-            // Si no tenemos fullName, usar el nombre actual
-            const originalName = item.fullName || item.name;
-
-            // Extraer el peso del nombre del producto y asignarlo a la opción
-            const weight = extractWeightFromProductName(originalName);
-            // Extraer el nombre base del producto (sin peso)
-            const baseName = extractBaseProductName(originalName);
-
-            console.log(`⚖️ Peso extraído de "${originalName}": ${weight}`);
-            console.log(`🏷️ Nombre base extraído: "${baseName}"`);
-
-            if (item.options && item.options[0]) {
-                item.options[0].name = weight;
-                console.log(`✅ Opción actualizada: ${weight}`);
-            }
-
-            // Actualizar el nombre del item con el nombre base (sin peso)
-            item.name = baseName;
-            // Preservar el nombre completo para el select
-            item.fullName = originalName;
-            console.log(`✅ Nombre del item actualizado: "${baseName}"`);
-            console.log(`✅ Nombre completo preservado: "${originalName}"`);
-        }
 
         return hasValidName && hasValidQuantity;
     });
