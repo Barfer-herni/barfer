@@ -50,10 +50,10 @@ export const columns: ColumnDef<Order>[] = [
                     bgColor = 'bg-green-100';
                     break;
                 case 2: // Martes
-                    bgColor = 'bg-yellow-100';
+                    bgColor = 'bg-red-100';
                     break;
                 case 3: // Miércoles
-                    bgColor = 'bg-red-100';
+                    bgColor = 'bg-yellow-100';
                     break;
                 case 4: // Jueves
                     bgColor = 'bg-yellow-600';

@@ -81,8 +81,8 @@ export const COLUMN_WIDTHS = {
 // Colores por día de la semana
 export const DAY_COLORS = {
     1: 'bg-green-100', // Lunes
-    2: 'bg-yellow-100', // Martes
-    3: 'bg-red-100', // Miércoles
+    2: 'bg-red-100', // Martes
+    3: 'bg-yellow-100', // Miércoles
     4: 'bg-yellow-600', // Jueves
     6: 'bg-blue-100', // Sábado
 };
