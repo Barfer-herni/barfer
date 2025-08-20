@@ -15,13 +15,25 @@
         "balance": "Balance de Pedidos",
         "prices": "Precios",
         "outputs": "Salidas",
+        "repartos": "Control de Repartos",
         "accountMobile": "Cuenta",
         "analyticsMobile": "KPIs",
         "clientsMobile": "Clientes",
         "tableMobile": "Tabla",
         "balanceMobile": "Balance",
         "pricesMobile": "Precios",
-        "outputsMobile": "Salidas"
+        "outputsMobile": "Salidas",
+        "repartosMobile": "Repartos"
+      },
+      "repartos": {
+        "title": "Control de Repartos",
+        "description": "Gestión y control de entregas semanales",
+        "week": "Semana del",
+        "edit": "Editar",
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "previousMonth": "Mes anterior",
+        "nextMonth": "Mes siguiente"
       },
       "menu": {
         "title": "Gestión de Menú",

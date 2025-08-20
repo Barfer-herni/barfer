@@ -15,13 +15,25 @@
         "balance": "Order Balance",
         "prices": "Prices",
         "outputs": "Outputs",
+        "repartos": "Delivery Control",
         "accountMobile": "Account",
         "analyticsMobile": "KPIs",
         "clientsMobile": "Clients",
         "tableMobile": "Table",
         "balanceMobile": "Balance",
         "pricesMobile": "Prices",
-        "outputsMobile": "Outputs"
+        "outputsMobile": "Outputs",
+        "repartosMobile": "Delivery"
+      },
+      "repartos": {
+        "title": "Delivery Control",
+        "description": "Weekly delivery management and control",
+        "week": "Week of",
+        "edit": "Edit",
+        "save": "Save",
+        "cancel": "Cancel",
+        "previousMonth": "Previous month",
+        "nextMonth": "Next month"
       },
       "menu": {
         "title": "Menu Management",

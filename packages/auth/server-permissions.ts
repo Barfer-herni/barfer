@@ -354,6 +354,13 @@ export const SIDEBAR_CONFIG: SidebarItem[] = [
         icon: 'MinusCircle',
         requiredPermissions: ['outputs:view'],
     },
+    {
+        label: 'repartos',
+        mobileLabel: 'repartosMobile',
+        href: '/admin/repartos',
+        icon: 'Truck',
+        requiredPermissions: ['table:view'], // Usar el mismo permiso que table por ahora
+    },
 ];
 
 /**

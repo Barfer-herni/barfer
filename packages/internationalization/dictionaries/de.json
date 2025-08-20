@@ -15,13 +15,25 @@
         "balance": "Bestellbilanz",
         "prices": "Preise",
         "outputs": "Ausgänge",
+        "repartos": "Lieferkontrolle",
         "accountMobile": "Konto",
         "analyticsMobile": "KPIs",
         "clientsMobile": "Kunden",
         "tableMobile": "Tabelle",
         "balanceMobile": "Bilanz",
         "pricesMobile": "Preise",
-        "outputsMobile": "Ausgänge"
+        "outputsMobile": "Ausgänge",
+        "repartosMobile": "Lieferung"
+      },
+      "repartos": {
+        "title": "Lieferkontrolle",
+        "description": "Wöchentliche Lieferverwaltung und -kontrolle",
+        "week": "Woche vom",
+        "edit": "Bearbeiten",
+        "save": "Speichern",
+        "cancel": "Abbrechen",
+        "previousMonth": "Vorheriger Monat",
+        "nextMonth": "Nächster Monat"
       },
       "products": {
         "title": "Produkt-Dashboard",
