@@ -6,7 +6,9 @@ import type { Order } from '../../types/barfer';
 
 const createOrderSchema = z.object({
     status: z.enum(['pending', 'confirmed', 'delivered', 'cancelled']).default('pending'),
-    total: z.number().min(0),
+    total: z.number().min(0).refine((val) => val !== undefined && val !== null, {
+        message: "El total es obligatorio"
+    }),
     subTotal: z.number().min(0).optional().default(0),
     shippingPrice: z.number().min(0).optional().default(0),
     notes: z.string().optional(),

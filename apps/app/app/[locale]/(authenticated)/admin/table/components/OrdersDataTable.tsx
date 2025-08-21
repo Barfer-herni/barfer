@@ -270,11 +270,27 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     const handleCreateOrder = async () => {
         setLoading(true);
         try {
+            // Validar que el total sea obligatorio
+            if (createFormData.total === '' || createFormData.total === null || createFormData.total === undefined) {
+                alert('El campo Total es obligatorio. Debe ingresar un valor.');
+                setLoading(false);
+                return;
+            }
+
+            // Validar que el total sea un número válido
+            const totalValue = Number(createFormData.total);
+            if (isNaN(totalValue) || totalValue < 0) {
+                alert('El campo Total debe ser un número válido mayor o igual a 0.');
+                setLoading(false);
+                return;
+            }
+
             // Filtrar items: eliminar los que no tienen nombre o tienen cantidad 0
             const filteredItems = filterValidItems(createFormData.items);
 
             const orderDataWithFilteredItems = {
                 ...createFormData,
+                total: totalValue, // Asegurar que sea un número
                 items: filteredItems
             };
 
@@ -561,10 +577,10 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Total</Label>
+                                    <Label>Total *</Label>
                                     <Input
                                         type="number"
-                                        value={createFormData.total || ''}
+                                        value={createFormData.total === '' ? '' : createFormData.total}
                                         onChange={(e) => {
                                             const value = e.target.value;
                                             if (value === '') {
@@ -576,7 +592,8 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                                 }
                                             }
                                         }}
-                                        placeholder="0"
+                                        placeholder="Ingrese el total"
+                                        required
                                     />
                                 </div>
                                 <div className="space-y-2">

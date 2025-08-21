@@ -55,7 +55,7 @@ export const getStatusCellBackgroundColor = (status: string, paymentMethod: stri
 // Función para crear el objeto de orden por defecto
 export const createDefaultOrderData = () => ({
     status: 'pending',
-    total: '',
+    total: '', // Campo vacío para forzar al usuario a ingresar un valor
     subTotal: 0,
     shippingPrice: 0,
     notes: '',
