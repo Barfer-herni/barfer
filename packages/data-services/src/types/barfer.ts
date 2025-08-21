@@ -229,4 +229,47 @@ export interface ClientAnalytics {
         averageOrdersPerCustomer: number;
         averageMonthlySpending: number;
     };
+}
+
+// Interfaz para órdenes mayoristas (sin fecha y con estructura de items específica)
+export interface MayoristaOrder {
+    _id?: string;
+    status: 'pending' | 'confirmed' | 'delivered' | 'cancelled';
+    total: number;
+    subTotal: number;
+    shippingPrice: number;
+    notes: string;
+    notesOwn: string;
+    address: {
+        address: string;
+        city: string;
+        phone: string;
+        betweenStreets?: string;
+        floorNumber?: string;
+        departmentNumber?: string;
+    };
+    user: {
+        name: string;
+        lastName: string;
+        email: string;
+    };
+    items: OrderItem[];
+    deliveryArea: {
+        _id: string;
+        description: string;
+        coordinates: number[][];
+        schedule: string;
+        orderCutOffHour: number;
+        enabled: boolean;
+        sameDayDelivery: boolean;
+        sameDayDeliveryDays: string[];
+        whatsappNumber: string;
+        sheetName: string;
+    };
+    paymentMethod: string;
+    orderType: 'mayorista';
+    deliveryDay: string;
+    whatsappContactedAt?: string;
+    createdAt: string;
+    updatedAt: string;
 } 

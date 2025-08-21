@@ -199,30 +199,18 @@ export async function deleteUser(userId: string) {
  */
 export async function verifyUserCredentials(email: string, password: string) {
     try {
-        console.log('email', email);
-        console.log('password', password);
-        // Buscar usuario por email
         const user = await database.user.findUnique({
             where: { email },
         });
-
-        console.log('1');
-        // Si no se encuentra el usuario, retornar fallo
         if (!user) {
+            console.log('❌ Usuario no encontrado en la base de datos');
             return { success: false, message: 'Credenciales inválidas' };
         }
-
-        // Comparar contraseña hasheada
         const passwordMatch = await bcrypt.compare(password, user.password);
-
-        console.log('2');
-        // Si las contraseñas no coinciden, retornar fallo
         if (!passwordMatch) {
+            console.log('❌ Contraseña incorrecta');
             return { success: false, message: 'Credenciales inválidas' };
         }
-
-        console.log('3');
-        // Retornar éxito con datos del usuario
         return {
             success: true,
             user: {
@@ -234,8 +222,17 @@ export async function verifyUserCredentials(email: string, password: string) {
             }
         };
     } catch (error) {
-        console.error('Error al verificar credenciales:', error);
-        throw new Error('No se pudieron verificar las credenciales');
+        console.error('💥 Error al verificar credenciales:', error);
+        console.error('📋 Detalles del error:', {
+            name: error instanceof Error ? error.name : 'Unknown',
+            message: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : 'No stack trace'
+        });
+        return {
+            success: false,
+            message: 'Error interno del servidor al verificar credenciales',
+            error: 'SERVER_ERROR'
+        };
     }
 }
 

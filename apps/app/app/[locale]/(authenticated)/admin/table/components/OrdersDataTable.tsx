@@ -11,12 +11,14 @@ import { Label } from '@repo/design-system/components/ui/label';
 import { Textarea } from '@repo/design-system/components/ui/textarea';
 import { DateRangeFilter } from './DateRangeFilter';
 import { OrderTypeFilter } from './OrderTypeFilter';
+import { MayoristaSearch } from './MayoristaSearch';
 import { exportOrdersAction } from '../exportOrdersAction';
 import { Calendar } from '@repo/design-system/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@repo/design-system/components/ui/popover';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { RotateCcw, Trash2 } from 'lucide-react';
+import type { MayoristaOrder } from '@repo/data-services/src/types/barfer';
 
 // Imports de constantes y helpers
 import { STATUS_OPTIONS, PAYMENT_METHOD_OPTIONS, ORDER_TYPE_OPTIONS } from '../constants';
@@ -31,7 +33,8 @@ import {
     createLocalDateISO,
     extractWeightFromProductName,
     extractBaseProductName,
-    processSingleItem
+    processSingleItem,
+    mapDBProductToSelectOption
 } from '../helpers';
 import type { DataTableProps } from '../types';
 import { OrdersTable } from './OrdersTable';
@@ -62,6 +65,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? '');
     const [isPending, startTransition] = useTransition();
     const [backupsCount, setBackupsCount] = useState(0);
+    const [selectedMayorista, setSelectedMayorista] = useState<MayoristaOrder | null>(null);
 
 
 
@@ -298,6 +302,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             if (!result.success) throw new Error(result.error || 'Error al crear');
             setShowCreateModal(false);
             setCreateFormData(createDefaultOrderData());
+            setSelectedMayorista(null); // Limpiar mayorista seleccionado
             router.refresh();
         } catch (e) {
             alert(e instanceof Error ? e.message : 'Error al crear la orden');
@@ -307,6 +312,11 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     };
 
     const handleCreateFormChange = (field: string, value: any) => {
+        // Si se está cambiando el tipo de orden, limpiar el mayorista seleccionado
+        if (field === 'orderType' && value === 'minorista') {
+            setSelectedMayorista(null);
+        }
+
         if (field.includes('.')) {
             const parts = field.split('.');
             setCreateFormData(prev => {
@@ -325,6 +335,84 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             });
         } else {
             setCreateFormData(prev => ({ ...prev, [field]: value }));
+        }
+    };
+
+    // Función para autocompletar campos cuando se selecciona un mayorista
+    const handleMayoristaSelect = (mayorista: MayoristaOrder | null) => {
+        setSelectedMayorista(mayorista);
+
+        if (mayorista) {
+            // Autocompletar todos los campos con la información del mayorista
+            setCreateFormData(prev => {
+                const updatedData = { ...prev };
+
+                // Autocompletar usuario
+                updatedData.user.name = mayorista.user.name || '';
+                updatedData.user.lastName = mayorista.user.lastName || '';
+                updatedData.user.email = mayorista.user.email || '';
+
+                // Autocompletar dirección
+                updatedData.address.address = mayorista.address.address || '';
+                updatedData.address.city = mayorista.address.city || '';
+                updatedData.address.phone = mayorista.address.phone || '';
+                updatedData.address.betweenStreets = mayorista.address.betweenStreets || '';
+                updatedData.address.floorNumber = mayorista.address.floorNumber || '';
+                updatedData.address.departmentNumber = mayorista.address.departmentNumber || '';
+
+                // Autocompletar campos adicionales
+                updatedData.total = mayorista.total?.toString() || '0';
+                updatedData.subTotal = mayorista.subTotal || 0;
+                updatedData.shippingPrice = mayorista.shippingPrice || 0;
+                updatedData.paymentMethod = mayorista.paymentMethod || '';
+                updatedData.notes = mayorista.notes || '';
+                updatedData.notesOwn = mayorista.notesOwn || '';
+
+                // Autocompletar área de entrega
+                if (mayorista.deliveryArea) {
+                    updatedData.deliveryArea.schedule = mayorista.deliveryArea.schedule || '';
+                    updatedData.deliveryArea.description = mayorista.deliveryArea.description || '';
+                    (updatedData.deliveryArea as any).coordinates = mayorista.deliveryArea.coordinates || [];
+                    updatedData.deliveryArea.orderCutOffHour = mayorista.deliveryArea.orderCutOffHour || 18;
+                    updatedData.deliveryArea.enabled = mayorista.deliveryArea.enabled || true;
+                    updatedData.deliveryArea.sameDayDelivery = mayorista.deliveryArea.sameDayDelivery || false;
+                    (updatedData.deliveryArea as any).sameDayDeliveryDays = mayorista.deliveryArea.sameDayDeliveryDays || [];
+                    updatedData.deliveryArea.whatsappNumber = mayorista.deliveryArea.whatsappNumber || '';
+                    updatedData.deliveryArea.sheetName = mayorista.deliveryArea.sheetName || '';
+                }
+
+                // Autocompletar items
+                if (mayorista.items && mayorista.items.length > 0) {
+                    updatedData.items = mayorista.items.map(item => {
+                        // Mapear el producto de la DB hacia la opción del select
+                        const selectOption = mapDBProductToSelectOption(
+                            item.name || '',
+                            item.options?.[0]?.name || ''
+                        );
+
+                        return {
+                            id: item.id || '',
+                            name: item.name || '',
+                            fullName: selectOption, // Usar la opción mapeada del select
+                            description: item.description || '',
+                            images: [],
+                            options: item.options?.map(option => ({
+                                name: option.name || '',
+                                price: option.price || 0,
+                                quantity: (option as any).quantity || 1,
+                            })) || [{ name: 'Default', price: 0, quantity: 1 }],
+                            price: item.price || 0,
+                            salesCount: item.salesCount || 0,
+                            discountApllied: item.discountApllied || 0,
+                        };
+                    });
+                }
+
+                // Mantener el orderType como 'mayorista'
+                updatedData.orderType = 'mayorista' as const;
+
+                return updatedData;
+            });
         }
     };
 
@@ -568,6 +656,31 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                         ))}
                                     </select>
                                 </div>
+
+                                {/* Búsqueda de mayorista existente - solo mostrar cuando sea mayorista */}
+                                {createFormData.orderType === 'mayorista' && (
+                                    <div className="space-y-2 col-span-2">
+                                        <MayoristaSearch
+                                            onMayoristaSelect={handleMayoristaSelect}
+                                            disabled={loading}
+                                        />
+
+                                        {/* Indicador de mayorista seleccionado */}
+                                        {selectedMayorista && (
+                                            <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                                                <div className="text-sm text-green-800">
+                                                    <div className="font-medium">
+                                                        ✅ Mayorista seleccionado: {selectedMayorista.user.name} {selectedMayorista.user.lastName}
+                                                    </div>
+                                                    <div className="text-xs mt-1 text-green-600">
+                                                        Los campos de cliente y dirección se han autocompletado.
+                                                        Puedes modificar cualquier campo si es necesario.
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                                 <div className="space-y-2">
                                     <Label>Rango Horario</Label>
                                     <Input
@@ -744,7 +857,13 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                 </div>
                             </div>
                             <div className="flex justify-end gap-2 mt-4">
-                                <Button variant="outline" onClick={() => setShowCreateModal(false)}>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => {
+                                        setShowCreateModal(false);
+                                        setSelectedMayorista(null); // Limpiar mayorista seleccionado
+                                    }}
+                                >
                                     Cancelar
                                 </Button>
                                 <Button onClick={handleCreateOrder} disabled={loading}>

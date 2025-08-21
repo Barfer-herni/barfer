@@ -21,6 +21,9 @@ async function handleSignIn(formData: FormData) {
     try {
         const result = await signIn({ email, password });
 
+        console.log('result', result);
+
+
         if (result.success) {
             redirect('/'); // Dejar que el middleware determine la redirección
         }

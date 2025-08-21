@@ -57,3 +57,22 @@ export {
     addRowToDay,
     removeRowFromDay
 } from './repartosService';
+
+// ===== MAYORISTA ORDERS =====
+export {
+    createMayoristaOrder,
+    getMayoristaOrders,
+    getMayoristaOrderById,
+    updateMayoristaOrder,
+    deleteMayoristaOrder
+} from './createMayoristaOrder';
+
+// ===== MAYORISTA ORDERS TABLE =====
+export {
+    getMayoristaOrdersForTable,
+    getMayoristaOrdersStats
+} from './getMayoristaOrdersForTable';
+export type {
+    MayoristaOrdersPaginationOptions,
+    PaginatedMayoristaOrdersResponse
+} from './getMayoristaOrdersForTable';

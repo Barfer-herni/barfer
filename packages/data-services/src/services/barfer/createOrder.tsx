@@ -3,6 +3,7 @@ import { getCollection, ObjectId } from '@repo/database';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import type { Order } from '../../types/barfer';
+import { createMayoristaOrder } from './createMayoristaOrder';
 
 const createOrderSchema = z.object({
     status: z.enum(['pending', 'confirmed', 'delivered', 'cancelled']).default('pending'),
@@ -115,6 +116,30 @@ export async function createOrder(data: z.infer<typeof createOrderSchema>): Prom
 
         if (!result.insertedId) {
             return { success: false, error: 'Failed to create order' };
+        }
+
+        // Si es una orden mayorista, también guardarla en la colección mayoristas
+        if (validatedData.orderType === 'mayorista') {
+            try {
+                // Preparar los datos para la colección mayoristas (sin fecha)
+                const mayoristaData = {
+                    ...validatedData,
+                    // Asegurar que orderType sea 'mayorista'
+                    orderType: 'mayorista' as const,
+                };
+
+                // Crear la orden mayorista
+                const mayoristaResult = await createMayoristaOrder(mayoristaData);
+
+                if (!mayoristaResult.success) {
+                    console.warn('Warning: Order created but failed to save to mayoristas collection:', mayoristaResult.error);
+                } else {
+                    console.log('Order successfully saved to both orders and mayoristas collections');
+                }
+            } catch (mayoristaError) {
+                console.warn('Warning: Failed to save order to mayoristas collection:', mayoristaError);
+                // No fallar la creación de la orden principal por este error
+            }
         }
 
         // Obtener la orden creada

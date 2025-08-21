@@ -35,7 +35,11 @@ export async function signIn({ email, password }: { email: string; password: str
         const authResult = await verifyUserCredentials(email, password);
 
         if (!authResult.success) {
-            return { success: false, message: 'Credenciales inválidas' };
+            return {
+                success: false,
+                message: authResult.message || 'Credenciales inválidas',
+                error: authResult.error
+            };
         }
 
         // Get user details

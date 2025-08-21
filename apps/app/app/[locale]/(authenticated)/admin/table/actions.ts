@@ -147,4 +147,38 @@ export async function getBackupsCountAction() {
     } catch (error) {
         return { success: false, count: 0, error: (error as Error).message };
     }
+}
+
+// Nueva acción para buscar mayoristas
+export async function searchMayoristasAction(searchTerm: string) {
+    'use server';
+
+    try {
+        const { getMayoristaOrdersForTable } = await import('@repo/data-services/src/services/barfer');
+
+        if (!searchTerm || searchTerm.length < 2) {
+            return { success: true, orders: [], total: 0 };
+        }
+
+        const result = await getMayoristaOrdersForTable({
+            page: 1,
+            pageSize: 10,
+            search: searchTerm,
+        });
+
+        // getMayoristaOrdersForTable retorna directamente el resultado o lanza una excepción
+        return {
+            success: true,
+            orders: result.orders || [],
+            total: result.total || 0
+        };
+    } catch (error) {
+        console.error('Error searching mayoristas:', error);
+        return {
+            success: false,
+            error: 'Error al buscar mayoristas',
+            orders: [],
+            total: 0
+        };
+    }
 } 
