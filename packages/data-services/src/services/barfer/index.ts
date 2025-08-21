@@ -44,3 +44,16 @@ export { markWhatsAppContacted, getWhatsAppContactStatus } from './markWhatsAppC
 // ===== PRICES =====
 export { getAllPrices, updateProductPrice, initializeBarferPrices } from './pricesService';
 export type { BarferPriceData, BarferUpdatePriceData } from './pricesService';
+
+// ===== REPARTOS =====
+export {
+    getRepartosData,
+    saveRepartosWeek,
+    updateRepartoEntry,
+    toggleRepartoCompletion,
+    initializeWeek,
+    getRepartosStats,
+    cleanupOldWeeks,
+    addRowToDay,
+    removeRowFromDay
+} from './repartosService';

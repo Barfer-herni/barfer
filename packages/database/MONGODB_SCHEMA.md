@@ -218,4 +218,34 @@ Almacena la información de los usuarios registrados.
 - `updatedAt` (Date): Fecha de última actualización.
 - `__v` (Number): Versión del documento (Mongoose).
 
+---
+
+## 13. `repartos`
+
+Almacena la información de control de repartos semanales. Cada semana es un documento separado para mejor escalabilidad.
+
+- `_id` (ObjectID): Identificador único del documento (generado automáticamente por MongoDB).
+- `weekKey` (String): Clave única de la semana (formato: "YYYY-MM-DD").
+- `data` (Object): Datos de repartos para la semana.
+    - `1` (Array): Entradas para lunes (3 filas).
+        - `id` (String): Identificador único de la entrada.
+        - `text` (String): Texto de la entrada.
+        - `isCompleted` (Boolean): Si la tarea está completada.
+        - `createdAt` (Date): Fecha de creación.
+        - `updatedAt` (Date): Fecha de última actualización.
+    - `2` (Array): Entradas para martes (3 filas).
+    - `3` (Array): Entradas para miércoles (3 filas).
+    - `4` (Array): Entradas para jueves (3 filas).
+    - `5` (Array): Entradas para viernes (3 filas).
+    - `6` (Array): Entradas para sábado (3 filas).
+- `createdAt` (Date): Fecha de creación del documento.
+- `updatedAt` (Date): Fecha de última actualización del documento.
+- `__v` (Number): Versión del documento (Mongoose).
+
+**Nota**: 
+- Cada día tiene exactamente 3 filas de entradas
+- Cada semana se identifica por la fecha del lunes en formato "YYYY-MM-DD"
+- Cada semana es un documento separado para mejor rendimiento y escalabilidad
+- Se puede crear un índice en `weekKey` para búsquedas rápidas
+
 --- 

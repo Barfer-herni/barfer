@@ -1,109 +1,85 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Input } from '@repo/design-system/components/ui/input';
 import { Checkbox } from '@repo/design-system/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/design-system/components/ui/card';
-import { Plus, Calendar, Save } from 'lucide-react';
+import { Plus, Save, Loader2 } from 'lucide-react';
 import { getWeeksOfMonth, formatWeekTitle } from '../utils/dateUtils';
+import {
+    saveRepartosWeekAction,
+    updateRepartoEntryAction,
+    toggleRepartoCompletionAction,
+    initializeWeekAction,
+    getRepartosDataAction,
+    cleanupOldWeeksAction,
+    addRowToDayAction,
+    removeRowFromDayAction
+} from '../actions';
 import type { Dictionary } from '@repo/internationalization';
-
-interface RepartoEntry {
-    id: string;
-    text: string;
-    isCompleted: boolean;
-}
-
-interface WeekData {
-    [day: string]: RepartoEntry[];
-}
+import type { RepartosData, WeekData } from '@repo/data-services';
 
 interface RepartosTableProps {
+    data: RepartosData;
     dictionary: Dictionary;
 }
 
-export function RepartosTable({ dictionary }: RepartosTableProps) {
+export function RepartosTable({ data: initialData, dictionary }: RepartosTableProps) {
     const [currentMonth, setCurrentMonth] = useState(new Date());
-    const [weeksData, setWeeksData] = useState<{ [weekKey: string]: WeekData }>({});
+    const [weeksData, setWeeksData] = useState<RepartosData>(initialData);
     const [isEditing, setIsEditing] = useState(false);
+    const [isPending, startTransition] = useTransition();
 
     // Obtener las semanas del mes actual
     const weeks = getWeeksOfMonth(currentMonth);
 
-    // Inicializar datos si no existen
+    // Cargar datos cuando cambie el mes
     useEffect(() => {
-        const initializeData = () => {
-            const newData: { [weekKey: string]: WeekData } = {};
-
-            weeks.forEach(week => {
-                const weekKey = week.weekKey;
-                if (!weeksData[weekKey]) {
-                    newData[weekKey] = {
-                        lunes: [
-                            { id: `${weekKey}-lunes-1`, text: '', isCompleted: false },
-                            { id: `${weekKey}-lunes-2`, text: '', isCompleted: false },
-                            { id: `${weekKey}-lunes-3`, text: '', isCompleted: false }
-                        ],
-                        martes: [
-                            { id: `${weekKey}-martes-1`, text: '', isCompleted: false },
-                            { id: `${weekKey}-martes-2`, text: '', isCompleted: false },
-                            { id: `${weekKey}-martes-3`, text: '', isCompleted: false }
-                        ],
-                        miercoles: [
-                            { id: `${weekKey}-miercoles-1`, text: '', isCompleted: false },
-                            { id: `${weekKey}-miercoles-2`, text: '', isCompleted: false },
-                            { id: `${weekKey}-miercoles-3`, text: '', isCompleted: false }
-                        ],
-                        jueves: [
-                            { id: `${weekKey}-jueves-1`, text: '', isCompleted: false },
-                            { id: `${weekKey}-jueves-2`, text: '', isCompleted: false },
-                            { id: `${weekKey}-jueves-3`, text: '', isCompleted: false }
-                        ],
-                        viernes: [
-                            { id: `${weekKey}-viernes-1`, text: '', isCompleted: false },
-                            { id: `${weekKey}-viernes-2`, text: '', isCompleted: false },
-                            { id: `${weekKey}-viernes-3`, text: '', isCompleted: false }
-                        ],
-                        sabado: [
-                            { id: `${weekKey}-sabado-1`, text: '', isCompleted: false },
-                            { id: `${weekKey}-sabado-2`, text: '', isCompleted: false },
-                            { id: `${weekKey}-sabado-3`, text: '', isCompleted: false }
-                        ]
-                    };
-                }
-            });
-
-            if (Object.keys(newData).length > 0) {
-                setWeeksData(prev => ({ ...prev, ...newData }));
+        const loadData = async () => {
+            const result = await getRepartosDataAction();
+            if (result.success && result.data) {
+                setWeeksData(result.data);
             }
         };
 
-        initializeData();
-    }, [weeks, weeksData]);
+        loadData();
+    }, [currentMonth]);
 
-    const handleTextChange = (weekKey: string, day: string, rowIndex: number, value: string) => {
+    const handleTextChange = (weekKey: string, dayKey: string, rowIndex: number, value: string) => {
+        // Actualizar estado local inmediatamente
         setWeeksData(prev => ({
             ...prev,
             [weekKey]: {
                 ...prev[weekKey],
-                [day]: prev[weekKey][day].map((entry, index) =>
+                [dayKey]: prev[weekKey]?.[dayKey]?.map((entry, index) =>
                     index === rowIndex ? { ...entry, text: value } : entry
-                )
+                ) || []
             }
         }));
+
+        // Guardar en el servidor
+        startTransition(async () => {
+            await updateRepartoEntryAction(weekKey, dayKey, rowIndex, { text: value });
+        });
     };
 
-    const handleCheckboxChange = (weekKey: string, day: string, rowIndex: number, checked: boolean) => {
+    const handleCheckboxChange = (weekKey: string, dayKey: string, rowIndex: number, checked: boolean) => {
+        // Actualizar estado local inmediatamente
         setWeeksData(prev => ({
             ...prev,
             [weekKey]: {
                 ...prev[weekKey],
-                [day]: prev[weekKey][day].map((entry, index) =>
+                [dayKey]: prev[weekKey]?.[dayKey]?.map((entry, index) =>
                     index === rowIndex ? { ...entry, isCompleted: checked } : entry
-                )
+                ) || []
             }
         }));
+
+        // Guardar en el servidor
+        startTransition(async () => {
+            await toggleRepartoCompletionAction(weekKey, dayKey, rowIndex);
+        });
     };
 
     const changeMonth = (direction: 'prev' | 'next') => {
@@ -116,13 +92,56 @@ export function RepartosTable({ dictionary }: RepartosTableProps) {
         setCurrentMonth(newMonth);
     };
 
-    const saveData = () => {
-        // Aquí implementarías la lógica para guardar en la base de datos
-        console.log('Guardando datos:', weeksData);
-        setIsEditing(false);
+    const initializeMissingWeeks = async () => {
+        const missingWeeks = weeks.filter(week => !weeksData[week.weekKey]);
+
+        for (const week of missingWeeks) {
+            await initializeWeekAction(week.weekKey);
+        }
+
+        // Recargar datos después de inicializar
+        const result = await getRepartosDataAction();
+        if (result.success && result.data) {
+            setWeeksData(result.data);
+        }
     };
 
-    const days = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+    const saveData = () => {
+        startTransition(async () => {
+            // Guardar todas las semanas del mes actual
+            for (const week of weeks) {
+                const weekData = weeksData[week.weekKey];
+                if (weekData) {
+                    await saveRepartosWeekAction(week.weekKey, weekData);
+                }
+            }
+            setIsEditing(false);
+        });
+    };
+
+    const handleAddRow = async (weekKey: string, dayKey: string) => {
+        const result = await addRowToDayAction(weekKey, dayKey);
+        if (result.success) {
+            // Recargar datos después de agregar fila
+            const dataResult = await getRepartosDataAction();
+            if (dataResult.success && dataResult.data) {
+                setWeeksData(dataResult.data);
+            }
+        }
+    };
+
+    const handleRemoveRow = async (weekKey: string, dayKey: string, rowIndex: number) => {
+        const result = await removeRowFromDayAction(weekKey, dayKey, rowIndex);
+        if (result.success) {
+            // Recargar datos después de eliminar fila
+            const dataResult = await getRepartosDataAction();
+            if (dataResult.success && dataResult.data) {
+                setWeeksData(dataResult.data);
+            }
+        }
+    };
+
+    const days = ['1', '2', '3', '4', '5', '6']; // Usar números como en el backend
     const dayLabels = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
     return (
@@ -155,15 +174,50 @@ export function RepartosTable({ dictionary }: RepartosTableProps) {
                 </div>
 
                 <div className="flex items-center space-x-2">
+                    <Button
+                        variant="outline"
+                        onClick={initializeMissingWeeks}
+                        disabled={isPending}
+                    >
+                        {isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                        Inicializar Semanas
+                    </Button>
+
+                    {/* <Button
+                        variant="outline"
+                        onClick={async () => {
+                            const result = await cleanupOldWeeksAction();
+                            if (result.success) {
+                                // Recargar datos después de limpiar
+                                const dataResult = await getRepartosDataAction();
+                                if (dataResult.success && dataResult.data) {
+                                    setWeeksData(dataResult.data);
+                                }
+                            }
+                        }}
+                        disabled={isPending}
+                    >
+                        Limpiar Semanas Antiguas
+                    </Button> */}
+
                     {isEditing ? (
                         <>
-                            <Button onClick={saveData} className="flex items-center space-x-2">
-                                <Save className="h-4 w-4" />
-                                {dictionary.app?.admin?.repartos?.save || 'Guardar'}
+                            <Button
+                                onClick={saveData}
+                                className="flex items-center space-x-2"
+                                disabled={isPending}
+                            >
+                                {isPending ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Save className="h-4 w-4" />
+                                )}
+                                {isPending ? 'Guardando...' : (dictionary.app?.admin?.repartos?.save || 'Guardar')}
                             </Button>
                             <Button
                                 variant="outline"
                                 onClick={() => setIsEditing(false)}
+                                disabled={isPending}
                             >
                                 {dictionary.app?.admin?.repartos?.cancel || 'Cancelar'}
                             </Button>
@@ -182,57 +236,115 @@ export function RepartosTable({ dictionary }: RepartosTableProps) {
 
             {/* Tabla de semanas */}
             <div className="space-y-6">
-                {weeks.map((week) => (
-                    <Card key={week.weekKey}>
-                        <CardHeader>
-                            <CardTitle className="text-lg font-semibold text-center">
-                                {dictionary.app?.admin?.repartos?.week || 'Semana del'} {formatWeekTitle(week.startDate)}
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-7 gap-4">
-                                {/* Columna de días */}
-                                {days.map((day, dayIndex) => (
-                                    <div key={day} className="space-y-2">
-                                        {/* Header del día */}
-                                        <div className="text-center font-medium text-sm text-muted-foreground">
-                                            {dayLabels[dayIndex]}
-                                        </div>
+                {weeks.map((week) => {
+                    const weekData = weeksData[week.weekKey];
 
-                                        {/* 3 filas de datos */}
-                                        {[0, 1, 2].map((rowIndex) => {
-                                            const entry = weeksData[week.weekKey]?.[day]?.[rowIndex];
-                                            if (!entry) return null;
-
-                                            return (
-                                                <div key={entry.id} className="flex items-center space-x-2">
-                                                    {/* Input de texto */}
-                                                    <Input
-                                                        value={entry.text}
-                                                        onChange={(e) => handleTextChange(week.weekKey, day, rowIndex, e.target.value)}
-                                                        placeholder={`${dayLabels[dayIndex]} ${rowIndex + 1}`}
-                                                        disabled={!isEditing}
-                                                        className="text-xs h-8 flex-1"
-                                                    />
-
-                                                    {/* Checkbox */}
-                                                    <Checkbox
-                                                        checked={entry.isCompleted}
-                                                        onCheckedChange={(checked) =>
-                                                            handleCheckboxChange(week.weekKey, day, rowIndex, checked as boolean)
-                                                        }
-                                                        disabled={!isEditing}
-                                                        className="shrink-0"
-                                                    />
-                                                </div>
-                                            );
-                                        })}
+                    return (
+                        <Card key={week.weekKey}>
+                            <CardHeader>
+                                <CardTitle className="text-lg font-semibold text-center">
+                                    {dictionary.app?.admin?.repartos?.week || 'Semana del'} {formatWeekTitle(week.startDate)}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {!weekData ? (
+                                    <div className="text-center py-8 text-muted-foreground">
+                                        <p>Esta semana no está inicializada.</p>
+                                        <Button
+                                            variant="outline"
+                                            onClick={async () => {
+                                                await initializeWeekAction(week.weekKey);
+                                                // Recargar datos después de inicializar
+                                                const result = await getRepartosDataAction();
+                                                if (result.success && result.data) {
+                                                    setWeeksData(result.data);
+                                                }
+                                            }}
+                                            disabled={isPending}
+                                            className="mt-2"
+                                        >
+                                            {isPending ? 'Inicializando...' : 'Inicializar Semana'}
+                                        </Button>
                                     </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
+                                ) : (
+                                    <div className="grid grid-cols-6 gap-4">
+                                        {/* Columna de días */}
+                                        {days.map((dayKey, dayIndex) => (
+                                            <div key={dayKey} className="space-y-2">
+                                                {/* Header del día */}
+                                                <div className="text-center font-medium text-sm text-muted-foreground">
+                                                    {dayLabels[dayIndex]}
+                                                </div>
+
+                                                {/* Controles de filas */}
+                                                {isEditing && (
+                                                    <div className="flex justify-center space-x-1">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => handleAddRow(week.weekKey, dayKey)}
+                                                            className="h-6 w-6 p-0"
+                                                        >
+                                                            <Plus className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                )}
+
+                                                {/* Filas de datos dinámicas */}
+                                                {weekData[dayKey]?.map((entry, rowIndex) => (
+                                                    <div key={entry.id} className="flex items-center space-x-2">
+                                                        {/* Input de texto */}
+                                                        <Input
+                                                            value={entry.text}
+                                                            onChange={(e) => handleTextChange(week.weekKey, dayKey, rowIndex, e.target.value)}
+                                                            placeholder={`${dayLabels[dayIndex]} ${rowIndex + 1}`}
+                                                            disabled={!isEditing}
+                                                            className="text-xs h-8 flex-1"
+                                                        />
+
+                                                        {/* Checkbox */}
+                                                        <Checkbox
+                                                            checked={entry.isCompleted}
+                                                            onCheckedChange={(checked) =>
+                                                                handleCheckboxChange(week.weekKey, dayKey, rowIndex, checked as boolean)
+                                                            }
+                                                            disabled={!isEditing}
+                                                            className="shrink-0"
+                                                        />
+
+                                                        {/* Botón de eliminar fila */}
+                                                        {isEditing && weekData[dayKey].length > 1 && (
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => handleRemoveRow(week.weekKey, dayKey, rowIndex)}
+                                                                className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                                            >
+                                                                ×
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                )) || (
+                                                        // Fallback para días sin datos
+                                                        [0, 1, 2].map((rowIndex) => (
+                                                            <div key={rowIndex} className="flex items-center space-x-2">
+                                                                <Input
+                                                                    placeholder={`${dayLabels[dayIndex]} ${rowIndex + 1}`}
+                                                                    disabled
+                                                                    className="text-xs h-8 flex-1"
+                                                                />
+                                                                <Checkbox disabled className="shrink-0" />
+                                                            </div>
+                                                        ))
+                                                    )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    );
+                })}
             </div>
         </div>
     );
