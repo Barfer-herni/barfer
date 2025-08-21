@@ -295,7 +295,7 @@ export async function addRowToDay(weekKey: string, dayKey: string): Promise<bool
         const result = await collection.updateOne(
             { weekKey },
             {
-                $push: { [`data.${dayKey}`]: newRow },
+                $push: { [`data.${dayKey}`]: newRow as any },
                 $set: { updatedAt: new Date() }
             }
         );
@@ -338,7 +338,7 @@ export async function removeRowFromDay(weekKey: string, dayKey: string, rowIndex
         if (result.acknowledged) {
             const updatedWeek = await collection.findOne({ weekKey });
             if (updatedWeek && updatedWeek.data && updatedWeek.data[dayKey]) {
-                const filteredRows = updatedWeek.data[dayKey].filter(row => row !== null && row !== undefined);
+                const filteredRows = updatedWeek.data[dayKey].filter((row: any) => row !== null && row !== undefined);
 
                 await collection.updateOne(
                     { weekKey },
