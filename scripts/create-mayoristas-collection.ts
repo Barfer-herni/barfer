@@ -6,14 +6,18 @@ async function createMayoristasCollection() {
 
         const collection = await getCollection('mayoristas');
 
-        // Crear índices para optimizar las consultas
+        // Crear índices para optimizar las consultas de datos personales
+        await collection.createIndex({ 'user.name': 1 });
+        await collection.createIndex({ 'user.lastName': 1 });
         await collection.createIndex({ 'user.email': 1 });
-        await collection.createIndex({ status: 1 });
-        await collection.createIndex({ orderType: 1 });
+        await collection.createIndex({ 'address.phone': 1 });
         await collection.createIndex({ createdAt: 1 });
-        await collection.createIndex({ deliveryDay: 1 });
+        await collection.createIndex({ updatedAt: 1 });
 
-        console.log('✅ Mayoristas collection created successfully with indexes');
+        // Índice compuesto para búsqueda por nombre completo
+        await collection.createIndex({ 'user.name': 1, 'user.lastName': 1 });
+
+        console.log('✅ Mayoristas collection created successfully with indexes for personal data');
 
         // Verificar que la colección existe
         const collections = await collection.db.listCollections().toArray();
@@ -32,15 +36,13 @@ async function createMayoristasCollection() {
 
 // Ejecutar si se llama directamente
 if (require.main === module) {
-    createMayoristasCollection()
-        .then(() => {
-            console.log('Script completed');
-            process.exit(0);
-        })
-        .catch((error) => {
-            console.error('Script failed:', error);
-            process.exit(1);
-        });
+    createMayoristasCollection().then(() => {
+        console.log('Script completed');
+        process.exit(0);
+    }).catch((error) => {
+        console.error('Script failed:', error);
+        process.exit(1);
+    });
 }
 
 export { createMayoristasCollection };

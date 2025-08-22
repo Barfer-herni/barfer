@@ -2,19 +2,14 @@ import 'server-only';
 import { getCollection, ObjectId } from '@repo/database';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import type { MayoristaOrder } from '../../types/barfer';
+import type { MayoristaPerson } from '../../types/barfer';
 
-const createMayoristaOrderSchema = z.object({
-    status: z.enum(['pending', 'confirmed', 'delivered', 'cancelled']).default('pending'),
-    total: z.number().min(0).refine((val) => val !== undefined && val !== null, {
-        message: "El total es obligatorio"
+const mayoristaPersonSchema = z.object({
+    user: z.object({
+        name: z.string(),
+        lastName: z.string(),
+        email: z.string().email().optional().or(z.literal('')),
     }),
-    subTotal: z.number().min(0).optional().default(0),
-    shippingPrice: z.number().min(0).optional().default(0),
-    notes: z.string().optional(),
-    notesOwn: z.string().optional(),
-    paymentMethod: z.string(),
-    orderType: z.literal('mayorista'),
     address: z.object({
         address: z.string(),
         city: z.string(),
@@ -23,111 +18,69 @@ const createMayoristaOrderSchema = z.object({
         floorNumber: z.string().optional(),
         departmentNumber: z.string().optional(),
     }),
-    user: z.object({
-        name: z.string(),
-        lastName: z.string(),
-        email: z.string().email().optional().or(z.literal('')),
-    }),
-    items: z.array(z.object({
-        id: z.string(),
-        name: z.string(),
-        description: z.string().optional(),
-        images: z.array(z.string()).optional(),
-        options: z.array(z.object({
-            name: z.string(),
-            price: z.number(),
-            quantity: z.number().positive(),
-        })),
-        price: z.number(),
-        salesCount: z.number().optional(),
-        discountApllied: z.number().optional(),
-    })),
-    deliveryArea: z.object({
-        _id: z.string(),
-        description: z.string(),
-        coordinates: z.array(z.array(z.number())),
-        schedule: z.string(),
-        orderCutOffHour: z.number(),
-        enabled: z.boolean(),
-        sameDayDelivery: z.boolean(),
-        sameDayDeliveryDays: z.array(z.string()),
-        whatsappNumber: z.string(),
-        sheetName: z.string(),
-    }),
-    deliveryDay: z.union([z.string(), z.date()]),
 });
 
-// Función para normalizar el formato de fecha deliveryDay
-function normalizeDeliveryDay(dateInput: string | Date | { $date: string }): Date {
-    if (!dateInput) return new Date();
-
-    let date: Date;
-
-    // Si es un objeto con $date, extraer el string y parsear
-    if (typeof dateInput === 'object' && '$date' in dateInput) {
-        date = new Date(dateInput.$date);
-    }
-    // Si es un objeto Date, usar directamente
-    else if (dateInput instanceof Date) {
-        date = dateInput;
-    } else {
-        // Si es string, parsear
-        date = new Date(dateInput);
-    }
-
-    // Validar que la fecha sea válida
-    if (isNaN(date.getTime())) {
-        throw new Error('Invalid date');
-    }
-
-    // Crear fecha local (solo año, mes, día) y retornar como objeto Date
-    const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-    return localDate;
-}
-
-export async function createMayoristaOrder(data: z.infer<typeof createMayoristaOrderSchema>): Promise<{ success: boolean; order?: MayoristaOrder; error?: string }> {
+export async function createMayoristaPerson(data: z.infer<typeof mayoristaPersonSchema>): Promise<{ success: boolean; mayorista?: MayoristaPerson; error?: string; isNew?: boolean }> {
     try {
         // Validar los datos de entrada
-        const validatedData = createMayoristaOrderSchema.parse(data);
+        const validatedData = mayoristaPersonSchema.parse(data);
 
         const collection = await getCollection('mayoristas');
 
-        // Normalizar el formato de deliveryDay si está presente
-        if (validatedData.deliveryDay) {
-            validatedData.deliveryDay = normalizeDeliveryDay(validatedData.deliveryDay);
+        // Verificar si ya existe un mayorista con el mismo nombre
+        const existingMayorista = await collection.findOne({
+            'user.name': validatedData.user.name,
+            'user.lastName': validatedData.user.lastName
+        });
+
+        if (existingMayorista) {
+            // Si ya existe, retornar el existente
+            const mayoristaWithStringId = {
+                ...existingMayorista,
+                _id: existingMayorista._id.toString(),
+            } as MayoristaPerson;
+
+            return {
+                success: true,
+                mayorista: mayoristaWithStringId,
+                isNew: false
+            };
         }
 
-        // Crear la nueva orden mayorista con timestamps
-        const newMayoristaOrder = {
+        // Si no existe, crear uno nuevo con solo los datos personales
+        const newMayoristaPerson = {
             ...validatedData,
             createdAt: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
             updatedAt: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
         };
 
-        // Insertar la orden mayorista en la base de datos
-        const result = await collection.insertOne(newMayoristaOrder);
+        // Insertar el nuevo mayorista en la base de datos
+        const result = await collection.insertOne(newMayoristaPerson);
 
         if (!result.insertedId) {
-            return { success: false, error: 'Failed to create mayorista order' };
+            return { success: false, error: 'Failed to create mayorista person' };
         }
 
-        // Obtener la orden creada
-        const createdOrder = await collection.findOne({ _id: result.insertedId });
+        // Obtener el mayorista creado
+        const createdMayorista = await collection.findOne({ _id: result.insertedId });
 
-        if (!createdOrder) {
-            return { success: false, error: 'Mayorista order created but not found' };
+        if (!createdMayorista) {
+            return { success: false, error: 'Mayorista person created but not found' };
         }
 
         // Convertir ObjectId a string para la respuesta
-        const orderWithStringId = {
-            ...createdOrder,
-            _id: createdOrder._id.toString(),
-        } as MayoristaOrder;
+        const mayoristaWithStringId = {
+            ...createdMayorista,
+            _id: createdMayorista._id.toString(),
+        } as MayoristaPerson;
 
-        return { success: true, order: orderWithStringId };
+        return {
+            success: true,
+            mayorista: mayoristaWithStringId,
+            isNew: true
+        };
     } catch (error) {
-        console.error('Error creating mayorista order:', error);
+        console.error('Error creating mayorista person:', error);
         if (error instanceof z.ZodError) {
             return { success: false, error: `Validation error: ${error.errors.map(e => e.message).join(', ')}` };
         }
@@ -135,50 +88,76 @@ export async function createMayoristaOrder(data: z.infer<typeof createMayoristaO
     }
 }
 
-// Función para obtener todas las órdenes mayoristas
-export async function getMayoristaOrders(): Promise<{ success: boolean; orders?: MayoristaOrder[]; error?: string }> {
+// Función para obtener todos los mayoristas
+export async function getMayoristaPersons(): Promise<{ success: boolean; mayoristas?: MayoristaPerson[]; error?: string }> {
     try {
         const collection = await getCollection('mayoristas');
-        const orders = await collection.find({}).toArray();
+        const mayoristas = await collection.find({}).toArray();
 
         // Convertir ObjectIds a strings
-        const ordersWithStringIds = orders.map(order => ({
-            ...order,
-            _id: order._id.toString(),
-        })) as MayoristaOrder[];
+        const mayoristasWithStringIds = mayoristas.map(mayorista => ({
+            ...mayorista,
+            _id: mayorista._id.toString(),
+        })) as MayoristaPerson[];
 
-        return { success: true, orders: ordersWithStringIds };
+        return { success: true, mayoristas: mayoristasWithStringIds };
     } catch (error) {
-        console.error('Error getting mayorista orders:', error);
+        console.error('Error getting mayorista persons:', error);
         return { success: false, error: 'Internal server error' };
     }
 }
 
-// Función para obtener una orden mayorista por ID
-export async function getMayoristaOrderById(id: string): Promise<{ success: boolean; order?: MayoristaOrder; error?: string }> {
+// Función para obtener un mayorista por ID
+export async function getMayoristaPersonById(id: string): Promise<{ success: boolean; mayorista?: MayoristaPerson; error?: string }> {
     try {
         const collection = await getCollection('mayoristas');
-        const order = await collection.findOne({ _id: new ObjectId(id) });
+        const mayorista = await collection.findOne({ _id: new ObjectId(id) });
 
-        if (!order) {
-            return { success: false, error: 'Mayorista order not found' };
+        if (!mayorista) {
+            return { success: false, error: 'Mayorista person not found' };
         }
 
         // Convertir ObjectId a string
-        const orderWithStringId = {
-            ...order,
-            _id: order._id.toString(),
-        } as MayoristaOrder;
+        const mayoristaWithStringId = {
+            ...mayorista,
+            _id: mayorista._id.toString(),
+        } as MayoristaPerson;
 
-        return { success: true, order: orderWithStringId };
+        return { success: true, mayorista: mayoristaWithStringId };
     } catch (error) {
-        console.error('Error getting mayorista order by ID:', error);
+        console.error('Error getting mayorista person by ID:', error);
         return { success: false, error: 'Internal server error' };
     }
 }
 
-// Función para actualizar una orden mayorista
-export async function updateMayoristaOrder(id: string, data: Partial<MayoristaOrder>): Promise<{ success: boolean; order?: MayoristaOrder; error?: string }> {
+// Función para buscar mayoristas por nombre
+export async function findMayoristaByName(name: string, lastName: string): Promise<{ success: boolean; mayorista?: MayoristaPerson; error?: string }> {
+    try {
+        const collection = await getCollection('mayoristas');
+        const mayorista = await collection.findOne({
+            'user.name': name,
+            'user.lastName': lastName
+        });
+
+        if (!mayorista) {
+            return { success: false, error: 'Mayorista not found' };
+        }
+
+        // Convertir ObjectId a string
+        const mayoristaWithStringId = {
+            ...mayorista,
+            _id: mayorista._id.toString(),
+        } as MayoristaPerson;
+
+        return { success: true, mayorista: mayoristaWithStringId };
+    } catch (error) {
+        console.error('Error finding mayorista by name:', error);
+        return { success: false, error: 'Internal server error' };
+    }
+}
+
+// Función para actualizar un mayorista
+export async function updateMayoristaPerson(id: string, data: Partial<MayoristaPerson>): Promise<{ success: boolean; mayorista?: MayoristaPerson; error?: string }> {
     try {
         const collection = await getCollection('mayoristas');
 
@@ -194,42 +173,74 @@ export async function updateMayoristaOrder(id: string, data: Partial<MayoristaOr
         );
 
         if (result.matchedCount === 0) {
-            return { success: false, error: 'Mayorista order not found' };
+            return { success: false, error: 'Mayorista person not found' };
         }
 
-        // Obtener la orden actualizada
-        const updatedOrder = await collection.findOne({ _id: new ObjectId(id) });
+        // Obtener el mayorista actualizado
+        const updatedMayorista = await collection.findOne({ _id: new ObjectId(id) });
 
-        if (!updatedOrder) {
-            return { success: false, error: 'Mayorista order updated but not found' };
+        if (!updatedMayorista) {
+            return { success: false, error: 'Mayorista person updated but not found' };
         }
 
         // Convertir ObjectId a string
-        const orderWithStringId = {
-            ...updatedOrder,
-            _id: updatedOrder._id.toString(),
-        } as MayoristaOrder;
+        const mayoristaWithStringId = {
+            ...updatedMayorista,
+            _id: updatedMayorista._id.toString(),
+        } as MayoristaPerson;
 
-        return { success: true, order: orderWithStringId };
+        return { success: true, mayorista: mayoristaWithStringId };
     } catch (error) {
-        console.error('Error updating mayorista order:', error);
+        console.error('Error updating mayorista person:', error);
         return { success: false, error: 'Internal server error' };
     }
 }
 
-// Función para eliminar una orden mayorista
-export async function deleteMayoristaOrder(id: string): Promise<{ success: boolean; error?: string }> {
+// Función para eliminar un mayorista
+export async function deleteMayoristaPerson(id: string): Promise<{ success: boolean; error?: string }> {
     try {
         const collection = await getCollection('mayoristas');
         const result = await collection.deleteOne({ _id: new ObjectId(id) });
 
         if (result.deletedCount === 0) {
-            return { success: false, error: 'Mayorista order not found' };
+            return { success: false, error: 'Mayorista person not found' };
         }
 
         return { success: true };
     } catch (error) {
-        console.error('Error deleting mayorista order:', error);
+        console.error('Error deleting mayorista person:', error);
+        return { success: false, error: 'Internal server error' };
+    }
+}
+
+// Función para buscar mayoristas por término de búsqueda
+export async function searchMayoristas(searchTerm: string): Promise<{ success: boolean; mayoristas?: MayoristaPerson[]; error?: string }> {
+    try {
+        if (!searchTerm || searchTerm.length < 2) {
+            return { success: true, mayoristas: [] };
+        }
+
+        const collection = await getCollection('mayoristas');
+
+        // Buscar por nombre, apellido, email o teléfono
+        const mayoristas = await collection.find({
+            $or: [
+                { 'user.name': { $regex: searchTerm, $options: 'i' } },
+                { 'user.lastName': { $regex: searchTerm, $options: 'i' } },
+                { 'user.email': { $regex: searchTerm, $options: 'i' } },
+                { 'address.phone': { $regex: searchTerm, $options: 'i' } }
+            ]
+        }).limit(10).toArray();
+
+        // Convertir ObjectIds a strings
+        const mayoristasWithStringIds = mayoristas.map(mayorista => ({
+            ...mayorista,
+            _id: mayorista._id.toString(),
+        })) as MayoristaPerson[];
+
+        return { success: true, mayoristas: mayoristasWithStringIds };
+    } catch (error) {
+        console.error('Error searching mayoristas:', error);
         return { success: false, error: 'Internal server error' };
     }
 }

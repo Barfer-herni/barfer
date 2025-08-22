@@ -231,6 +231,26 @@ export interface ClientAnalytics {
     };
 }
 
+// Interfaz para datos personales del mayorista (solo información básica)
+export interface MayoristaPerson {
+    _id?: string;
+    user: {
+        name: string;
+        lastName: string;
+        email: string;
+    };
+    address: {
+        address: string;
+        city: string;
+        phone: string;
+        betweenStreets?: string;
+        floorNumber?: string;
+        departmentNumber?: string;
+    };
+    createdAt: string;
+    updatedAt: string;
+}
+
 // Interfaz para órdenes mayoristas (sin fecha y con estructura de items específica)
 export interface MayoristaOrder {
     _id?: string;

@@ -1,116 +1,31 @@
-# Implementación de Órdenes Mayoristas
+# Implementación de Datos Personales de Mayoristas
 
 ## Descripción
 
 Esta implementación permite que cuando se cree una orden con `orderType: 'mayorista'`, se guarde automáticamente en dos colecciones:
 1. **`orders`** - Colección principal de órdenes (como siempre)
-2. **`mayoristas`** - Nueva colección específica para órdenes mayoristas
+2. **`mayoristas`** - Colección específica para **datos personales** de mayoristas (sin información de órdenes)
 
-## Características
+## Características Principales
 
-- **Doble guardado**: Las órdenes mayoristas se guardan en ambas colecciones
-- **Sin fecha**: La colección `mayoristas` no incluye el campo `fecha` como se solicitó
-- **Estructura de items preservada**: Los items se guardan exactamente como en la colección principal
+- **Solo datos personales**: La colección `mayoristas` ahora solo almacena información básica del mayorista
+- **Sin duplicados**: No se crea un nuevo mayorista si ya existe uno con el mismo nombre y apellido
+- **Búsqueda eficiente**: Índices optimizados para búsquedas por nombre, email y teléfono
 - **Fallback graceful**: Si falla el guardado en `mayoristas`, la orden principal se crea igualmente
-- **Índices optimizados**: La colección `mayoristas` incluye índices para consultas eficientes
-- **Búsqueda y autocompletado**: Búsqueda de mayoristas existentes con autocompletado de campos
+- **Verificación de existencia**: Sistema inteligente que verifica si el mayorista ya existe antes de crear uno nuevo
 
-## Funcionalidad de Búsqueda y Autocompletado
+## Datos Almacenados en Mayoristas
 
-### Componente MayoristaSearch
-
-Cuando se selecciona `orderType: 'mayorista'` en el formulario de creación de órdenes, aparece automáticamente un campo de búsqueda que permite:
-
-1. **Buscar mayoristas existentes** por nombre, email o teléfono
-2. **Autocompletar automáticamente** todos los campos del formulario:
-   - Nombre y apellido del cliente
-   - Email
-   - Teléfono
-   - Dirección completa
-   - Ciudad
-   - Campos adicionales (entre calles, piso, departamento)
-
-### Características del Autocompletado
-
-- **Búsqueda en tiempo real** con debounce de 300ms
-- **Resultados paginados** (máximo 10 resultados por búsqueda)
-- **Interfaz intuitiva** con iconos y información clara
-- **Limpieza automática** cuando se cambia el tipo de orden
-- **Indicadores visuales** del estado de búsqueda y selección
-
-### Flujo de Uso
-
-1. Usuario selecciona `orderType: 'mayorista'`
-2. Aparece el campo de búsqueda de mayoristas
-3. Usuario escribe para buscar (mínimo 2 caracteres)
-4. Se muestran resultados con información relevante
-5. Al seleccionar un mayorista, se autocompletan todos los campos
-6. Usuario puede modificar cualquier campo si es necesario
-7. Al crear la orden, se guarda en ambas colecciones
-
-### Mapeo de Productos para Autocompletado
-
-El sistema incluye una función inteligente de mapeo **bidireccional** que convierte entre los nombres de productos de la base de datos y las opciones del select del formulario:
-
-#### Problema Resuelto
-- **En la DB**: `items[0].name = "BOX PERRO POLLO"`, `items[0].options[0].name = "5KG"`
-- **En el select**: Opción `"Barfer box Perro Pollo 5kg"` (formato combinado)
-
-#### Funciones de Mapeo
-
-##### 1. DB → Select (Para Autocompletado)
-```typescript
-mapDBProductToSelectOption(dbProductName: string, dbOptionName: string): string
-```
-Convierte nombres de la DB hacia opciones del select para autocompletar campos.
-
-##### 2. Select → DB (Para Guardado)
-```typescript
-mapSelectOptionToDBFormat(selectOption: string): { name: string, option: string }
-```
-Convierte opciones del select hacia el formato de la DB para guardar correctamente.
-
-#### Ejemplos de Mapeo Bidireccional
-
-| DB Product | DB Option | Select Option | Mapeo Inverso |
-|------------|-----------|---------------|---------------|
-| `BOX PERRO POLLO` | `5KG` | `Barfer box Perro Pollo 5kg` | ✅ Funciona |
-| `BOX PERRO CERDO` | `10KG` | `Barfer box Perro Cerdo 10kg` | ✅ Funciona |
-| `BIG DOG POLLO` | `15KG` | `BIG DOG (15kg) - POLLO` | ✅ Funciona |
-| `TRAQUEA` | `X1` | `Traquea X1` | ✅ Funciona |
-| `POLLO` | `40GRS` | `Pollo 40grs` | ✅ Funciona |
-
-#### Flujo Completo del Mapeo
-
-1. **Autocompletado**: DB → Select
-   - `"BOX PERRO POLLO" + "5KG"` → `"Barfer box Perro Pollo 5kg"`
-
-2. **Guardado**: Select → DB  
-   - `"Barfer box Perro Pollo 5kg"` → `"BOX PERRO POLLO" + "5KG"`
-
-#### Categorías Mapeadas
-- **Barfer Box**: Perro/Gato con Pollo, Vaca, Cerdo, Cordero (5kg/10kg)
-- **Big Dog**: Pollo, Vaca (15kg)
-- **Productos Raw**: Traquea, Orejas, Pollo, Hígado, Cornalitos
-- **Complementos**: Cornalitos, Caldo, Huesos, Garras
-
-#### Testing del Mapeo Bidireccional
-```bash
-pnpm run script test-product-mapping
-```
-Este comando prueba tanto el mapeo DB→Select como Select→DB.
-
-## Estructura de la Colección Mayoristas
+La colección `mayoristas` ahora solo contiene:
 
 ```typescript
-interface MayoristaOrder {
+interface MayoristaPerson {
     _id?: string;
-    status: 'pending' | 'confirmed' | 'delivered' | 'cancelled';
-    total: number;
-    subTotal: number;
-    shippingPrice: number;
-    notes: string;
-    notesOwn: string;
+    user: {
+        name: string;
+        lastName: string;
+        email: string;
+    };
     address: {
         address: string;
         city: string;
@@ -119,47 +34,64 @@ interface MayoristaOrder {
         floorNumber?: string;
         departmentNumber?: string;
     };
-    user: {
-        name: string;
-        lastName: string;
-        email: string;
-    };
-    items: OrderItem[]; // Misma estructura que en orders
-    deliveryArea: DeliveryArea;
-    paymentMethod: string;
-    orderType: 'mayorista'; // Siempre 'mayorista'
-    deliveryDay: string;
-    whatsappContactedAt?: string;
     createdAt: string;
     updatedAt: string;
 }
 ```
 
+**Campos NO incluidos** (ya no se guardan):
+- ❌ `status`, `total`, `subTotal`, `shippingPrice`
+- ❌ `notes`, `notesOwn`, `paymentMethod`
+- ❌ `items`, `deliveryArea`, `deliveryDay`
+- ❌ `orderType`, `whatsappContactedAt`
+
+## Flujo de Creación
+
+### 1. Creación de Orden Mayorista
+Cuando se crea una orden con `orderType: 'mayorista'`:
+
+1. **Se valida y guarda** en la colección `orders` (completa)
+2. **Se extraen solo los datos personales** (user + address)
+3. **Se verifica si ya existe** un mayorista con el mismo nombre y apellido
+4. **Si existe**: Se retorna el mayorista existente (no se crea duplicado)
+5. **Si no existe**: Se crea un nuevo registro en `mayoristas`
+
+### 2. Lógica de Verificación
+```typescript
+// Verificar si ya existe un mayorista con el mismo nombre
+const existingMayorista = await collection.findOne({
+    'user.name': validatedData.user.name,
+    'user.lastName': validatedData.user.lastName
+});
+
+if (existingMayorista) {
+    // Retornar el existente sin crear duplicado
+    return { success: true, mayorista: existingMayorista, isNew: false };
+}
+```
+
 ## Servicios Disponibles
 
-### Creación y Gestión
-- `createMayoristaOrder(data)` - Crear orden mayorista directamente
-- `getMayoristaOrderById(id)` - Obtener orden por ID
-- `updateMayoristaOrder(id, data)` - Actualizar orden
-- `deleteMayoristaOrder(id)` - Eliminar orden
+### Gestión de Mayoristas
+- `createMayoristaPerson(data)` - Crear o verificar mayorista existente
+- `getMayoristaPersonById(id)` - Obtener mayorista por ID
+- `updateMayoristaPerson(id, data)` - Actualizar datos del mayorista
+- `deleteMayoristaPerson(id)` - Eliminar mayorista
 
-### Tabla de Admin
-- `getMayoristaOrdersForTable(options)` - Con paginación y filtros
-- `getMayoristaOrdersStats()` - Estadísticas para dashboard
-
-### Búsqueda y Autocompletado
-- `MayoristaSearch` - Componente React para búsqueda
-- Búsqueda por nombre, email, teléfono o dirección
-- Autocompletado automático de campos del formulario
+### Búsqueda y Consultas
+- `findMayoristaByName(name, lastName)` - Búsqueda exacta por nombre completo
+- `searchMayoristas(searchTerm)` - Búsqueda por término (nombre, email, teléfono)
+- `getMayoristaPersons()` - Obtener todos los mayoristas
 
 ## Uso Automático
 
 Cuando se crea una orden a través de `createOrder()` con `orderType: 'mayorista'`, automáticamente:
 
-1. Se valida y guarda en la colección `orders`
-2. Se prepara una copia sin el campo `fecha`
-3. Se guarda en la colección `mayoristas`
-4. Si falla el guardado en `mayoristas`, se registra un warning pero no falla la orden principal
+1. ✅ Se valida y guarda en la colección `orders`
+2. ✅ Se extraen solo los datos personales (user + address)
+3. ✅ Se verifica si ya existe el mayorista
+4. ✅ Se crea nuevo mayorista solo si no existe
+5. ✅ Si falla el guardado en `mayoristas`, se registra un warning pero no falla la orden principal
 
 ## Configuración de MongoDB
 
@@ -172,26 +104,30 @@ pnpm run script create-mayoristas-collection
 
 ### Índices Creados
 
+- `user.name` - Para búsquedas por nombre
+- `user.lastName` - Para búsquedas por apellido
 - `user.email` - Para búsquedas por email
-- `status` - Para filtros por estado
-- `orderType` - Para filtros por tipo
+- `address.phone` - Para búsquedas por teléfono
 - `createdAt` - Para ordenamiento y filtros de fecha
-- `deliveryDay` - Para filtros de día de entrega
+- `updatedAt` - Para seguimiento de modificaciones
+- `{user.name: 1, user.lastName: 1}` - Índice compuesto para búsquedas por nombre completo
 
 ## Testing
 
 ### Probar la Funcionalidad
 
 ```bash
-# Probar búsqueda y autocompletado
+# Probar el sistema completo de mayoristas
 pnpm run script test-mayorista-search
 ```
 
 Este comando:
-1. Prueba la búsqueda de mayoristas existentes
-2. Crea un mayorista de prueba
-3. Verifica que se pueda encontrar en la búsqueda
-4. Valida la funcionalidad completa
+1. ✅ Prueba la búsqueda inicial (debe estar vacía)
+2. ✅ Crea un mayorista de prueba
+3. ✅ Verifica que se pueda encontrar en la búsqueda
+4. ✅ Prueba la búsqueda por nombre completo
+5. ✅ Verifica que no se creen duplicados
+6. ✅ Prueba búsquedas por email y teléfono
 
 ## Ejemplo de Uso
 
@@ -202,13 +138,24 @@ import { createOrder } from '@repo/data-services';
 const orderData = {
     orderType: 'mayorista',
     total: 1500,
-    // ... otros campos
+    user: {
+        name: 'Juan',
+        lastName: 'Pérez',
+        email: 'juan.perez@example.com'
+    },
+    address: {
+        address: 'Calle Principal 123',
+        city: 'Buenos Aires',
+        phone: '123456789'
+    },
+    // ... otros campos de la orden
 };
 
 const result = await createOrder(orderData);
 
 if (result.success) {
-    // La orden se guardó en ambas colecciones
+    // La orden se guardó en orders
+    // Los datos personales se guardaron/verificaron en mayoristas
     console.log('Order created successfully');
 } else {
     console.error('Failed to create order:', result.error);
@@ -217,36 +164,61 @@ if (result.success) {
 
 ## Monitoreo
 
-Los logs incluyen información sobre el guardado dual:
+Los logs incluyen información sobre el manejo de mayoristas:
 
-- ✅ `Order successfully saved to both orders and mayoristas collections`
-- ⚠️ `Warning: Order created but failed to save to mayoristas collection: [error]`
+- ✅ `Order created and new mayorista person added to mayoristas collection`
+- ✅ `Order created and existing mayorista person found in mayoristas collection`
+- ⚠️ `Warning: Order created but failed to save mayorista person data: [error]`
 
-## Consideraciones de Performance
+## Ventajas de la Nueva Implementación
 
-- El guardado dual es asíncrono y no bloquea la respuesta principal
-- Los índices optimizan las consultas de la tabla de admin
-- La paginación previene cargas excesivas de datos
-- La búsqueda tiene debounce para evitar consultas excesivas
-- Los resultados de búsqueda se limitan a 10 para mejor performance
+### 1. **Sin Duplicados**
+- No se crean registros duplicados de mayoristas
+- Sistema inteligente que verifica existencia antes de crear
 
-## Mantenimiento
+### 2. **Datos Limpios**
+- Solo información personal relevante
+- Sin datos de órdenes que pueden cambiar
+- Estructura más simple y mantenible
 
-### Backup
-La colección `mayoristas` se puede respaldar independientemente de `orders`.
+### 3. **Performance Mejorada**
+- Índices optimizados para búsquedas personales
+- Consultas más rápidas sin datos innecesarios
+- Menor uso de almacenamiento
 
-### Migración
-Si es necesario, se pueden migrar órdenes existentes usando:
+### 4. **Mantenimiento Simplificado**
+- Actualización de datos personales independiente de órdenes
+- Historial de cambios más claro
+- Backup más eficiente
+
+## Migración de Datos Existentes
+
+Si tienes datos existentes en la colección `mayoristas` con la estructura anterior, puedes migrarlos:
 
 ```typescript
-import { getOrders } from '@repo/data-services';
-import { createMayoristaOrder } from '@repo/data-services';
+import { getCollection } from '@repo/database';
 
-const orders = await getOrders();
-const mayoristaOrders = orders.filter(order => order.orderType === 'mayorista');
-
-for (const order of mayoristaOrders) {
-    await createMayoristaOrder(order);
+async function migrateMayoristaData() {
+    const collection = await getCollection('mayoristas');
+    
+    // Obtener todos los registros existentes
+    const existingData = await collection.find({}).toArray();
+    
+    for (const record of existingData) {
+        // Extraer solo datos personales
+        const personalData = {
+            user: record.user,
+            address: record.address,
+            createdAt: record.createdAt || new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+        
+        // Actualizar el registro
+        await collection.updateOne(
+            { _id: record._id },
+            { $set: personalData }
+        );
+    }
 }
 ```
 
@@ -255,7 +227,7 @@ for (const order of mayoristaOrders) {
 ### Error: "Collection mayoristas does not exist"
 Ejecutar: `pnpm run script create-mayoristas-collection`
 
-### Error: "Failed to save to mayoristas collection"
+### Error: "Failed to save mayorista person data"
 Verificar logs para identificar el problema específico. La orden principal se crea correctamente.
 
 ### Performance lenta en consultas
@@ -264,5 +236,23 @@ Verificar que los índices estén creados correctamente en MongoDB.
 ### Error en búsqueda de mayoristas
 Verificar que la colección `mayoristas` tenga datos y que los índices estén creados.
 
-### Autocompletado no funciona
-Verificar que el componente `MayoristaSearch` esté importado correctamente y que la función `handleMayoristaSelect` esté implementada.
+### Mayorista duplicado creado
+Verificar que la función `createMayoristaPerson` esté siendo llamada correctamente y que la verificación de existencia funcione.
+
+## Consideraciones de Performance
+
+- La verificación de existencia es eficiente gracias al índice compuesto en nombre y apellido
+- Las búsquedas por término tienen límite de 10 resultados para mejor performance
+- Los índices están optimizados para las consultas más comunes
+- El guardado dual es asíncrono y no bloquea la respuesta principal
+
+## Mantenimiento
+
+### Backup
+La colección `mayoristas` ahora es más pequeña y fácil de respaldar.
+
+### Limpieza
+Los datos personales se mantienen independientemente de las órdenes, facilitando la limpieza de datos históricos.
+
+### Auditoría
+Los timestamps `createdAt` y `updatedAt` permiten seguimiento de cambios en datos personales.

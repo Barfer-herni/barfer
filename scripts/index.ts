@@ -7,6 +7,7 @@ import { createMayoristasCollection } from './create-mayoristas-collection.js';
 import { testMayoristaSearch } from './test-mayorista-search.js';
 import { testMayoristaAutocomplete } from './test-mayorista-autocomplete.js';
 import { testProductMapping } from './test-product-mapping.js';
+import { migrateMayoristaData } from './migrate-mayorista-data.js';
 
 program
   .command('init')
@@ -45,5 +46,10 @@ program
   .command('test-product-mapping')
   .description('Test the product mapping functionality for autocomplete')
   .action(testProductMapping);
+
+program
+  .command('migrate-mayorista-data')
+  .description('Migrate existing mayorista data to the new personal data structure')
+  .action(migrateMayoristaData);
 
 program.parse(process.argv);

@@ -3,7 +3,7 @@ import { getCollection, ObjectId } from '@repo/database';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import type { Order } from '../../types/barfer';
-import { createMayoristaOrder } from './createMayoristaOrder';
+import { createMayoristaPerson } from './createMayoristaOrder';
 
 const createOrderSchema = z.object({
     status: z.enum(['pending', 'confirmed', 'delivered', 'cancelled']).default('pending'),
@@ -118,26 +118,29 @@ export async function createOrder(data: z.infer<typeof createOrderSchema>): Prom
             return { success: false, error: 'Failed to create order' };
         }
 
-        // Si es una orden mayorista, también guardarla en la colección mayoristas
+        // Si es una orden mayorista, guardar solo los datos personales en la colección mayoristas
         if (validatedData.orderType === 'mayorista') {
             try {
-                // Preparar los datos para la colección mayoristas (sin fecha)
-                const mayoristaData = {
-                    ...validatedData,
-                    // Asegurar que orderType sea 'mayorista'
-                    orderType: 'mayorista' as const,
+                // Preparar solo los datos personales para la colección mayoristas
+                const mayoristaPersonData = {
+                    user: validatedData.user,
+                    address: validatedData.address,
                 };
 
-                // Crear la orden mayorista
-                const mayoristaResult = await createMayoristaOrder(mayoristaData);
+                // Crear o verificar si ya existe el mayorista
+                const mayoristaResult = await createMayoristaPerson(mayoristaPersonData);
 
                 if (!mayoristaResult.success) {
-                    console.warn('Warning: Order created but failed to save to mayoristas collection:', mayoristaResult.error);
+                    console.warn('Warning: Order created but failed to save mayorista person data:', mayoristaResult.error);
                 } else {
-                    console.log('Order successfully saved to both orders and mayoristas collections');
+                    if (mayoristaResult.isNew) {
+                        console.log('Order created and new mayorista person added to mayoristas collection');
+                    } else {
+                        console.log('Order created and existing mayorista person found in mayoristas collection');
+                    }
                 }
             } catch (mayoristaError) {
-                console.warn('Warning: Failed to save order to mayoristas collection:', mayoristaError);
+                console.warn('Warning: Failed to save mayorista person data:', mayoristaError);
                 // No fallar la creación de la orden principal por este error
             }
         }

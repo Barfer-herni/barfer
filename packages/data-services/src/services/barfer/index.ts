@@ -60,11 +60,13 @@ export {
 
 // ===== MAYORISTA ORDERS =====
 export {
-    createMayoristaOrder,
-    getMayoristaOrders,
-    getMayoristaOrderById,
-    updateMayoristaOrder,
-    deleteMayoristaOrder
+    createMayoristaPerson,
+    getMayoristaPersons,
+    getMayoristaPersonById,
+    updateMayoristaPerson,
+    deleteMayoristaPerson,
+    findMayoristaByName,
+    searchMayoristas
 } from './createMayoristaOrder';
 
 // ===== MAYORISTA ORDERS TABLE =====
