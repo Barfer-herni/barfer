@@ -20,6 +20,13 @@ export * from './metodosPagoService';
 // ==========================================
 export * from './mongoService';
 
+// Exportar utilidades de mapeo de productos
+export {
+    mapSelectOptionToDBFormat,
+    processOrderItems,
+    type ProductMapping
+} from './barfer/productMapping';
+
 // Exportar servicios de Barfer - Solo Analytics que se usan
 export {
     // Analytics (desde barfer/analytics/)

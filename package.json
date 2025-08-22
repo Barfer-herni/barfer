@@ -21,7 +21,10 @@
     "analytics:drop-indexes": "tsx scripts/run-analytics-optimization.ts drop",
     "mayoristas:create-collection": "tsx scripts/create-mayoristas-collection.ts",
     "mayoristas:test": "tsx scripts/test-mayorista-search.ts",
-    "mayoristas:migrate": "tsx scripts/migrate-mayorista-data.ts"
+    "mayoristas:migrate": "tsx scripts/migrate-mayorista-data.ts",
+    "test:item-conversion": "tsx scripts/test-item-conversion.ts",
+    "test:simple-conversion": "tsx scripts/test-simple-conversion.ts",
+    "test:final-conversion": "tsx scripts/test-final-conversion.ts"
   },
   "devDependencies": {
     "@auto-it/first-time-contributor": "^11.3.0",

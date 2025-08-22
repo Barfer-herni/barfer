@@ -35,7 +35,8 @@ import {
     extractBaseProductName,
     processSingleItem,
     mapDBProductToSelectOption,
-    normalizeScheduleTime
+    normalizeScheduleTime,
+    mapSelectOptionToDBFormat
 } from '../helpers';
 import type { DataTableProps } from '../types';
 import { OrdersTable } from './OrdersTable';
@@ -149,7 +150,20 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             subTotal: row.original.subTotal || 0,
             shippingPrice: row.original.shippingPrice || 0,
             deliveryAreaSchedule: normalizeScheduleTime(row.original.deliveryArea?.schedule || ''),
-            items: row.original.items || [],
+            items: (row.original.items || []).map((item: any) => {
+                // Si el item no tiene fullName, generarlo desde el formato de la DB
+                if (!item.fullName) {
+                    const selectOption = mapDBProductToSelectOption(
+                        item.name || '',
+                        item.options?.[0]?.name || ''
+                    );
+                    return {
+                        ...item,
+                        fullName: selectOption
+                    };
+                }
+                return item;
+            }),
             deliveryDay: row.original.deliveryDay || '',
         };
 
@@ -163,37 +177,20 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     };
 
     const handleChange = (field: string, value: any) => {
-        console.log('🔥 handleChange called - field:', field, 'value:', value);
-        console.log('🔥 handleChange - typeof value:', typeof value);
-        console.log('🔥 handleChange - prev editValues before update:', editValues);
-
         setEditValues((prev: any) => {
-            console.log('🔥 handleChange setEditValues - prev:', prev);
-            console.log('🔥 handleChange setEditValues - prev.address:', prev.address);
-            console.log('🔥 handleChange setEditValues - prev.address type:', typeof prev.address);
-
             // Verificar si el campo es 'address' y es un objeto
             if (field === 'address' && typeof value === 'object' && value !== null) {
-                console.log('🔥 SPECIAL CASE: updating address object');
-                console.log('🔥 prev.address before merge:', prev.address);
-                console.log('🔥 value to merge:', value);
-
-                const newState = {
+                return {
                     ...prev,
                     [field]: {
                         ...prev.address, // Preserve existing address properties
                         ...value         // Merge in new properties
                     }
                 };
-                console.log('🔥 handleChange setEditValues - newState (merged address):', newState);
-                console.log('🔥 handleChange setEditValues - newState.address:', newState.address);
-                return newState;
             }
 
             // Para otros campos, usar el comportamiento normal
-            const newState = { ...prev, [field]: value };
-            console.log('🔥 handleChange setEditValues - newState (normal):', newState);
-            return newState;
+            return { ...prev, [field]: value };
         });
     };
 
@@ -209,6 +206,25 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
 
             // Filtrar items: eliminar los que no tienen nombre o tienen cantidad 0
             const filteredItems = filterValidItems(editValues.items);
+
+            // Procesar items para convertir fullName de vuelta al formato de la DB
+            const processedItems = filteredItems.map(item => {
+                // Si el item tiene fullName (opción del select), convertirlo al formato de la DB
+                if (item.fullName && item.fullName !== item.name) {
+                    const dbFormat = mapSelectOptionToDBFormat(item.fullName);
+                    return {
+                        ...item,
+                        id: dbFormat.name,
+                        name: dbFormat.name,
+                        options: [{
+                            ...item.options?.[0],
+                            name: dbFormat.option
+                        }]
+                    };
+                }
+                // Si no tiene fullName o es igual al name, mantener como está
+                return item;
+            });
 
             const updateData = {
                 notes: editValues.notes,
@@ -239,7 +255,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                     ...row.original.deliveryArea,
                     schedule: normalizeScheduleTime(editValues.deliveryAreaSchedule),
                 },
-                items: filteredItems,
+                items: processedItems,
                 deliveryDay: editValues.deliveryDay,
             };
 
@@ -307,10 +323,29 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             // Filtrar items: eliminar los que no tienen nombre o tienen cantidad 0
             const filteredItems = filterValidItems(createFormData.items);
 
+            // Procesar items para convertir fullName de vuelta al formato de la DB
+            const processedItems = filteredItems.map(item => {
+                // Si el item tiene fullName (opción del select), convertirlo al formato de la DB
+                if (item.fullName && item.fullName !== item.name) {
+                    const dbFormat = mapSelectOptionToDBFormat(item.fullName);
+                    return {
+                        ...item,
+                        id: dbFormat.name,
+                        name: dbFormat.name,
+                        options: [{
+                            ...item.options?.[0],
+                            name: dbFormat.option
+                        }]
+                    };
+                }
+                // Si no tiene fullName o es igual al name, mantener como está
+                return item;
+            });
+
             const orderDataWithFilteredItems = {
                 ...createFormData,
                 total: totalValue, // Asegurar que sea un número
-                items: filteredItems,
+                items: processedItems,
                 deliveryArea: {
                     ...createFormData.deliveryArea,
                     schedule: normalizeScheduleTime(createFormData.deliveryArea.schedule)
