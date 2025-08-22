@@ -531,37 +531,48 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
         const bgColor = getDateCellBackgroundColor(editValues.deliveryDay || '');
         return (
             <TableCell key={cell.id} className={`px-0 py-1 border-r border-border ${bgColor}`}>
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Input
-                            readOnly
-                            value={editValues.deliveryDay ? (() => {
-                                // Usar la función helper para crear una fecha local
-                                const date = createLocalDate(editValues.deliveryDay);
-                                return format(date, 'dd/MM/yyyy');
-                            })() : ''}
-                            placeholder="Seleccionar fecha"
-                            className="w-full text-xs text-center"
-                        />
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                        <Calendar
-                            mode="single"
-                            selected={editValues.deliveryDay ? (() => {
-                                // Usar la función helper para crear una fecha local
-                                return createLocalDate(editValues.deliveryDay);
-                            })() : undefined}
-                            onSelect={(date) => {
-                                if (date) {
-                                    // Usar la función helper para crear una fecha ISO local
-                                    onEditValueChange('deliveryDay', createLocalDateISO(date));
-                                }
-                            }}
-                            locale={es}
-                            initialFocus
-                        />
-                    </PopoverContent>
-                </Popover>
+                <div className="space-y-1">
+                    <label className="text-xs font-medium text-gray-700 flex items-center gap-1">
+                        Fecha de Entrega
+                        <span className="text-red-500">*</span>
+                    </label>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Input
+                                readOnly
+                                value={editValues.deliveryDay ? (() => {
+                                    // Usar la función helper para crear una fecha local
+                                    const date = createLocalDate(editValues.deliveryDay);
+                                    return format(date, 'dd/MM/yyyy');
+                                })() : ''}
+                                placeholder="Seleccionar fecha"
+                                className={`w-full text-xs text-center ${!editValues.deliveryDay ? "border-red-500 focus:border-red-500" : ""}`}
+                            />
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                            <Calendar
+                                mode="single"
+                                selected={editValues.deliveryDay ? (() => {
+                                    // Usar la función helper para crear una fecha local
+                                    return createLocalDate(editValues.deliveryDay);
+                                })() : undefined}
+                                onSelect={(date) => {
+                                    if (date) {
+                                        // Usar la función helper para crear una fecha ISO local
+                                        onEditValueChange('deliveryDay', createLocalDateISO(date));
+                                    }
+                                }}
+                                locale={es}
+                                initialFocus
+                            />
+                        </PopoverContent>
+                    </Popover>
+                    {!editValues.deliveryDay && (
+                        <p className="text-xs text-red-500">
+                            La fecha de entrega es obligatoria
+                        </p>
+                    )}
+                </div>
             </TableCell>
         );
     }

@@ -60,7 +60,9 @@ const createOrderSchema = z.object({
         discount: z.number(),
         type: z.enum(['percentage', 'fixed']),
     }).optional(),
-    deliveryDay: z.union([z.string(), z.date()]),
+    deliveryDay: z.union([z.string(), z.date()]).refine((val) => val !== undefined && val !== null && val !== '', {
+        message: "La fecha de entrega es obligatoria"
+    }),
 });
 
 // Función para normalizar el formato de fecha deliveryDay

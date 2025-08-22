@@ -199,6 +199,13 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     const handleSave = async (row: any) => {
         setLoading(true);
         try {
+            // Validar que la fecha de entrega sea obligatoria
+            if (!editValues.deliveryDay || editValues.deliveryDay === '') {
+                alert('El campo Fecha de Entrega es obligatorio. Debe seleccionar una fecha.');
+                setLoading(false);
+                return;
+            }
+
             // Filtrar items: eliminar los que no tienen nombre o tienen cantidad 0
             const filteredItems = filterValidItems(editValues.items);
 
@@ -285,6 +292,13 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             const totalValue = Number(createFormData.total);
             if (isNaN(totalValue) || totalValue < 0) {
                 alert('El campo Total debe ser un número válido mayor o igual a 0.');
+                setLoading(false);
+                return;
+            }
+
+            // Validar que la fecha de entrega sea obligatoria
+            if (!createFormData.deliveryDay || createFormData.deliveryDay === '') {
+                alert('El campo Fecha de Entrega es obligatorio. Debe seleccionar una fecha.');
                 setLoading(false);
                 return;
             }
@@ -726,7 +740,10 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Fecha de Entrega</Label>
+                                    <Label className="flex items-center gap-1">
+                                        Fecha de Entrega
+                                        <span className="text-red-500">*</span>
+                                    </Label>
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <Input
@@ -737,6 +754,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                                     return format(date, 'PPP', { locale: es });
                                                 })() : ''}
                                                 placeholder="Seleccionar fecha"
+                                                className={!createFormData.deliveryDay ? "border-red-500 focus:border-red-500" : ""}
                                             />
                                         </PopoverTrigger>
                                         <PopoverContent className="w-auto p-0">
@@ -757,6 +775,11 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                             />
                                         </PopoverContent>
                                     </Popover>
+                                    {!createFormData.deliveryDay && (
+                                        <p className="text-sm text-red-500">
+                                            La fecha de entrega es obligatoria
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="space-y-2 col-span-2">
                                     <Label>Items</Label>
