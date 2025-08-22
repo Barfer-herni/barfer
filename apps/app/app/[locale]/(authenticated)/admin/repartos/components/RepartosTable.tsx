@@ -276,20 +276,6 @@ export function RepartosTable({ data: initialData, dictionary }: RepartosTablePr
                                                     {dayLabels[dayIndex]}
                                                 </div>
 
-                                                {/* Controles de filas */}
-                                                {isEditing && (
-                                                    <div className="flex justify-center space-x-1">
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => handleAddRow(week.weekKey, dayKey)}
-                                                            className="h-6 w-6 p-0"
-                                                        >
-                                                            <Plus className="h-3 w-3" />
-                                                        </Button>
-                                                    </div>
-                                                )}
-
                                                 {/* Filas de datos dinámicas */}
                                                 {weekData[dayKey]?.map((entry, rowIndex) => (
                                                     <div key={entry.id} className="flex items-center space-x-2">
@@ -337,6 +323,20 @@ export function RepartosTable({ data: initialData, dictionary }: RepartosTablePr
                                                             </div>
                                                         ))
                                                     )}
+
+                                                {/* Botón para agregar filas - ahora abajo de las filas */}
+                                                {isEditing && (
+                                                    <div className="flex justify-center space-x-1 mt-2">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => handleAddRow(week.weekKey, dayKey)}
+                                                            className="h-6 w-6 p-0"
+                                                        >
+                                                            <Plus className="h-3 w-3" />
+                                                        </Button>
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
