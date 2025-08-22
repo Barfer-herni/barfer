@@ -86,15 +86,57 @@ export const columns: ColumnDef<Order>[] = [
             const deliveryArea = row.original.deliveryArea;
             if (!deliveryArea?.schedule) return <div className="min-w-[90px] text-sm">N/A</div>;
 
-            // Extraer solo las horas del schedule
+            // Usar la función de normalización para mostrar el schedule con formato correcto
             const schedule = deliveryArea.schedule;
-            // Buscar patrones de horas como "10hs", "17hs", "10:00", etc.
+
+            // Si el schedule ya tiene formato de hora (con :), mostrarlo tal como está
+            if (schedule.includes(':')) {
+                return <div className="min-w-[90px] text-sm whitespace-normal break-words">{schedule}</div>;
+            }
+
+            // Si no tiene formato de hora, intentar extraer y formatear las horas
             const hourMatches = schedule.match(/(\d{1,2})(?::\d{2})?(?:hs?)?/g);
 
             if (hourMatches && hourMatches.length >= 2) {
                 const startHour = hourMatches[0].replace(/[^\d]/g, '');
                 const endHour = hourMatches[hourMatches.length - 1].replace(/[^\d]/g, '');
-                return <div className="min-w-[90px] text-sm whitespace-normal break-words">De {startHour} a {endHour}hs aprox</div>;
+
+                // Formatear las horas para que se vean con dos puntos
+                const formatHour = (hourStr: string) => {
+                    if (hourStr.length === 4) {
+                        // Si es "1830", convertirlo a "18:30"
+                        const hour = hourStr.substring(0, 2);
+                        const minute = hourStr.substring(2, 4);
+                        return `${hour}:${minute}`;
+                    }
+                    return hourStr;
+                };
+
+                const formattedStartHour = formatHour(startHour);
+                const formattedEndHour = formatHour(endHour);
+
+                // Siempre usar el formato estándar: "De {hora}:{minutos} a {hora}:{minutos}hs aprox"
+                // Asegurar que las horas tengan formato con dos puntos y minutos
+                const ensureHourFormat = (hourStr: string) => {
+                    if (hourStr.includes(':')) {
+                        // Si ya tiene formato, mantenerlo
+                        return hourStr;
+                    } else if (hourStr.length === 4) {
+                        // Si es "1430", convertirlo a "14:30"
+                        const hour = hourStr.substring(0, 2);
+                        const minute = hourStr.substring(2, 4);
+                        return `${hour}:${minute}`;
+                    } else if (hourStr.length === 2) {
+                        // Si es "14", convertirlo a "14:00"
+                        return `${hourStr}:00`;
+                    }
+                    return hourStr;
+                };
+
+                const finalStartHour = ensureHourFormat(formattedStartHour);
+                const finalEndHour = ensureHourFormat(formattedEndHour);
+
+                return <div className="min-w-[90px] text-sm whitespace-normal break-words">De {finalStartHour} a {finalEndHour}hs aprox</div>;
             }
 
             // Si no se puede extraer, mostrar el schedule original pero más corto

@@ -34,7 +34,8 @@ import {
     extractWeightFromProductName,
     extractBaseProductName,
     processSingleItem,
-    mapDBProductToSelectOption
+    mapDBProductToSelectOption,
+    normalizeScheduleTime
 } from '../helpers';
 import type { DataTableProps } from '../types';
 import { OrdersTable } from './OrdersTable';
@@ -147,7 +148,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             total: row.original.total || 0,
             subTotal: row.original.subTotal || 0,
             shippingPrice: row.original.shippingPrice || 0,
-            deliveryAreaSchedule: row.original.deliveryArea?.schedule || '',
+            deliveryAreaSchedule: normalizeScheduleTime(row.original.deliveryArea?.schedule || ''),
             items: row.original.items || [],
             deliveryDay: row.original.deliveryDay || '',
         };
@@ -236,7 +237,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 },
                 deliveryArea: {
                     ...row.original.deliveryArea,
-                    schedule: editValues.deliveryAreaSchedule,
+                    schedule: normalizeScheduleTime(editValues.deliveryAreaSchedule),
                 },
                 items: filteredItems,
                 deliveryDay: editValues.deliveryDay,
@@ -309,7 +310,11 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             const orderDataWithFilteredItems = {
                 ...createFormData,
                 total: totalValue, // Asegurar que sea un número
-                items: filteredItems
+                items: filteredItems,
+                deliveryArea: {
+                    ...createFormData.deliveryArea,
+                    schedule: normalizeScheduleTime(createFormData.deliveryArea.schedule)
+                }
             };
 
             const result = await createOrderAction(orderDataWithFilteredItems);
@@ -384,7 +389,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
 
                 // Autocompletar área de entrega
                 if (mayorista.deliveryArea) {
-                    updatedData.deliveryArea.schedule = mayorista.deliveryArea.schedule || '';
+                    updatedData.deliveryArea.schedule = normalizeScheduleTime(mayorista.deliveryArea.schedule || '');
                     updatedData.deliveryArea.description = mayorista.deliveryArea.description || '';
                     (updatedData.deliveryArea as any).coordinates = mayorista.deliveryArea.coordinates || [];
                     updatedData.deliveryArea.orderCutOffHour = mayorista.deliveryArea.orderCutOffHour || 18;
@@ -699,9 +704,15 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                     <Label>Rango Horario</Label>
                                     <Input
                                         value={createFormData.deliveryArea.schedule}
-                                        onChange={(e) => handleCreateFormChange('deliveryArea.schedule', e.target.value)}
-                                        placeholder="Ej: Lunes a Viernes de 10hs a 17hs"
+                                        onChange={(e) => {
+                                            // No normalizar en tiempo real, solo guardar el valor tal como lo escribe el usuario
+                                            handleCreateFormChange('deliveryArea.schedule', e.target.value);
+                                        }}
+                                        placeholder="Ej: De 18 a 19:30hs aprox (acepta . o :)"
                                     />
+                                    <p className="text-xs text-gray-500">
+                                        Puedes usar . o : para minutos (ej: 18.30 o 18:30). Se normalizará automáticamente al guardar.
+                                    </p>
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Total *</Label>

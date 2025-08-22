@@ -5,6 +5,49 @@ import { format } from 'date-fns';
 import type { Order } from '../../types/barfer';
 import { createMayoristaPerson } from './createMayoristaOrder';
 
+// Función para normalizar el formato de hora en el schedule
+function normalizeScheduleTime(schedule: string): string {
+    if (!schedule) return schedule;
+    
+    // Evitar normalizar si ya está en formato correcto
+    if (schedule.includes(':') && !schedule.includes('.')) {
+        return schedule;
+    }
+    
+    let normalized = schedule;
+    
+    // Primero: buscar patrones con espacios como "18 . 30", "19 . 45" y convertirlos
+    normalized = normalized.replace(/(\d{1,2})\s*\.\s*(\d{1,2})/g, (match, hour, minute) => {
+        const paddedMinute = minute.padStart(2, '0');
+        return `${hour}:${paddedMinute}`;
+    });
+    
+    // Segundo: buscar patrones de hora como "18.30", "19.45", "10.15", etc.
+    // Solo si no fueron convertidos en el paso anterior
+    normalized = normalized.replace(/(\d{1,2})\.(\d{1,2})/g, (match, hour, minute) => {
+        // Asegurar que los minutos tengan 2 dígitos
+        const paddedMinute = minute.padStart(2, '0');
+        return `${hour}:${paddedMinute}`;
+    });
+    
+    // Tercero: buscar patrones de solo hora como "18hs", "19hs" y convertirlos a "18:00hs", "19:00hs"
+    // Solo si no tienen ya minutos
+    normalized = normalized.replace(/(\d{1,2})(?<!:\d{2})hs/g, '$1:00hs');
+    
+    // Cuarto: buscar patrones de 4 dígitos consecutivos (como "1830", "2000") y convertirlos a formato de hora
+    // Esto convierte "1830" a "18:30" y "2000" a "20:00"
+    normalized = normalized.replace(/(\d{1,2})(\d{2})(?=\s|hs|$|a|aprox)/g, (match, hour, minute) => {
+        // Solo convertir si los minutos son válidos (00-59)
+        const minuteNum = parseInt(minute);
+        if (minuteNum >= 0 && minuteNum <= 59) {
+            return `${hour}:${minute}`;
+        }
+        return match; // Si no son minutos válidos, mantener como está
+    });
+    
+    return normalized;
+}
+
 const createOrderSchema = z.object({
     status: z.enum(['pending', 'confirmed', 'delivered', 'cancelled']).default('pending'),
     total: z.number().min(0).refine((val) => val !== undefined && val !== null, {
@@ -104,6 +147,11 @@ export async function createOrder(data: z.infer<typeof createOrderSchema>): Prom
         // Normalizar el formato de deliveryDay si está presente
         if (validatedData.deliveryDay) {
             validatedData.deliveryDay = normalizeDeliveryDay(validatedData.deliveryDay);
+        }
+
+        // Normalizar el formato del schedule si está presente
+        if (validatedData.deliveryArea?.schedule) {
+            validatedData.deliveryArea.schedule = normalizeScheduleTime(validatedData.deliveryArea.schedule);
         }
 
         // Crear la nueva orden con timestamps

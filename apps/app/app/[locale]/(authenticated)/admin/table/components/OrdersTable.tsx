@@ -35,7 +35,8 @@ import {
     createLocalDateISO,
     extractWeightFromProductName,
     extractBaseProductName,
-    processSingleItem
+    processSingleItem,
+    normalizeScheduleTime
 } from '../helpers';
 import type { DataTableProps } from '../types';
 
@@ -730,11 +731,17 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <Input
-                    placeholder="Ej: Lunes a Viernes de 10hs a 17hs"
+                    placeholder="Ej: De 18 a 19:30hs aprox (acepta . o :)"
                     value={editValues.deliveryAreaSchedule || ''}
-                    onChange={e => onEditValueChange('deliveryAreaSchedule', e.target.value)}
+                    onChange={e => {
+                        // No normalizar en tiempo real, solo guardar el valor tal como lo escribe el usuario
+                        onEditValueChange('deliveryAreaSchedule', e.target.value);
+                    }}
                     className="w-full p-1 text-xs"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                    Puedes usar . o : para minutos (ej: 18.30 o 18:30). Se normalizará automáticamente al guardar.
+                </p>
             </TableCell>
         );
     }
