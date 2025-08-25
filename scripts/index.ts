@@ -11,6 +11,8 @@ import { migrateMayoristaData } from './migrate-mayorista-data.js';
 import { testItemConversion } from './test-item-conversion.js';
 import { testSimpleConversion } from './test-simple-conversion.js';
 import { testFinalConversion } from './test-final-conversion.js';
+import { testExportFormat } from './test-export-format.js';
+import { testBigDogExport } from './test-big-dog-export.js';
 
 program
   .command('init')
@@ -69,5 +71,15 @@ program
   .command('test-final-conversion')
   .description('Test the complete item conversion flow')
   .action(testFinalConversion);
+
+program
+  .command('test-export-format')
+  .description('Test the export product format reconstruction')
+  .action(testExportFormat);
+
+program
+  .command('test-big-dog-export')
+  .description('Test BIG DOG export format specifically')
+  .action(testBigDogExport);
 
 program.parse(process.argv);

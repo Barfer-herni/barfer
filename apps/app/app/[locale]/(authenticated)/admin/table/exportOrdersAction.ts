@@ -2,6 +2,7 @@
 
 import { getAllOrders } from '@repo/data-services/src/services/barfer/getAllOrders';
 import * as XLSX from 'xlsx';
+import { mapDBProductToSelectOption } from './helpers';
 
 interface ExportParams {
     search?: string;
@@ -113,10 +114,14 @@ export async function exportOrdersAction({
             'Direccion': `${order.address?.address || ''}, ${order.address?.city || ''}`,
             'Notas Cliente': formatNotes(order),
             'Productos': order.items.map(item => {
-                const weight = getWeightFromOption(item.name, (item.options[0] as any)?.name || '');
+                // Reconstruir el nombre completo del producto usando mapDBProductToSelectOption
+                const fullProductName = mapDBProductToSelectOption(
+                    item.name,
+                    (item.options[0] as any)?.name || ''
+                );
+
                 const quantity = (item.options[0] as any)?.quantity || 1;
-                const weightText = weight ? ` - ${weight}` : '';
-                return `${item.name}${weightText} - x${quantity}`;
+                return `${fullProductName} - x${quantity}`;
             }).join('\r\n'),
             'Total': order.total,
             'Medio de Pago': order.paymentMethod || '',

@@ -485,6 +485,13 @@ export const mapDBProductToSelectOption = (dbProductName: string, dbOptionName: 
     const normalizedDBName = dbProductName.toLowerCase().trim();
     const normalizedDBOption = dbOptionName.toLowerCase().trim();
 
+    // Caso especial para BIG DOG
+    if (normalizedDBName.includes('big dog')) {
+        // El sabor está en dbOptionName (ej: "VACA", "POLLO")
+        const flavor = dbOptionName.toUpperCase();
+        return `BIG DOG (15kg) - ${flavor}`;
+    }
+
     // Buscar en AVAILABLE_PRODUCTS primero
     for (const product of AVAILABLE_PRODUCTS) {
         const normalizedProduct = product.toLowerCase();
@@ -550,15 +557,6 @@ export const mapDBProductToSelectOption = (dbProductName: string, dbOptionName: 
         }
 
         // Casos especiales
-        if (normalizedDBName.includes('big dog') && normalizedProduct.includes('big dog')) {
-            if (normalizedDBName.includes('pollo') && normalizedProduct.includes('pollo')) {
-                return product;
-            }
-            if (normalizedDBName.includes('vaca') && normalizedProduct.includes('vaca')) {
-                return product;
-            }
-        }
-
         if (normalizedDBName.includes('huesos') && normalizedProduct.includes('huesos')) {
             if (normalizedDBOption.includes('5kg') && normalizedProduct.includes('5kg')) {
                 return product;
