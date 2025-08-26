@@ -54,10 +54,10 @@ interface CategoriesAnalyticsClientProps {
 
 const CATEGORY_KEYS: { [key: string]: { quantity: string; revenue: string } } = {
     'BIG DOG': { quantity: 'bigDogQuantity', revenue: 'bigDogRevenue' },
-    Perros: { quantity: 'perroQuantity', revenue: 'perroRevenue' },
-    Gatos: { quantity: 'gatoQuantity', revenue: 'gatoRevenue' },
-    Huesos: { quantity: 'huesosQuantity', revenue: 'huesosRevenue' },
-    Complementos: { quantity: 'complementosQuantity', revenue: 'complementosRevenue' }
+    'PERRO': { quantity: 'perroQuantity', revenue: 'perroRevenue' },
+    'GATO': { quantity: 'gatoQuantity', revenue: 'gatoRevenue' },
+    'HUESOS CARNOSOS': { quantity: 'huesosQuantity', revenue: 'huesosRevenue' },
+    'COMPLEMENTOS': { quantity: 'complementosQuantity', revenue: 'complementosRevenue' }
 };
 
 const filterDataForChart = (data: ProductByTimePeriod[], filter: string) => {
@@ -91,7 +91,7 @@ export function CategoriesAnalyticsClient({
     dateFilter,
     compareFilter
 }: CategoriesAnalyticsClientProps) {
-    const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'confirmed'>('all');
+    const statusFilter = 'all';
     const [categoryFilter, setCategoryFilter] = useState('all');
 
     const allCategoryNames = useMemo(() => {
@@ -104,9 +104,12 @@ export function CategoriesAnalyticsClient({
             });
         }
 
-        // Agregar categorías de CATEGORY_KEYS como respaldo
+        // Solo agregar categorías de CATEGORY_KEYS que no estén ya en los datos reales
+        // y que estén en MAYÚSCULAS para mantener consistencia
         for (const key in CATEGORY_KEYS) {
-            names.add(key);
+            if (key === key.toUpperCase() && !names.has(key)) {
+                names.add(key);
+            }
         }
 
         return ['all', ...Array.from(names)];
@@ -123,31 +126,14 @@ export function CategoriesAnalyticsClient({
 
     // Seleccionar los datos correctos basado en el filtro
     const getCurrentCategories = () => {
-        let categories;
-        switch (statusFilter) {
-            case 'all': categories = allCategories; break;
-            case 'pending': categories = pendingCategories; break;
-            case 'confirmed': categories = confirmedCategories; break;
-            default: categories = allCategories; break;
-        }
-
         // Reordenar por cantidad (descendente)
-        const sortedCategories = [...categories].sort((a, b) => b.quantity - a.quantity);
+        const sortedCategories = [...allCategories].sort((a, b) => b.quantity - a.quantity);
         return sortedCategories;
     };
 
     const getCompareCategories = () => {
         if (!isComparing) return [];
-
-        let categories;
-        switch (statusFilter) {
-            case 'all': categories = compareAllCategories || []; break;
-            case 'pending': categories = comparePendingCategories || []; break;
-            case 'confirmed': categories = compareConfirmedCategories || []; break;
-            default: categories = compareAllCategories || []; break;
-        }
-
-        return [...categories].sort((a, b) => b.quantity - a.quantity);
+        return [...(compareAllCategories || [])].sort((a, b) => b.quantity - a.quantity);
     };
 
     const currentCategories = getCurrentCategories();
@@ -399,28 +385,11 @@ export function CategoriesAnalyticsClient({
                 <CardContent>
                     <div className="flex flex-col sm:flex-row flex-wrap gap-2">
                         <Button
-                            variant={statusFilter === 'all' ? 'default' : 'outline'}
+                            variant="default"
                             size="sm"
-                            onClick={() => setStatusFilter('all')}
                             className="w-full sm:w-auto"
                         >
                             Todas las órdenes
-                        </Button>
-                        <Button
-                            variant={statusFilter === 'pending' ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setStatusFilter('pending')}
-                            className="w-full sm:w-auto"
-                        >
-                            Solo pendientes
-                        </Button>
-                        <Button
-                            variant={statusFilter === 'confirmed' ? 'default' : 'outline'}
-                            size="sm"
-                            onClick={() => setStatusFilter('confirmed')}
-                            className="w-full sm:w-auto"
-                        >
-                            Solo confirmadas
                         </Button>
                     </div>
                     <div className={`mt-3 text-xs sm:text-sm font-medium ${getFilterColor(statusFilter)} break-words`}>
@@ -450,7 +419,7 @@ export function CategoriesAnalyticsClient({
                     ) : (
                         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
                             {currentCategories.map((category, index) => (
-                                <div key={`current-${statusFilter}-${category.categoryName}-${index}`} className="p-4 border rounded-lg">
+                                <div key={`current-${category.categoryName}-${index}`} className="p-4 border rounded-lg">
                                     <div className="flex items-center justify-between mb-3">
                                         <div className="flex items-center gap-2 min-w-0">
                                             <span className="text-lg flex-shrink-0">{getCategoryIcon(category.categoryName)}</span>
@@ -519,7 +488,7 @@ export function CategoriesAnalyticsClient({
                     <CardContent>
                         <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
                             {compareCategories.map((category, index) => (
-                                <div key={`compare-${statusFilter}-${category.categoryName}-${index}`} className="p-4 border rounded-lg">
+                                <div key={`compare-${category.categoryName}-${index}`} className="p-4 border rounded-lg">
                                     <div className="flex items-center justify-between mb-3">
                                         <div className="flex items-center gap-2 min-w-0">
                                             <span className="text-lg flex-shrink-0">{getCategoryIcon(category.categoryName)}</span>

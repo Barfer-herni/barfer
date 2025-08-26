@@ -68,7 +68,7 @@ export function ProductsAnalyticsClient({
     dateFilter,
     compareFilter
 }: ProductsAnalyticsClientProps) {
-    const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'confirmed'>('all');
+    const statusFilter = 'all';
     const [selectedProduct, setSelectedProduct] = useState<string>('all');
     const [popoverOpen, setPopoverOpen] = useState(false);
 
@@ -109,11 +109,8 @@ export function ProductsAnalyticsClient({
     const filteredTimelineData = useMemo(() => filterTimelineData(timelineData, selectedProduct), [timelineData, selectedProduct]);
     const filteredCompareTimelineData = useMemo(() => compareTimelineData ? filterTimelineData(compareTimelineData, selectedProduct) : undefined, [compareTimelineData, selectedProduct]);
 
-    const productsMap = { all: allProducts, pending: pendingProducts, confirmed: confirmedProducts };
-    const compareProductsMap = { all: compareAllProducts, pending: comparePendingProducts, confirmed: compareConfirmedProducts };
-
-    const currentProducts = productsMap[statusFilter] || [];
-    const compareProducts = compareProductsMap[statusFilter] || [];
+    const currentProducts = allProducts;
+    const compareProducts = compareAllProducts || [];
 
     const formatDateRange = (from: Date, to: Date) => {
         return `${from.toLocaleDateString('es-ES')} - ${to.toLocaleDateString('es-ES')}`;
@@ -129,9 +126,7 @@ export function ProductsAnalyticsClient({
                 </CardHeader>
                 <CardContent>
                     <div className="flex flex-wrap gap-2">
-                        <Button variant={statusFilter === 'all' ? 'default' : 'outline'} onClick={() => setStatusFilter('all')}>Todas</Button>
-                        <Button variant={statusFilter === 'pending' ? 'default' : 'outline'} onClick={() => setStatusFilter('pending')}>Pendientes</Button>
-                        <Button variant={statusFilter === 'confirmed' ? 'default' : 'outline'} onClick={() => setStatusFilter('confirmed')}>Confirmadas</Button>
+                        <Button variant="default">Todas</Button>
                     </div>
                 </CardContent>
             </Card>
@@ -142,7 +137,7 @@ export function ProductsAnalyticsClient({
                     <CardHeader><CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" /> Ranking (Período Actual)</CardTitle></CardHeader>
                     <CardContent className="space-y-3 max-h-[400px] overflow-y-auto">
                         {currentProducts.map((p, i) => (
-                            <div key={`current-${statusFilter}-${p.productId}-${p.optionName}-${i}`} className="flex items-center justify-between p-2 border rounded-md"><div className="flex items-center gap-3"><Badge variant="outline">#{i + 1}</Badge><div><p className="font-medium text-sm">{p.productName} ({p.optionName})</p><p className="text-xs text-muted-foreground">{p.orders} órdenes</p></div></div><div className="text-right"><p className="font-bold text-sm">{p.quantity} un.</p>{p.totalWeight && <p className="font-bold text-sm text-blue-600">{p.totalWeight.toLocaleString('es-AR')} kg</p>}<p className="text-xs text-muted-foreground">{currencyFormatter(p.revenue)}</p></div></div>
+                            <div key={`current-${p.productId}-${p.optionName}-${i}`} className="flex items-center justify-between p-2 border rounded-md"><div className="flex items-center gap-3"><Badge variant="outline">#{i + 1}</Badge><div><p className="font-medium text-sm">{p.productName} ({p.optionName})</p><p className="text-xs text-muted-foreground">{p.orders} órdenes</p></div></div><div className="text-right"><p className="font-bold text-sm">{p.quantity} un.</p>{p.totalWeight && <p className="font-bold text-sm text-blue-600">{p.totalWeight.toLocaleString('es-AR')} kg</p>}<p className="text-xs text-muted-foreground">{currencyFormatter(p.revenue)}</p></div></div>
                         ))}
                         {currentProducts.length === 0 && <p className="text-center text-muted-foreground py-4">No hay productos.</p>}
                     </CardContent>
@@ -152,7 +147,7 @@ export function ProductsAnalyticsClient({
                         <CardHeader><CardTitle className="flex items-center gap-2"><Package className="h-5 w-5" /> Ranking (Comparación)</CardTitle></CardHeader>
                         <CardContent className="space-y-3 max-h-[400px] overflow-y-auto">
                             {compareProducts.map((p, i) => (
-                                <div key={`compare-${statusFilter}-${p.productId}-${p.optionName}-${i}`} className="flex items-center justify-between p-2 border rounded-md"><div className="flex items-center gap-3"><Badge variant="outline">#{i + 1}</Badge><div><p className="font-medium text-sm">{p.productName} ({p.optionName})</p><p className="text-xs text-muted-foreground">{p.orders} órdenes</p></div></div><div className="text-right"><p className="font-bold text-sm">{p.quantity} un.</p>{p.totalWeight && <p className="font-bold text-sm text-blue-600">{p.totalWeight.toLocaleString('es-AR')} kg</p>}<p className="text-xs text-muted-foreground">{currencyFormatter(p.revenue)}</p></div></div>
+                                <div key={`compare-${p.productId}-${p.optionName}-${i}`} className="flex items-center justify-between p-2 border rounded-md"><div className="flex items-center gap-3"><Badge variant="outline">#{i + 1}</Badge><div><p className="font-medium text-sm">{p.productName} ({p.optionName})</p><p className="text-xs text-muted-foreground">{p.orders} órdenes</p></div></div><div className="text-right"><p className="font-bold text-sm">{p.quantity} un.</p>{p.totalWeight && <p className="font-bold text-sm text-blue-600">{p.totalWeight.toLocaleString('es-AR')} kg</p>}<p className="text-xs text-muted-foreground">{currencyFormatter(p.revenue)}</p></div></div>
                             ))}
                             {compareProducts.length === 0 && <p className="text-center text-muted-foreground py-4">No hay productos para comparar.</p>}
                         </CardContent>

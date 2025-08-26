@@ -14,31 +14,15 @@ interface ProductsAnalyticsTabProps {
 
 export async function ProductsAnalyticsTab({ dateFilter, compareFilter }: ProductsAnalyticsTabProps) {
     try {
-        const [
-            allProducts,
-            pendingProducts,
-            confirmedProducts,
-        ] = await Promise.all([
-            getProductSales('all', 20, dateFilter.from, dateFilter.to),
-            getProductSales('pending', 20, dateFilter.from, dateFilter.to),
-            getProductSales('confirmed', 20, dateFilter.from, dateFilter.to),
-        ]);
+        const allProducts = await getProductSales('all', 20, dateFilter.from, dateFilter.to);
 
         const productIds = Array.from(new Set(allProducts.map(p => p.productId)));
 
         const timelineData = await getProductTimeline(dateFilter.from, dateFilter.to, productIds);
 
-        let compareAllProducts, comparePendingProducts, compareConfirmedProducts, compareTimelineData;
+        let compareAllProducts, compareTimelineData;
         if (compareFilter) {
-            [
-                compareAllProducts,
-                comparePendingProducts,
-                compareConfirmedProducts,
-            ] = await Promise.all([
-                getProductSales('all', 20, compareFilter.from, compareFilter.to),
-                getProductSales('pending', 20, compareFilter.from, compareFilter.to),
-                getProductSales('confirmed', 20, compareFilter.from, compareFilter.to),
-            ]);
+            compareAllProducts = await getProductSales('all', 20, compareFilter.from, compareFilter.to);
             const compareProductIds = Array.from(new Set(compareAllProducts.map(p => p.productId)));
             compareTimelineData = await getProductTimeline(compareFilter.from, compareFilter.to, compareProductIds);
         }
@@ -46,11 +30,11 @@ export async function ProductsAnalyticsTab({ dateFilter, compareFilter }: Produc
         return (
             <ProductsAnalyticsClient
                 allProducts={allProducts}
-                pendingProducts={pendingProducts}
-                confirmedProducts={confirmedProducts}
+                pendingProducts={[]}
+                confirmedProducts={[]}
                 compareAllProducts={compareAllProducts}
-                comparePendingProducts={comparePendingProducts}
-                compareConfirmedProducts={compareConfirmedProducts}
+                comparePendingProducts={[]}
+                compareConfirmedProducts={[]}
                 timelineData={timelineData}
                 compareTimelineData={compareTimelineData}
                 isComparing={!!compareFilter}

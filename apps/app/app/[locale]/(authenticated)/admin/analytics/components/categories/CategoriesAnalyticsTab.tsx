@@ -14,20 +14,16 @@ interface CategoriesAnalyticsTabProps {
 
 export async function CategoriesAnalyticsTab({ dateFilter, compareFilter }: CategoriesAnalyticsTabProps) {
     try {
-        const [allCategories, pendingCategories, confirmedCategories, progressData] = await Promise.all([
+        const [allCategories, progressData] = await Promise.all([
             getCategorySales('all', 10, dateFilter.from, dateFilter.to),
-            getCategorySales('pending', 10, dateFilter.from, dateFilter.to),
-            getCategorySales('confirmed', 10, dateFilter.from, dateFilter.to),
             getProductsByTimePeriod(dateFilter.from, dateFilter.to)
         ]);
 
         // Datos del período de comparación (si está habilitado)
-        let compareAllCategories, comparePendingCategories, compareConfirmedCategories, compareProgressData;
+        let compareAllCategories, compareProgressData;
         if (compareFilter) {
-            [compareAllCategories, comparePendingCategories, compareConfirmedCategories, compareProgressData] = await Promise.all([
+            [compareAllCategories, compareProgressData] = await Promise.all([
                 getCategorySales('all', 10, compareFilter.from, compareFilter.to),
-                getCategorySales('pending', 10, compareFilter.from, compareFilter.to),
-                getCategorySales('confirmed', 10, compareFilter.from, compareFilter.to),
                 getProductsByTimePeriod(compareFilter.from, compareFilter.to)
             ]);
         }
@@ -35,11 +31,11 @@ export async function CategoriesAnalyticsTab({ dateFilter, compareFilter }: Cate
         return (
             <CategoriesAnalyticsClient
                 allCategories={allCategories}
-                pendingCategories={pendingCategories}
-                confirmedCategories={confirmedCategories}
+                pendingCategories={[]}
+                confirmedCategories={[]}
                 compareAllCategories={compareAllCategories}
-                comparePendingCategories={comparePendingCategories}
-                compareConfirmedCategories={compareConfirmedCategories}
+                comparePendingCategories={[]}
+                compareConfirmedCategories={[]}
                 progressData={progressData}
                 compareProgressData={compareProgressData}
                 isComparing={!!compareFilter}

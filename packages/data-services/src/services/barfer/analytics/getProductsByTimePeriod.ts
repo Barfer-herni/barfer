@@ -5,6 +5,8 @@ import { differenceInDays } from 'date-fns';
 export interface ProductByTimePeriod {
     period: string;
     date: string;
+    bigDogQuantity: number;
+    bigDogRevenue: number;
     perroQuantity: number;
     perroRevenue: number;
     gatoQuantity: number;
@@ -69,6 +71,10 @@ export async function getProductsByTimePeriod(
                         $switch: {
                             branches: [
                                 {
+                                    case: { $regexMatch: { input: '$items.name', regex: /big dog/i } },
+                                    then: 'bigDog'
+                                },
+                                {
                                     case: { $regexMatch: { input: '$items.name', regex: /perro/i } },
                                     then: 'perro'
                                 },
@@ -93,6 +99,12 @@ export async function getProductsByTimePeriod(
             {
                 $group: {
                     _id: groupBy,
+                    bigDogQuantity: {
+                        $sum: { $cond: [{ $eq: ['$productCategory', 'bigDog'] }, '$items.options.quantity', 0] }
+                    },
+                    bigDogRevenue: {
+                        $sum: { $cond: [{ $eq: ['$productCategory', 'bigDog'] }, { $multiply: ['$items.options.quantity', '$items.options.price'] }, 0] }
+                    },
                     perroQuantity: {
                         $sum: { $cond: [{ $eq: ['$productCategory', 'perro'] }, '$items.options.quantity', 0] }
                     },
@@ -217,6 +229,8 @@ export async function getProductsByTimePeriod(
                             }
                         }
                     },
+                    bigDogQuantity: 1,
+                    bigDogRevenue: 1,
                     perroQuantity: 1,
                     perroRevenue: 1,
                     gatoQuantity: 1,

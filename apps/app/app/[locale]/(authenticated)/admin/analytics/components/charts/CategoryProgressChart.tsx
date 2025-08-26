@@ -17,10 +17,11 @@ interface CategoryProgressChartProps {
 }
 
 const CATEGORY_KEYS = {
-    Perros: { quantity: 'perroQuantity', revenue: 'perroRevenue', color: '#3498db' },
-    Gatos: { quantity: 'gatoQuantity', revenue: 'gatoRevenue', color: '#e74c3c' },
-    Huesos: { quantity: 'huesosQuantity', revenue: 'huesosRevenue', color: '#2ecc71' },
-    Complementos: { quantity: 'complementosQuantity', revenue: 'complementosRevenue', color: '#f1c40f' }
+    'BIG DOG': { quantity: 'bigDogQuantity', revenue: 'bigDogRevenue', color: '#9b59b6' },
+    'PERRO': { quantity: 'perroQuantity', revenue: 'perroRevenue', color: '#3498db' },
+    'GATO': { quantity: 'gatoQuantity', revenue: 'gatoRevenue', color: '#e74c3c' },
+    'HUESOS CARNOSOS': { quantity: 'huesosQuantity', revenue: 'huesosRevenue', color: '#2ecc71' },
+    'COMPLEMENTOS': { quantity: 'complementosQuantity', revenue: 'complementosRevenue', color: '#f1c40f' }
 };
 
 function parseDateString(dateString: string): Date {
