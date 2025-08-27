@@ -309,14 +309,9 @@ export function PaymentsAnalyticsClient({
                         {paymentMethods.length > 0 ? (
                             paymentMethods.map((method, index) => (
                                 <div key={method.paymentMethod} className="p-4 border rounded-lg">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-lg">{getPaymentIcon(method.paymentMethod)}</span>
-                                            <h3 className="font-medium">{method.paymentMethod}</h3>
-                                        </div>
-                                        <Badge variant="outline" className="text-xs">
-                                            #{index + 1}
-                                        </Badge>
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <span className="text-lg">{getPaymentIcon(method.paymentMethod)}</span>
+                                        <h3 className="font-medium">{method.paymentMethod}</h3>
                                     </div>
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                                         <div>
@@ -326,10 +321,12 @@ export function PaymentsAnalyticsClient({
                                         <div>
                                             <div className="text-muted-foreground text-xs">Total Órdenes</div>
                                             <div className="font-medium">{method.totalCount.toLocaleString()} pedidos</div>
+                                            <div className="text-xs text-blue-600 font-medium">({method.totalPercentage.toFixed(1)}%)</div>
                                         </div>
                                         <div>
                                             <div className="text-muted-foreground text-xs">Ingresos Totales</div>
                                             <div className="font-bold">${method.totalRevenue.toLocaleString()}</div>
+                                            <div className="text-xs text-green-600 font-medium">({method.revenuePercentage.toFixed(1)}%)</div>
                                         </div>
                                     </div>
                                 </div>
