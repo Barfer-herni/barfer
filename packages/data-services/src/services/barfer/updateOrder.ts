@@ -62,7 +62,7 @@ const updateOrderSchema = z.object({
     total: z.number().optional(),
     subTotal: z.number().optional(),
     shippingPrice: z.number().optional(),
-    updatedAt: z.string().optional(),
+    updatedAt: z.union([z.string(), z.date()]).optional(),
     deliveryDay: z.union([z.string(), z.date()]).optional(),
     // Agrega aquí otros campos editables si es necesario
 });
