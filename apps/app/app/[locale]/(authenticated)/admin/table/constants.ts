@@ -99,8 +99,6 @@ export const STATUS_OPTIONS = [
 export const PAYMENT_METHOD_OPTIONS = [
     { value: '', label: 'Seleccionar' },
     { value: 'cash', label: 'Efectivo' },
-    { value: 'transfer', label: 'Transferencia' },
-    { value: 'bank-transfer', label: 'Transferencia Bancaria' },
     { value: 'mercado-pago', label: 'Mercado Pago' },
 ];
 

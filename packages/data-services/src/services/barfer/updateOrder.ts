@@ -98,7 +98,7 @@ function normalizeDeliveryDay(dateInput: string | Date | { $date: string }): Dat
 
 export async function updateOrder(id: string, data: any) {
     const updateData = updateOrderSchema.parse(data);
-    updateData.updatedAt = format(new Date(), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
+    updateData.updatedAt = new Date();
 
     // Normalizar el formato de deliveryDay si está presente
     if (updateData.deliveryDay) {
@@ -147,7 +147,7 @@ export async function updateOrdersStatusBulk(ids: string[], status: string) {
     const objectIds = ids.map(id => new ObjectId(id));
     const result = await collection.updateMany(
         { _id: { $in: objectIds } },
-        { $set: { status, updatedAt: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx") } }
+        { $set: { status, updatedAt: new Date() } }
     );
     return { success: true, modifiedCount: result.modifiedCount };
 } 

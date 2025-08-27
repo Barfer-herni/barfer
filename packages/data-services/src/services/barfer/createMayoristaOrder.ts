@@ -50,8 +50,8 @@ export async function createMayoristaPerson(data: z.infer<typeof mayoristaPerson
         // Si no existe, crear uno nuevo con solo los datos personales
         const newMayoristaPerson = {
             ...validatedData,
-            createdAt: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
-            updatedAt: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
+            createdAt: new Date(),
+            updatedAt: new Date(),
         };
 
         // Insertar el nuevo mayorista en la base de datos
@@ -164,7 +164,7 @@ export async function updateMayoristaPerson(id: string, data: Partial<MayoristaP
         // Agregar timestamp de actualización
         const updateData = {
             ...data,
-            updatedAt: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
+            updatedAt: new Date(),
         };
 
         const result = await collection.updateOne(

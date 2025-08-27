@@ -163,8 +163,8 @@ export async function createOrder(data: z.infer<typeof createOrderSchema>): Prom
         // Crear la nueva orden con timestamps
         const newOrder = {
             ...validatedData,
-            createdAt: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
-            updatedAt: format(new Date(), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx"),
+            createdAt: new Date(),
+            updatedAt: new Date(),
         };
 
         // Insertar la orden en la base de datos

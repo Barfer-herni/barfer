@@ -34,7 +34,7 @@ export async function markWhatsAppContacted({ clientEmails }: MarkWhatsAppContac
 }> {
     try {
         const collection = await getCollection('orders');
-        const now = format(new Date(), "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
+        const now = new Date();
 
         // Actualizar todas las órdenes de los clientes especificados
         const result = await collection.updateMany(
