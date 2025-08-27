@@ -292,16 +292,16 @@ export function PaymentsAnalyticsClient({
                 </Card>
             </div>
 
-            {/* Payment Methods Breakdown Card (no changes needed, it uses paymentMethods from paymentStats) */}
+            {/* Payment Methods Summary Card - Resumen de Métodos de Pago */}
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <CreditCard className="h-5 w-5" />
-                        Métodos de Pago {isComparing ? `(${newerLabel})` : ''}
+                        Resumen de Métodos de Pago {isComparing ? `(${newerLabel})` : ''}
                     </CardTitle>
                     <CardDescription>
                         {dateFilter && `${formatDateRange(dateFilter.from, dateFilter.to)} • `}
-                        Análisis detallado por método de pago • {paymentMethods.length} métodos
+                        Detalle de métricas por método de pago (todos) • {paymentMethods.length} métodos
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -318,21 +318,17 @@ export function PaymentsAnalyticsClient({
                                             #{index + 1}
                                         </Badge>
                                     </div>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                                        <div>
+                                            <div className="text-muted-foreground text-xs">Valor promedio</div>
+                                            <div className="font-medium">${(method.totalRevenue / method.totalCount).toLocaleString()}</div>
+                                        </div>
                                         <div>
                                             <div className="text-muted-foreground text-xs">Total Órdenes</div>
-                                            <div className="font-medium">{method.totalCount} ({method.totalPercentage.toFixed(1)}%)</div>
+                                            <div className="font-medium">{method.totalCount.toLocaleString()} pedidos</div>
                                         </div>
                                         <div>
-                                            <div className="text-muted-foreground text-xs">Confirmadas</div>
-                                            <div className="font-medium text-green-600">{method.confirmedCount} ({method.confirmedPercentage.toFixed(1)}%)</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-muted-foreground text-xs">Pendientes</div>
-                                            <div className="font-medium text-orange-600">{method.pendingCount} ({method.pendingPercentage.toFixed(1)}%)</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-muted-foreground text-xs">Ingresos</div>
+                                            <div className="text-muted-foreground text-xs">Ingresos Totales</div>
                                             <div className="font-bold">${method.totalRevenue.toLocaleString()}</div>
                                         </div>
                                     </div>
@@ -392,6 +388,7 @@ export function PaymentsAnalyticsClient({
                                             <div className="font-bold text-blue-600">${method.totalRevenue.toLocaleString()}</div>
                                         </div>
                                     </div>
+
                                 </div>
                             ))}
                         </div>

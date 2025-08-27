@@ -341,49 +341,7 @@ export function PaymentsChart({
                 </CardContent>
             </Card>
 
-            {/* Tabla resumen de métodos de pago */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Resumen de Métodos de Pago</CardTitle>
-                    <CardDescription>
-                        Detalle de métricas por método de pago ({getStatusLabel(statusFilter).toLowerCase()})
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-2">
-                        {currentPayments.map((payment) => {
-                            const orders = statusFilter === 'confirmed' ? payment.confirmedOrders :
-                                statusFilter === 'pending' ? payment.pendingOrders :
-                                    payment.totalOrders;
-                            const revenue = statusFilter === 'confirmed' ? payment.confirmedRevenue :
-                                statusFilter === 'pending' ? payment.pendingRevenue :
-                                    payment.totalRevenue;
 
-                            return (
-                                <div key={payment.paymentMethod} className="flex items-center justify-between p-3 border rounded-lg">
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-xl">{getPaymentIcon(payment.paymentMethod)}</span>
-                                        <div>
-                                            <div className="font-medium">
-                                                {payment.paymentMethod.charAt(0).toUpperCase() + payment.paymentMethod.slice(1)}
-                                            </div>
-                                            <div className="text-sm text-muted-foreground">
-                                                Valor promedio: {formatCurrency(payment.averageOrderValue)}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="font-medium">{orders.toLocaleString()} pedidos</div>
-                                        <div className="text-sm text-muted-foreground">
-                                            {formatCurrency(revenue)}
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </CardContent>
-            </Card>
         </div>
     );
 } 
