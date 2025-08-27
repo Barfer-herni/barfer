@@ -63,7 +63,7 @@ export function PricesTable({ prices, dictionary }: PricesTableProps) {
     const [isInitializing, setIsInitializing] = useState(false);
     const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
     const [editValue, setEditValue] = useState<number>(0);
-    const [showFilters, setShowFilters] = useState(false);
+    const [showFilters, setShowFilters] = useState(true);
 
     // Estados de filtros
     const [filters, setFilters] = useState<Filters>({
