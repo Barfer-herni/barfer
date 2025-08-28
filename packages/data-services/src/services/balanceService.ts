@@ -409,7 +409,7 @@ function getWeightFromOption(productName: string, optionName: string): number {
     if (lowerProductName.includes('complemento')) {
         return 0;
     }
-    const match = optionName.match(/(\d+(?:\.\d+)?)\s*KG/i);
+    const match = optionName.match(/(\d+(?:\.\d+)?)\s*k?g/i);
     if (match && match[1]) {
         return parseFloat(match[1]);
     }

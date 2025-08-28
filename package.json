@@ -27,6 +27,8 @@
     "test:final-conversion": "tsx scripts/test-final-conversion.ts",
     "test:export-format": "tsx scripts/test-export-format.ts",
     "test:big-dog-export": "tsx scripts/test-big-dog-export.ts",
+    "test:big-dog-mapping": "tsx scripts/test-big-dog-mapping.ts",
+    "test:big-dog-format": "tsx scripts/test-big-dog-format.ts",
     "debug:big-dog": "tsx scripts/debug-big-dog-analytics.ts"
   },
   "devDependencies": {

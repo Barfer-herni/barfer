@@ -226,7 +226,7 @@ function calculateTotalWeightFromOrders(orders: any[]): number {
 
             for (const option of item.options) {
                 if (option.name) {
-                    const match = option.name.match(/(\d+(?:\.\d+)?)\s*KG/i);
+                    const match = option.name.match(/(\d+(?:\.\d+)?)\s*k?g/i);
                     if (match && match[1]) {
                         totalWeight += parseFloat(match[1]);
                     }

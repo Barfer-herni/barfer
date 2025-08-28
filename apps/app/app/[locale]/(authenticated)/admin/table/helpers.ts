@@ -164,7 +164,7 @@ export const extractWeightFromProductName = (productName: string): string => {
 
     // Si no se encuentra peso, buscar en patrones específicos conocidos
     const knownPatterns = [
-        { pattern: /\bBIG DOG\b.*?\((\d+)\s*kg\)/i, unit: 'KG' },
+        { pattern: /\bBIG DOG\b.*?\((\d+)\s*kg\)/i, unit: 'kg' },
         { pattern: /\b(\d+)\s*medallones?\s*de\s*(\d+)\s*g/i, unit: 'G' },
     ];
 
@@ -703,10 +703,13 @@ export const mapSelectOptionToDBFormat = (selectOption: string): { name: string,
     // Mapear Big Dog
     if (normalizedSelect.includes('big dog')) {
         if (normalizedSelect.includes('pollo')) {
-            return { name: 'BIG DOG POLLO', option: '15KG' };
+            return { name: 'BIG DOG (15kg)', option: 'POLLO' };
         }
         if (normalizedSelect.includes('vaca')) {
-            return { name: 'BIG DOG VACA', option: '15KG' };
+            return { name: 'BIG DOG (15kg)', option: 'VACA' };
+        }
+        if (normalizedSelect.includes('cordero')) {
+            return { name: 'BIG DOG (15kg)', option: 'CORDERO' };
         }
     }
 

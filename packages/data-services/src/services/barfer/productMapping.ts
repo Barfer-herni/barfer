@@ -74,10 +74,13 @@ export function mapSelectOptionToDBFormat(selectOption: string): ProductMapping 
     // Mapear Big Dog
     if (normalizedSelect.includes('big dog')) {
         if (normalizedSelect.includes('pollo')) {
-            return { name: 'BIG DOG POLLO', option: '15KG' };
+            return { name: 'BIG DOG (15kg)', option: 'POLLO' };
         }
         if (normalizedSelect.includes('vaca')) {
-            return { name: 'BIG DOG VACA', option: '15KG' };
+            return { name: 'BIG DOG (15kg)', option: 'VACA' };
+        }
+        if (normalizedSelect.includes('cordero')) {
+            return { name: 'BIG DOG (15kg)', option: 'CORDERO' };
         }
     }
 
