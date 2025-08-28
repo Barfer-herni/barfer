@@ -2,7 +2,7 @@
 
 import { getAllOrders } from '@repo/data-services/src/services/barfer/getAllOrders';
 import * as XLSX from 'xlsx';
-import { mapDBProductToSelectOption } from './helpers';
+import { mapDBProductToSelectOption, normalizeScheduleTime } from './helpers';
 
 interface ExportParams {
     search?: string;
@@ -63,20 +63,34 @@ export async function exportOrdersAction({
             console.warn('Se alcanzó el límite de 10,000 órdenes para la exportación. Considera usar filtros más específicos.');
         }
 
-        // Función para extraer solo el horario sin el día
+        // Función para normalizar el rango horario y extraer solo el horario sin el día
         const extractTimeOnly = (schedule: string): string => {
             if (!schedule) return 'N/A';
 
-            // Buscar el patrón de horario (ej: "17hs a 20hs APROXIMADAMENTE")
-            const timePattern = /(\d{1,2}hs\s+a\s+\d{1,2}hs\s+APROXIMADAMENTE)/i;
-            const match = schedule.match(timePattern);
+            // Primero normalizar el schedule (convertir "APROXIMADAMENTE" a "aprox", etc.)
+            const normalizedSchedule = normalizeScheduleTime(schedule);
+
+            // Extraer solo la parte del horario, eliminando el día si está presente
+            // Buscar patrones como "De X:XXhs a X:XXhs aprox" o "X:XXhs a X:XXhs aprox"
+            const timePattern = /(?:de\s+)?(\d{1,2}:\d{2}hs?\s+a\s+\d{1,2}:\d{2}hs?\s+aprox)/i;
+            const match = normalizedSchedule.match(timePattern);
 
             if (match) {
+                // Si encuentra el patrón, devolver solo el horario
                 return match[1];
             }
 
-            // Si no encuentra el patrón, devolver el schedule original
-            return schedule;
+            // Si no encuentra el patrón exacto, intentar extraer cualquier horario
+            const fallbackPattern = /(\d{1,2}:\d{2}hs?\s+a\s+\d{1,2}:\d{2}hs?)/i;
+            const fallbackMatch = normalizedSchedule.match(fallbackPattern);
+
+            if (fallbackMatch) {
+                // Agregar "aprox" si no está presente
+                return fallbackMatch[1] + ' aprox';
+            }
+
+            // Si no se puede extraer, devolver el schedule normalizado
+            return normalizedSchedule;
         };
 
         // Función para formatear las notas con información de dirección

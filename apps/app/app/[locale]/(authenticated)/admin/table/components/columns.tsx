@@ -5,7 +5,7 @@ import type { Order } from '@repo/data-services/src/types/barfer';
 import { Badge } from '@repo/design-system/components/ui/badge';
 import { Input } from '@repo/design-system/components/ui/input';
 import { STATUS_TRANSLATIONS, PAYMENT_METHOD_TRANSLATIONS } from '../constants';
-import { createLocalDate } from '../helpers';
+import { createLocalDate, normalizeScheduleTime } from '../helpers';
 
 export const columns: ColumnDef<Order>[] = [
     {
@@ -86,61 +86,30 @@ export const columns: ColumnDef<Order>[] = [
             const deliveryArea = row.original.deliveryArea;
             if (!deliveryArea?.schedule) return <div className="min-w-[90px] text-sm">N/A</div>;
 
-            // Usar la función de normalización para mostrar el schedule con formato correcto
-            const schedule = deliveryArea.schedule;
+            // Primero normalizar el schedule (convertir "APROXIMADAMENTE" a "aprox", etc.)
+            const normalizedSchedule = normalizeScheduleTime(deliveryArea.schedule);
 
-            // Si el schedule ya tiene formato de hora (con :), mostrarlo tal como está
-            if (schedule.includes(':')) {
-                return <div className="min-w-[90px] text-sm whitespace-normal break-words">{schedule}</div>;
+            // Extraer solo la parte del horario, eliminando el día si está presente
+            // Buscar patrones como "De X:XXhs a X:XXhs aprox" o "X:XXhs a X:XXhs aprox"
+            const timePattern = /(?:de\s+)?(\d{1,2}:\d{2}hs?\s+a\s+\d{1,2}:\d{2}hs?\s+aprox)/i;
+            const match = normalizedSchedule.match(timePattern);
+
+            if (match) {
+                // Si encuentra el patrón, devolver solo el horario
+                return <div className="min-w-[90px] text-sm whitespace-normal break-words">{match[1]}</div>;
             }
 
-            // Si no tiene formato de hora, intentar extraer y formatear las horas
-            const hourMatches = schedule.match(/(\d{1,2})(?::\d{2})?(?:hs?)?/g);
+            // Si no encuentra el patrón exacto, intentar extraer cualquier horario
+            const fallbackPattern = /(\d{1,2}:\d{2}hs?\s+a\s+\d{1,2}:\d{2}hs?)/i;
+            const fallbackMatch = normalizedSchedule.match(fallbackPattern);
 
-            if (hourMatches && hourMatches.length >= 2) {
-                const startHour = hourMatches[0].replace(/[^\d]/g, '');
-                const endHour = hourMatches[hourMatches.length - 1].replace(/[^\d]/g, '');
-
-                // Formatear las horas para que se vean con dos puntos
-                const formatHour = (hourStr: string) => {
-                    if (hourStr.length === 4) {
-                        // Si es "1830", convertirlo a "18:30"
-                        const hour = hourStr.substring(0, 2);
-                        const minute = hourStr.substring(2, 4);
-                        return `${hour}:${minute}`;
-                    }
-                    return hourStr;
-                };
-
-                const formattedStartHour = formatHour(startHour);
-                const formattedEndHour = formatHour(endHour);
-
-                // Siempre usar el formato estándar: "De {hora}:{minutos} a {hora}:{minutos}hs aprox"
-                // Asegurar que las horas tengan formato con dos puntos y minutos
-                const ensureHourFormat = (hourStr: string) => {
-                    if (hourStr.includes(':')) {
-                        // Si ya tiene formato, mantenerlo
-                        return hourStr;
-                    } else if (hourStr.length === 4) {
-                        // Si es "1430", convertirlo a "14:30"
-                        const hour = hourStr.substring(0, 2);
-                        const minute = hourStr.substring(2, 4);
-                        return `${hour}:${minute}`;
-                    } else if (hourStr.length === 2) {
-                        // Si es "14", convertirlo a "14:00"
-                        return `${hourStr}:00`;
-                    }
-                    return hourStr;
-                };
-
-                const finalStartHour = ensureHourFormat(formattedStartHour);
-                const finalEndHour = ensureHourFormat(formattedEndHour);
-
-                return <div className="min-w-[90px] text-sm whitespace-normal break-words">De {finalStartHour} a {finalEndHour}hs aprox</div>;
+            if (fallbackMatch) {
+                // Agregar "aprox" si no está presente
+                return <div className="min-w-[90px] text-sm whitespace-normal break-words">{fallbackMatch[1]} aprox</div>;
             }
 
-            // Si no se puede extraer, mostrar el schedule original pero más corto
-            return <div className="min-w-[90px] text-sm whitespace-normal break-words">{schedule.length > 20 ? schedule.substring(0, 20) + '...' : schedule}</div>;
+            // Si no se puede extraer, devolver el schedule normalizado
+            return <div className="min-w-[90px] text-sm whitespace-normal break-words">{normalizedSchedule}</div>;
         }
     },
     {
