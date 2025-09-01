@@ -53,12 +53,40 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
     const [selectedTipoRegistro, setSelectedTipoRegistro] = useState<string>('');
     const [selectedFecha, setSelectedFecha] = useState<string>('');
 
-    const formatDate = (date: Date) => {
+    const formatDate = (date: Date | string) => {
+        // Asegurar que tenemos un objeto Date válido
+        let dateObj: Date;
+
+        if (date instanceof Date) {
+            dateObj = date;
+        } else if (typeof date === 'string') {
+            // Si es un string, parsear la fecha considerando que está en zona horaria local
+            // Extraer solo la parte de la fecha (YYYY-MM-DD) para evitar problemas de zona horaria
+            const dateOnly = date.split(' ')[0]; // Tomar solo "2025-07-27"
+            const [year, month, day] = dateOnly.split('-').map(Number);
+
+            // Crear la fecha usando UTC para evitar problemas de zona horaria
+            dateObj = new Date(Date.UTC(year, month - 1, day));
+
+            // Convertir a zona horaria local
+            const localYear = dateObj.getFullYear();
+            const localMonth = dateObj.getMonth();
+            const localDay = dateObj.getDate();
+            dateObj = new Date(localYear, localMonth, localDay);
+        } else {
+            dateObj = new Date(date);
+        }
+
+        // Verificar si la fecha es válida
+        if (isNaN(dateObj.getTime())) {
+            return 'Fecha inválida';
+        }
+
         return new Intl.DateTimeFormat('es-AR', {
             year: 'numeric',
             month: '2-digit',
             day: '2-digit'
-        }).format(new Date(date));
+        }).format(dateObj);
     };
 
     const formatCurrency = (amount: number) => {
@@ -163,7 +191,29 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
 
             // Filtro por fecha exacta
             if (selectedFecha) {
-                const fechaSalida = new Date(salida.fecha);
+                let fechaSalida: Date;
+
+                // Asegurar que tenemos un objeto Date válido
+                if (salida.fecha instanceof Date) {
+                    fechaSalida = salida.fecha;
+                } else if (typeof salida.fecha === 'string') {
+                    // Extraer solo la parte de la fecha para evitar problemas de zona horaria
+                    const fechaString = salida.fecha as string;
+                    const dateOnly = fechaString.split(' ')[0];
+                    const [year, month, day] = dateOnly.split('-').map(Number);
+
+                    // Crear la fecha usando UTC para evitar problemas de zona horaria
+                    fechaSalida = new Date(Date.UTC(year, month - 1, day));
+
+                    // Convertir a zona horaria local
+                    const localYear = fechaSalida.getFullYear();
+                    const localMonth = fechaSalida.getMonth();
+                    const localDay = fechaSalida.getDate();
+                    fechaSalida = new Date(localYear, localMonth, localDay);
+                } else {
+                    fechaSalida = new Date(salida.fecha);
+                }
+
                 const fechaFilter = new Date(selectedFecha);
 
                 // Comparar solo año, mes y día (ignorar tiempo)

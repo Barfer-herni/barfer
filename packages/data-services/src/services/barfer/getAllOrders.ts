@@ -59,26 +59,80 @@ export async function getAllOrders({
         // Filtro por tipo de orden si se proporciona
         if (orderType && orderType.trim() !== '' && orderType !== 'all') {
             baseFilter.orderType = orderType;
+        } else {
+            // Por defecto, incluir TODAS las órdenes (minoristas y mayoristas)
+            // No aplicar filtro de orderType para permitir búsquedas globales
         }
 
         const searchFilter: any = {};
         if (search) {
             const searchWords = search.split(' ').filter(Boolean).map(escapeRegex);
             if (searchWords.length > 0) {
-                searchFilter.$and = searchWords.map(word => ({
-                    $or: [
-                        { 'user.name': { $regex: word, $options: 'i' } },
-                        { 'user.lastName': { $regex: word, $options: 'i' } },
-                        { 'user.email': { $regex: word, $options: 'i' } },
-                        { 'items.name': { $regex: word, $options: 'i' } },
-                        { 'address.address': { $regex: word, $options: 'i' } },
-                        { 'address.city': { $regex: word, $options: 'i' } },
-                        { 'paymentMethod': { $regex: word, $options: 'i' } },
-                        { 'status': { $regex: word, $options: 'i' } },
-                        { 'notesOwn': { $regex: word, $options: 'i' } },
-                        { 'orderType': { $regex: word, $options: 'i' } },
-                    ]
-                }));
+                searchFilter.$and = searchWords.map(word => {
+                    // Mapeo de estados en español a inglés para búsqueda
+                    const statusMapping: Record<string, string[]> = {
+                        'pendiente': ['pending'],
+                        'confirmado': ['confirmed'],
+                        'entregado': ['delivered'],
+                        'cancelado': ['cancelled'],
+                        'pending': ['pending'],
+                        'confirmed': ['confirmed'],
+                        'delivered': ['delivered'],
+                        'cancelled': ['cancelled']
+                    };
+
+                    // Mapeo de métodos de pago en español a inglés
+                    const paymentMethodMapping: Record<string, string[]> = {
+                        'efectivo': ['cash'],
+                        'transferencia': ['transfer', 'bank-transfer'],
+                        'mercado pago': ['mercado-pago'],
+                        'cash': ['cash'],
+                        'transfer': ['transfer'],
+                        'bank-transfer': ['bank-transfer'],
+                        'mercado-pago': ['mercado-pago']
+                    };
+
+                    // Crear filtros para status con mapeo español-inglés
+                    const statusFilters = [];
+                    const normalizedWord = word.toLowerCase();
+
+                    if (statusMapping[normalizedWord]) {
+                        // Si la palabra coincide con un estado en español, buscar en inglés
+                        statusMapping[normalizedWord].forEach(status => {
+                            statusFilters.push({ 'status': { $regex: status, $options: 'i' } });
+                        });
+                    } else {
+                        // Si no coincide, buscar directamente
+                        statusFilters.push({ 'status': { $regex: word, $options: 'i' } });
+                    }
+
+                    // Crear filtros para paymentMethod con mapeo español-inglés
+                    const paymentMethodFilters = [];
+                    if (paymentMethodMapping[normalizedWord]) {
+                        // Si la palabra coincide con un método de pago en español, buscar en inglés
+                        paymentMethodMapping[normalizedWord].forEach(method => {
+                            paymentMethodFilters.push({ 'paymentMethod': { $regex: method, $options: 'i' } });
+                        });
+                    } else {
+                        // Si no coincide, buscar directamente
+                        paymentMethodFilters.push({ 'paymentMethod': { $regex: word, $options: 'i' } });
+                    }
+
+                    return {
+                        $or: [
+                            { 'user.name': { $regex: word, $options: 'i' } },
+                            { 'user.lastName': { $regex: word, $options: 'i' } },
+                            { 'user.email': { $regex: word, $options: 'i' } },
+                            { 'items.name': { $regex: word, $options: 'i' } },
+                            { 'address.address': { $regex: word, $options: 'i' } },
+                            { 'address.city': { $regex: word, $options: 'i' } },
+                            ...paymentMethodFilters, // Usar filtros mapeados para paymentMethod
+                            ...statusFilters, // Usar filtros mapeados para status
+                            { 'notesOwn': { $regex: word, $options: 'i' } },
+                            { 'orderType': { $regex: word, $options: 'i' } },
+                        ]
+                    };
+                });
             }
             const isObjectId = /^[0-9a-fA-F]{24}$/.test(search.trim());
             if (isObjectId) {

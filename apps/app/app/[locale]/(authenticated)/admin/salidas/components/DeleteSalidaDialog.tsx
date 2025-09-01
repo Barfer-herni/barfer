@@ -32,12 +32,40 @@ export function DeleteSalidaDialog({ open, onOpenChange, salida, onSalidaDeleted
         }).format(amount);
     };
 
-    const formatDate = (date: Date) => {
+    const formatDate = (date: Date | string) => {
+        // Asegurar que tenemos un objeto Date válido
+        let dateObj: Date;
+
+        if (date instanceof Date) {
+            dateObj = date;
+        } else if (typeof date === 'string') {
+            // Si es un string, parsear la fecha considerando que está en zona horaria local
+            // Extraer solo la parte de la fecha (YYYY-MM-DD) para evitar problemas de zona horaria
+            const dateOnly = date.split(' ')[0]; // Tomar solo "2025-07-27"
+            const [year, month, day] = dateOnly.split('-').map(Number);
+
+            // Crear la fecha usando UTC para evitar problemas de zona horaria
+            dateObj = new Date(Date.UTC(year, month - 1, day));
+
+            // Convertir a zona horaria local
+            const localYear = dateObj.getFullYear();
+            const localMonth = dateObj.getMonth();
+            const localDay = dateObj.getDate();
+            dateObj = new Date(localYear, localMonth, localDay);
+        } else {
+            dateObj = new Date(date);
+        }
+
+        // Verificar si la fecha es válida
+        if (isNaN(dateObj.getTime())) {
+            return 'Fecha inválida';
+        }
+
         return new Intl.DateTimeFormat('es-AR', {
             year: 'numeric',
             month: '2-digit',
             day: '2-digit'
-        }).format(new Date(date));
+        }).format(dateObj);
     };
 
     const handleDelete = async () => {

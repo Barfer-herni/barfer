@@ -55,7 +55,7 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
 
     // Estado del formulario inicializado con datos de la salida
     const [formData, setFormData] = useState({
-        fecha: new Date(salida.fecha),
+        fecha: salida.fecha instanceof Date ? salida.fecha : new Date(salida.fecha),
         detalle: salida.detalle,
         categoriaId: salida.categoriaId,
         tipo: salida.tipo,
@@ -83,7 +83,7 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
             loadData();
             // Actualizar datos del formulario con la salida actual
             setFormData({
-                fecha: new Date(salida.fecha),
+                fecha: salida.fecha instanceof Date ? salida.fecha : new Date(salida.fecha),
                 detalle: salida.detalle,
                 categoriaId: salida.categoriaId,
                 tipo: salida.tipo,

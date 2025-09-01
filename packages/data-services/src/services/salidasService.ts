@@ -5,7 +5,7 @@ import { canViewSalidaCategory } from '@repo/auth/server-permissions';
 // Tipos para el servicio
 export interface SalidaData {
     id: string;
-    fecha: Date;
+    fecha: Date | string; // Permitir tanto Date como string para compatibilidad con Prisma
     detalle: string;
     tipo: TipoSalida;
     marca?: string | null;
@@ -22,12 +22,12 @@ export interface SalidaData {
         id: string;
         nombre: string;
     };
-    createdAt: Date;
-    updatedAt: Date;
+    createdAt: Date | string; // Permitir tanto Date como string para compatibilidad con Prisma
+    updatedAt: Date | string; // Permitir tanto Date como string para compatibilidad con Prisma
 }
 
 export interface CreateSalidaInput {
-    fecha: Date;
+    fecha: Date | string; // Permitir tanto Date como string para compatibilidad con Prisma
     detalle: string;
     categoriaId: string;
     tipo: TipoSalida;
@@ -38,7 +38,7 @@ export interface CreateSalidaInput {
 }
 
 export interface UpdateSalidaInput {
-    fecha?: Date;
+    fecha?: Date | string; // Permitir tanto Date como string para compatibilidad con Prisma
     detalle?: string;
     categoriaId?: string;
     tipo?: TipoSalida;

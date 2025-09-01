@@ -564,7 +564,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             <div className="flex flex-col gap-4 py-4">
                 <div className="flex items-center gap-4 flex-wrap">
                     <Input
-                        placeholder="Buscar en todas las columnas..."
+                        placeholder="Buscar en todas las columnas (español/inglés)..."
                         value={searchInput}
                         onChange={(event) => handleSearchChange(event.target.value)}
                         className="max-w-sm"
