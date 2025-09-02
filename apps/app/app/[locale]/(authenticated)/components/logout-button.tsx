@@ -39,10 +39,7 @@ export function LogoutButton({ userName, userLastName, dictionary, locale = 'es'
         dictionary?.app?.pharmacy?.navigation?.loggingOut ||
         'Cerrando sesión...';
 
-    const profileText = dictionary?.app?.admin?.navigation?.profile ||
-        dictionary?.app?.client?.navigation?.profile ||
-        dictionary?.app?.pharmacy?.navigation?.profile ||
-        'Mi perfil';
+    const profileText = 'Mi perfil';
 
     return (
         <DropdownMenu>

@@ -16,9 +16,9 @@ type User = {
     name: string;
     lastName: string;
     email: string;
-    role: string;
-    permissions: string[];
-};
+    role: any; // UserRole from Prisma
+    permissions: any[]; // JsonArray from Prisma
+} | null;
 
 interface UserHeaderClientProps {
     logo?: ReactNode;
