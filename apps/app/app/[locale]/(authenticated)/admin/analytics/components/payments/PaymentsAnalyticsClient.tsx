@@ -80,6 +80,14 @@ export function PaymentsAnalyticsClient({
     const [paymentMethodFilter, setPaymentMethodFilter] = useState<PaymentMethodFilter>('all');
     const paymentMethods = paymentStats.paymentMethods || [];
 
+    // Filtrar solo los métodos de pago específicos que queremos mostrar
+    const filteredPaymentMethods = paymentMethods.filter(method => {
+        const methodName = method.paymentMethod.toLowerCase();
+        return methodName === 'cash' ||
+            methodName === 'mercado-pago' ||
+            methodName === 'bank-transfer';
+    });
+
     // Función para calcular porcentaje de cambio (de fecha antigua a reciente)
     const calculateChange = (primaryValue: number, compareValue: number, primaryDate: Date, compareDate: Date) => {
         // Determinar cuál es el período anterior y cuál el actual basándose en fechas
@@ -236,7 +244,7 @@ export function PaymentsAnalyticsClient({
             )}
 
             {/* Main Summary Cards (no changes needed here, they use paymentStats) */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Total de Órdenes</CardTitle>
@@ -265,26 +273,11 @@ export function PaymentsAnalyticsClient({
 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Tasa de Confirmación</CardTitle>
-                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-                            {((paymentStats.totalConfirmedOrders / paymentStats.totalOrders) * 100).toFixed(1)}%
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            de órdenes confirmadas
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Métodos de Pago</CardTitle>
                         <CreditCard className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{paymentMethods.length}</div>
+                        <div className="text-2xl font-bold">{filteredPaymentMethods.length}</div>
                         <p className="text-xs text-muted-foreground">
                             métodos diferentes
                         </p>
@@ -301,13 +294,13 @@ export function PaymentsAnalyticsClient({
                     </CardTitle>
                     <CardDescription>
                         {dateFilter && `${formatDateRange(dateFilter.from, dateFilter.to)} • `}
-                        Detalle de métricas por método de pago (todos) • {paymentMethods.length} métodos
+                        Detalle de métricas por método de pago (cash, mercado-pago, bank-transfer) • {filteredPaymentMethods.length} métodos
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="space-y-4">
-                        {paymentMethods.length > 0 ? (
-                            paymentMethods.map((method, index) => (
+                        {filteredPaymentMethods.length > 0 ? (
+                            filteredPaymentMethods.map((method, index) => (
                                 <div key={method.paymentMethod} className="p-4 border rounded-lg">
                                     <div className="flex items-center gap-2 mb-3">
                                         <span className="text-lg">{getPaymentIcon(method.paymentMethod)}</span>
@@ -351,43 +344,55 @@ export function PaymentsAnalyticsClient({
                         </CardTitle>
                         <CardDescription>
                             {compareFilter && `${formatDateRange(compareFilter.from, compareFilter.to)} • `}
-                            Análisis del período de comparación • {comparePaymentStats.paymentMethods.length} métodos
+                            Análisis del período de comparación • {comparePaymentStats.paymentMethods.filter(method => {
+                                const methodName = method.paymentMethod.toLowerCase();
+                                return methodName === 'cash' ||
+                                    methodName === 'mercado-pago' ||
+                                    methodName === 'bank-transfer';
+                            }).length} métodos
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            {comparePaymentStats.paymentMethods.map((method, index) => (
-                                <div key={method.paymentMethod} className="p-4 border rounded-lg">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-lg">{getPaymentIcon(method.paymentMethod)}</span>
-                                            <h3 className="font-medium">{method.paymentMethod}</h3>
+                            {comparePaymentStats.paymentMethods
+                                .filter(method => {
+                                    const methodName = method.paymentMethod.toLowerCase();
+                                    return methodName === 'cash' ||
+                                        methodName === 'mercado-pago' ||
+                                        methodName === 'bank-transfer';
+                                })
+                                .map((method, index) => (
+                                    <div key={method.paymentMethod} className="p-4 border rounded-lg">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-lg">{getPaymentIcon(method.paymentMethod)}</span>
+                                                <h3 className="font-medium">{method.paymentMethod}</h3>
+                                            </div>
+                                            <Badge variant="outline" className="text-xs">
+                                                #{index + 1}
+                                            </Badge>
                                         </div>
-                                        <Badge variant="outline" className="text-xs">
-                                            #{index + 1}
-                                        </Badge>
-                                    </div>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                                        <div>
-                                            <div className="text-muted-foreground text-xs">Total Órdenes</div>
-                                            <div className="font-medium text-blue-600">{method.totalCount} ({method.totalPercentage.toFixed(1)}%)</div>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                            <div>
+                                                <div className="text-muted-foreground text-xs">Total Órdenes</div>
+                                                <div className="font-medium text-blue-600">{method.totalCount} ({method.totalPercentage.toFixed(1)}%)</div>
+                                            </div>
+                                            <div>
+                                                <div className="text-muted-foreground text-xs">Confirmadas</div>
+                                                <div className="font-medium text-blue-600">{method.confirmedCount} ({method.confirmedPercentage.toFixed(1)}%)</div>
+                                            </div>
+                                            <div>
+                                                <div className="text-muted-foreground text-xs">Pendientes</div>
+                                                <div className="font-medium text-blue-600">{method.pendingCount} ({method.pendingPercentage.toFixed(1)}%)</div>
+                                            </div>
+                                            <div>
+                                                <div className="text-muted-foreground text-xs">Ingresos</div>
+                                                <div className="font-bold text-blue-600">${method.totalRevenue.toLocaleString()}</div>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <div className="text-muted-foreground text-xs">Confirmadas</div>
-                                            <div className="font-medium text-blue-600">{method.confirmedCount} ({method.confirmedPercentage.toFixed(1)}%)</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-muted-foreground text-xs">Pendientes</div>
-                                            <div className="font-medium text-blue-600">{method.pendingCount} ({method.pendingPercentage.toFixed(1)}%)</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-muted-foreground text-xs">Ingresos</div>
-                                            <div className="font-bold text-blue-600">${method.totalRevenue.toLocaleString()}</div>
-                                        </div>
-                                    </div>
 
-                                </div>
-                            ))}
+                                    </div>
+                                ))}
                         </div>
                     </CardContent>
                 </Card>
