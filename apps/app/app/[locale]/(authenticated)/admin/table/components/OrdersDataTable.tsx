@@ -17,7 +17,7 @@ import { Calendar } from '@repo/design-system/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@repo/design-system/components/ui/popover';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { RotateCcw, Trash2 } from 'lucide-react';
+import { RotateCcw, Trash2, Search } from 'lucide-react';
 import type { MayoristaOrder } from '@repo/data-services/src/types/barfer';
 
 // Imports de constantes y helpers
@@ -120,8 +120,21 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     // Función para manejar cambios en el filtro de búsqueda
     const handleSearchChange = useCallback((value: string) => {
         setSearchInput(value);
-        debouncedSearch(value);
-    }, [debouncedSearch]);
+        // Ya no usamos debounce, solo actualizamos el estado local
+    }, []);
+
+    // Función para manejar la búsqueda cuando se presiona Enter
+    const handleSearchSubmit = useCallback((value: string) => {
+        navigateToSearch(value);
+    }, [navigateToSearch]);
+
+    // Función para manejar la tecla Enter en el input
+    const handleSearchKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            handleSearchSubmit(searchInput);
+        }
+    }, [searchInput, handleSearchSubmit]);
 
     const handleEditClick = (row: any) => {
         setEditingRowId(row.id);
@@ -563,13 +576,26 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
         <div>
             <div className="flex flex-col gap-4 py-4">
                 <div className="flex items-center gap-4 flex-wrap">
-                    <Input
-                        placeholder="Buscar en todas las columnas (español/inglés)..."
-                        value={searchInput}
-                        onChange={(event) => handleSearchChange(event.target.value)}
-                        className="max-w-sm"
-                        disabled={isPending}
-                    />
+                    <div className="relative max-w-sm">
+                        <Input
+                            placeholder="Buscar en todas las columnas (presiona Enter)..."
+                            value={searchInput}
+                            onChange={(event) => handleSearchChange(event.target.value)}
+                            onKeyDown={handleSearchKeyDown}
+                            className="pr-10"
+                            disabled={isPending}
+                        />
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleSearchSubmit(searchInput)}
+                            disabled={isPending}
+                            className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        >
+                            <Search className="h-4 w-4" />
+                        </Button>
+                    </div>
                     <DateRangeFilter />
                     <OrderTypeFilter />
                 </div>
