@@ -63,7 +63,7 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
     const [localPrices, setLocalPrices] = useState<Price[]>(prices);
     const [isInitializing, setIsInitializing] = useState(false);
     const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
-    const [editValue, setEditValue] = useState<number>(0);
+    const [editValue, setEditValue] = useState<number | string>(0);
     const [showFilters, setShowFilters] = useState(true);
 
     // Verificar permisos del usuario
@@ -222,7 +222,8 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
 
     const handleStartEdit = (price: Price) => {
         setEditingPriceId(price.id);
-        setEditValue(price.price);
+        // Si el precio es 0, mostrar input vacío para mejor UX
+        setEditValue(price.price === 0 ? '' : price.price);
     };
 
     const handleCancelEdit = () => {
@@ -233,12 +234,15 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
     const handleSaveEdit = async (priceId: string) => {
         setIsUpdating(priceId);
         try {
-            const result = await updatePriceAction(priceId, editValue);
+            // Convertir editValue a número, si está vacío usar 0
+            const numericValue = typeof editValue === 'string' && editValue === '' ? 0 : Number(editValue);
+
+            const result = await updatePriceAction(priceId, numericValue);
             if (result.success) {
                 // Actualizar el estado local
                 setLocalPrices(prev =>
                     prev.map(p =>
-                        p.id === priceId ? { ...p, price: editValue } : p
+                        p.id === priceId ? { ...p, price: numericValue } : p
                     )
                 );
                 setEditingPriceId(null);
@@ -317,9 +321,19 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
                                 step="0.01"
                                 min="0"
                                 value={editValue}
-                                onChange={(e) => setEditValue(parseFloat(e.target.value) || 0)}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    // Si está vacío, mantener string vacío
+                                    if (value === '') {
+                                        setEditValue('');
+                                    } else {
+                                        // Si tiene valor, convertir a número
+                                        const numValue = parseFloat(value);
+                                        setEditValue(isNaN(numValue) ? 0 : numValue);
+                                    }
+                                }}
                                 disabled={isLoading}
-                                className="w-20 text-center"
+                                className="w-32 text-center"
                                 placeholder="0.00"
                                 autoFocus
                             />
@@ -346,7 +360,7 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
                         </>
                     ) : (
                         <>
-                            <span className="font-mono text-center min-w-[60px]">
+                            <span className="font-mono text-center min-w-[80px]">
                                 ${price.price.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                             </span>
                             {canEditPrices && (
