@@ -8,34 +8,26 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger
 } from '@repo/design-system/components/ui/dropdown-menu';
-import { LogOut } from 'lucide-react';
+import { LogOut, User } from 'lucide-react';
 import { useTransition } from 'react';
 import { Dictionary } from '@repo/internationalization';
 import { logoutAction } from '../actions';
+import Link from 'next/link';
 
 interface LogoutButtonProps {
     userName?: string;
+    userLastName?: string;
     dictionary?: Dictionary;
     locale?: string;
 }
 
-export function LogoutButton({ userName, dictionary, locale = 'es' }: LogoutButtonProps) {
+export function LogoutButton({ userName, userLastName, dictionary, locale = 'es' }: LogoutButtonProps) {
     const [isPending, startTransition] = useTransition();
 
     const handleLogout = () => {
         startTransition(async () => {
             await logoutAction(locale);
         });
-    };
-
-    // Get user initials from name
-    const getInitials = () => {
-        if (!userName) return '?';
-
-        const parts = userName.split(' ');
-        if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
-
-        return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
     };
 
     const logoutText = dictionary?.app?.admin?.navigation?.logout ||
@@ -47,6 +39,11 @@ export function LogoutButton({ userName, dictionary, locale = 'es' }: LogoutButt
         dictionary?.app?.pharmacy?.navigation?.loggingOut ||
         'Cerrando sesión...';
 
+    const profileText = dictionary?.app?.admin?.navigation?.profile ||
+        dictionary?.app?.client?.navigation?.profile ||
+        dictionary?.app?.pharmacy?.navigation?.profile ||
+        'Mi perfil';
+
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -57,16 +54,19 @@ export function LogoutButton({ userName, dictionary, locale = 'es' }: LogoutButt
                     aria-label="Usuario"
                 >
                     <Avatar>
-                        <AvatarFallback>{getInitials()}</AvatarFallback>
+                        <AvatarFallback>
+                            <User className="h-4 w-4" />
+                        </AvatarFallback>
                     </Avatar>
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-                {userName && (
-                    <DropdownMenuItem disabled className="font-medium">
-                        {userName}
-                    </DropdownMenuItem>
-                )}
+                <DropdownMenuItem asChild>
+                    <Link href={`/${locale}/admin/account`}>
+                        <User className="mr-2 h-4 w-4" />
+                        {profileText}
+                    </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem
                     onClick={handleLogout}
                     disabled={isPending}

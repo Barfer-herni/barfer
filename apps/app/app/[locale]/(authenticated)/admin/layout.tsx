@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { getDictionary } from '@repo/internationalization';
 import { AdminSidebar } from '../components/sidebar-components/admin-sidebar';
 import { UserHeaderClient } from '../components/user-header/userHeaderClient';
+import { getCurrentUser } from '@repo/data-services/src/services/authService';
 import Image from 'next/image';
 import logo from '@/app/public/logo.png';
 
@@ -15,6 +16,7 @@ type AdminLayoutProps = {
 export default async function AdminLayout({ children, params }: AdminLayoutProps) {
     const { locale } = await params;
     const dictionary = await getDictionary(locale);
+    const currentUser = await getCurrentUser();
 
     return (
         <div className="flex w-full min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
@@ -23,6 +25,7 @@ export default async function AdminLayout({ children, params }: AdminLayoutProps
                 title="Barfer"
                 dictionary={dictionary}
                 locale={locale}
+                user={currentUser}
             />
 
             <div className="pt-16 flex w-full h-full">

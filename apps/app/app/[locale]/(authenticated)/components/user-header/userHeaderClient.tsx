@@ -14,8 +14,10 @@ import { cn } from '@repo/design-system/lib/utils';
 type User = {
     id: string;
     name: string;
+    lastName: string;
     email: string;
     role: string;
+    permissions: string[];
 };
 
 interface UserHeaderClientProps {
@@ -69,7 +71,12 @@ export function UserHeaderClient({ logo, title = 'Barfer', extraItems, dictionar
                     <ModeToggle />
                     {/* <LanguageSwitcher /> */}
                     {extraItems}
-                    <LogoutButton userName={user?.name} dictionary={dictionary} locale={locale} />
+                    <LogoutButton
+                        userName={user?.name}
+                        userLastName={user?.lastName}
+                        dictionary={dictionary}
+                        locale={locale}
+                    />
                 </div>
             </div>
         </header>
