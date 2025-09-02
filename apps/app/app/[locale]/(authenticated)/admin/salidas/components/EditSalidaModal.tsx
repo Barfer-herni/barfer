@@ -107,7 +107,11 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
             }
 
             if (metodosPagoResult.success && metodosPagoResult.metodosPago) {
-                setMetodosPago(metodosPagoResult.metodosPago.map(m => ({ id: m.id, nombre: m.nombre })));
+                // Filtrar solo EFECTIVO y TRANSFERENCIA
+                const metodosFiltrados = metodosPagoResult.metodosPago
+                    .filter(m => m.nombre === 'EFECTIVO' || m.nombre === 'TRANSFERENCIA')
+                    .map(m => ({ id: m.id, nombre: m.nombre }));
+                setMetodosPago(metodosFiltrados);
             }
         } catch (error) {
             console.error('Error loading data:', error);
