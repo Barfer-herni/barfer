@@ -2,6 +2,7 @@ import { getDictionary } from '@repo/internationalization';
 import type { Locale } from '@repo/internationalization';
 import { getAllPricesAction } from './actions';
 import { PricesTable } from './components/PricesTable';
+import { getCurrentUserWithPermissions } from '@repo/auth/server-permissions';
 
 export default async function PricesPage({
     params,
@@ -14,6 +15,10 @@ export default async function PricesPage({
     // Obtener todos los precios usando la nueva acción de Barfer
     const result = await getAllPricesAction();
     const prices = result.success ? (result.prices || []) : [];
+
+    // Obtener permisos del usuario
+    const userWithPermissions = await getCurrentUserWithPermissions();
+    const userPermissions = (userWithPermissions?.permissions || []).map(p => String(p));
 
     return (
         <div className="h-full w-full">
@@ -29,6 +34,7 @@ export default async function PricesPage({
                 <PricesTable
                     prices={prices}
                     dictionary={dictionary}
+                    userPermissions={userPermissions}
                 />
             </div>
         </div>

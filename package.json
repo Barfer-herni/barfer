@@ -30,7 +30,8 @@
     "test:big-dog-mapping": "tsx scripts/test-big-dog-mapping.ts",
     "test:big-dog-format": "tsx scripts/test-big-dog-format.ts",
     "test:schedule-normalization": "tsx scripts/test-schedule-normalization.ts",
-    "debug:big-dog": "tsx scripts/debug-big-dog-analytics.ts"
+    "debug:big-dog": "tsx scripts/debug-big-dog-analytics.ts",
+    "test-prices-permissions": "tsx scripts/test-prices-permissions.ts"
   },
   "devDependencies": {
     "@auto-it/first-time-contributor": "^11.3.0",

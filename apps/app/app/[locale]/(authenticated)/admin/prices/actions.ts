@@ -2,9 +2,20 @@
 
 import { updateProductPrice, initializeBarferPrices, getAllPrices } from '@repo/data-services';
 import { revalidatePath } from 'next/cache';
+import { hasPermission } from '@repo/auth/server-permissions';
 
 export async function updatePriceAction(priceId: string, newPrice: number) {
     try {
+        // Verificar permisos de edición
+        const canEditPrices = await hasPermission('prices:edit');
+        if (!canEditPrices) {
+            return {
+                success: false,
+                message: 'No tienes permisos para editar precios',
+                error: 'INSUFFICIENT_PERMISSIONS'
+            };
+        }
+
         const result = await updateProductPrice(priceId, { price: newPrice });
 
         if (result.success) {
@@ -24,6 +35,16 @@ export async function updatePriceAction(priceId: string, newPrice: number) {
 
 export async function initializeDefaultPricesAction() {
     try {
+        // Verificar permisos de edición
+        const canEditPrices = await hasPermission('prices:edit');
+        if (!canEditPrices) {
+            return {
+                success: false,
+                message: 'No tienes permisos para inicializar precios',
+                error: 'INSUFFICIENT_PERMISSIONS'
+            };
+        }
+
         const result = await initializeBarferPrices();
 
         if (result.success) {
@@ -43,6 +64,18 @@ export async function initializeDefaultPricesAction() {
 
 export async function getAllPricesAction() {
     try {
+        // Verificar permisos de visualización
+        const canViewPrices = await hasPermission('prices:view');
+        if (!canViewPrices) {
+            return {
+                success: false,
+                message: 'No tienes permisos para ver precios',
+                error: 'INSUFFICIENT_PERMISSIONS',
+                prices: [],
+                total: 0
+            };
+        }
+
         const result = await getAllPrices();
         return result;
     } catch (error) {

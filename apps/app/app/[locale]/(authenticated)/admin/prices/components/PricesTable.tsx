@@ -40,6 +40,7 @@ interface Price {
 interface PricesTableProps {
     prices: Price[];
     dictionary: Dictionary;
+    userPermissions: string[];
 }
 
 interface ProductRow {
@@ -57,13 +58,16 @@ interface Filters {
     priceTypes: PriceType[];
 }
 
-export function PricesTable({ prices, dictionary }: PricesTableProps) {
+export function PricesTable({ prices, dictionary, userPermissions }: PricesTableProps) {
     const [isUpdating, setIsUpdating] = useState<string | null>(null);
     const [localPrices, setLocalPrices] = useState<Price[]>(prices);
     const [isInitializing, setIsInitializing] = useState(false);
     const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
     const [editValue, setEditValue] = useState<number>(0);
     const [showFilters, setShowFilters] = useState(true);
+
+    // Verificar permisos del usuario
+    const canEditPrices = userPermissions.includes('prices:edit');
 
     // Estados de filtros
     const [filters, setFilters] = useState<Filters>({
@@ -345,15 +349,17 @@ export function PricesTable({ prices, dictionary }: PricesTableProps) {
                             <span className="font-mono text-center min-w-[60px]">
                                 ${price.price.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                             </span>
-                            <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleStartEdit(price)}
-                                disabled={isLoading}
-                                className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                            >
-                                <Pencil className="h-3 w-3" />
-                            </Button>
+                            {canEditPrices && (
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleStartEdit(price)}
+                                    disabled={isLoading}
+                                    className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                >
+                                    <Pencil className="h-3 w-3" />
+                                </Button>
+                            )}
                         </>
                     )}
                 </div>
@@ -500,15 +506,17 @@ export function PricesTable({ prices, dictionary }: PricesTableProps) {
         return (
             <div className="text-center py-12">
                 <p className="text-muted-foreground mb-6">
-                    No hay precios configurados. ¿Deseas inicializar la tabla con la estructura por defecto?
+                    No hay precios configurados. {canEditPrices ? '¿Deseas inicializar la tabla con la estructura por defecto?' : 'Contacta al administrador para configurar los precios.'}
                 </p>
-                <Button
-                    onClick={handleInitializePrices}
-                    disabled={isInitializing}
-                    size="lg"
-                >
-                    {isInitializing ? "Inicializando..." : "Inicializar Precios por Defecto"}
-                </Button>
+                {canEditPrices && (
+                    <Button
+                        onClick={handleInitializePrices}
+                        disabled={isInitializing}
+                        size="lg"
+                    >
+                        {isInitializing ? "Inicializando..." : "Inicializar Precios por Defecto"}
+                    </Button>
+                )}
             </div>
         );
     }

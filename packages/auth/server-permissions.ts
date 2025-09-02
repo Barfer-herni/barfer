@@ -306,13 +306,6 @@ export interface SidebarItem {
 
 export const SIDEBAR_CONFIG: SidebarItem[] = [
     {
-        label: 'account',
-        mobileLabel: 'accountMobile',
-        href: '/admin/account',
-        icon: 'User',
-        requiredPermissions: ['account:view_own'],
-    },
-    {
         label: 'analytics',
         mobileLabel: 'analyticsMobile',
         href: '/admin/analytics',
