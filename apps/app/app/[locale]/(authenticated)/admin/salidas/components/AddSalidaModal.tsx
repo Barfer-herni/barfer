@@ -49,7 +49,7 @@ interface AddSalidaModalProps {
 export function AddSalidaModal({ open, onOpenChange, onSalidaCreated }: AddSalidaModalProps) {
     const [isLoading, setIsLoading] = useState(false);
 
-    const MARCAS_PREDEFINIDAS = ['BARFER', 'SRL'];
+    const MARCAS_PREDEFINIDAS = ['BARFER'];
 
     // Estado del formulario
     const [formData, setFormData] = useState({
@@ -57,7 +57,7 @@ export function AddSalidaModal({ open, onOpenChange, onSalidaCreated }: AddSalid
         detalle: '',
         categoriaId: '',
         tipo: 'ORDINARIO' as TipoSalida,
-        marca: 'SIN_MARCA',
+        marca: 'BARFER',
         monto: 0,
         metodoPagoId: '',
         tipoRegistro: 'BLANCO' as TipoRegistro,
@@ -170,7 +170,7 @@ export function AddSalidaModal({ open, onOpenChange, onSalidaCreated }: AddSalid
                 detalle: formData.detalle,
                 categoriaId: formData.categoriaId,
                 tipo: formData.tipo,
-                marca: formData.marca === 'SIN_MARCA' ? undefined : formData.marca || undefined,
+                marca: 'BARFER',
                 monto: formData.monto,
                 metodoPagoId: formData.metodoPagoId,
                 tipoRegistro: formData.tipoRegistro,
@@ -188,7 +188,7 @@ export function AddSalidaModal({ open, onOpenChange, onSalidaCreated }: AddSalid
                     detalle: '',
                     categoriaId: '',
                     tipo: 'ORDINARIO',
-                    marca: 'SIN_MARCA',
+                    marca: 'BARFER',
                     monto: 0,
                     metodoPagoId: '',
                     tipoRegistro: 'BLANCO',
@@ -372,22 +372,11 @@ export function AddSalidaModal({ open, onOpenChange, onSalidaCreated }: AddSalid
 
                             <div className="grid gap-2">
                                 <Label>Marca</Label>
-                                <Select
-                                    value={formData.marca}
-                                    onValueChange={(value) => handleInputChange('marca', value)}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Seleccionar marca..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="SIN_MARCA">Sin marca</SelectItem>
-                                        {MARCAS_PREDEFINIDAS.map((marca) => (
-                                            <SelectItem key={marca} value={marca}>
-                                                {marca}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <Input
+                                    value="BARFER"
+                                    disabled
+                                    className="bg-gray-50"
+                                />
                             </div>
                         </div>
 

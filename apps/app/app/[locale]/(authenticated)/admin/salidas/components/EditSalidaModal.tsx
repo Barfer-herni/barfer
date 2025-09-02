@@ -51,7 +51,7 @@ interface EditSalidaModalProps {
 export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }: EditSalidaModalProps) {
     const [isLoading, setIsLoading] = useState(false);
 
-    const MARCAS_PREDEFINIDAS = ['BARFER', 'SRL'];
+    const MARCAS_PREDEFINIDAS = ['BARFER'];
 
     // Estado del formulario inicializado con datos de la salida
     const [formData, setFormData] = useState({
@@ -183,7 +183,7 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
                 detalle: formData.detalle,
                 categoriaId: formData.categoriaId,
                 tipo: formData.tipo,
-                marca: formData.marca === 'SIN_MARCA' ? undefined : formData.marca || undefined,
+                marca: 'BARFER',
                 monto: formData.monto,
                 metodoPagoId: formData.metodoPagoId,
                 tipoRegistro: formData.tipoRegistro,
@@ -373,22 +373,11 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
 
                             <div className="grid gap-2">
                                 <Label>Marca</Label>
-                                <Select
-                                    value={formData.marca}
-                                    onValueChange={(value) => handleInputChange('marca', value)}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Seleccionar marca..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="SIN_MARCA">Sin marca</SelectItem>
-                                        {MARCAS_PREDEFINIDAS.map((marca) => (
-                                            <SelectItem key={marca} value={marca}>
-                                                {marca}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <Input
+                                    value="BARFER"
+                                    disabled
+                                    className="bg-gray-50"
+                                />
                             </div>
                         </div>
 

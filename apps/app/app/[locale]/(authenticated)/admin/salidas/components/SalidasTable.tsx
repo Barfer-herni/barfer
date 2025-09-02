@@ -132,12 +132,8 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
     }, [salidas]);
 
     const uniqueMarcas = useMemo(() => {
-        const marcas = salidas
-            .map(s => s.marca)
-            .filter((marca): marca is string => marca !== undefined && marca !== 'SIN_MARCA')
-            .filter((marca, index, array) => array.indexOf(marca) === index);
-        return marcas.sort();
-    }, [salidas]);
+        return ['BARFER'];
+    }, []);
 
     const uniqueMetodosPago = useMemo(() => {
         const metodos = salidas
@@ -465,13 +461,9 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="w-[100px] text-sm">
-                                            {salida.marca && salida.marca !== 'SIN_MARCA' ? (
-                                                <div className="truncate" title={salida.marca}>
-                                                    {salida.marca}
-                                                </div>
-                                            ) : (
-                                                <span className="text-muted-foreground">—</span>
-                                            )}
+                                            <div className="truncate" title="BARFER">
+                                                BARFER
+                                            </div>
                                         </TableCell>
                                         <TableCell className="text-right font-mono w-[120px] text-sm font-semibold">
                                             {formatCurrency(salida.monto)}
