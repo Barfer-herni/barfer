@@ -2,9 +2,20 @@
 import { createOrder, updateOrder, deleteOrder, migrateClientType } from '@repo/data-services/src/services/barfer';
 import { revalidatePath } from 'next/cache';
 import { updateOrdersStatusBulk } from '@repo/data-services/src/services/barfer/updateOrder';
+import { validateAndNormalizePhone } from './helpers';
 
 export async function updateOrderAction(id: string, data: any) {
     try {
+        // Validar y normalizar el número de teléfono si está presente
+        if (data.address?.phone) {
+            const normalizedPhone = validateAndNormalizePhone(data.address.phone);
+            if (normalizedPhone) {
+                data.address.phone = normalizedPhone;
+            } else {
+                return { success: false, error: 'El número de teléfono no es válido. Use el formato: La Plata (221 XXX-XXXX) o CABA/BA (11-XXXX-XXXX / 15-XXXX-XXXX)' };
+            }
+        }
+
         // Guardar backup antes de actualizar
         try {
             const { saveOrderBackup } = await import('@repo/data-services/src/services/barfer/orderBackupService');
@@ -70,6 +81,16 @@ export async function deleteOrderAction(id: string) {
 
 export async function createOrderAction(data: any) {
     try {
+        // Validar y normalizar el número de teléfono si está presente
+        if (data.address?.phone) {
+            const normalizedPhone = validateAndNormalizePhone(data.address.phone);
+            if (normalizedPhone) {
+                data.address.phone = normalizedPhone;
+            } else {
+                return { success: false, error: 'El número de teléfono no es válido. Use el formato: La Plata (221 XXX-XXXX) o CABA/BA (11-XXXX-XXXX / 15-XXXX-XXXX)' };
+            }
+        }
+
         const result = await createOrder(data);
         if (!result.success) {
             return { success: false, error: result.error };

@@ -36,7 +36,8 @@ import {
     extractWeightFromProductName,
     extractBaseProductName,
     processSingleItem,
-    normalizeScheduleTime
+    normalizeScheduleTime,
+    formatPhoneNumber
 } from '../helpers';
 import type { DataTableProps } from '../types';
 
@@ -751,11 +752,14 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <Input
-                    placeholder="Teléfono"
+                    placeholder="Teléfono (ej: 221 123-4567 o 11-1234-5678)"
                     value={editValues.address?.phone || ''}
                     onChange={e => onEditValueChange('address', { ...editValues.address, phone: e.target.value })}
                     className="w-full p-1 text-xs"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                    Formato: La Plata (221 XXX-XXXX) o CABA/BA (11-XXXX-XXXX / 15-XXXX-XXXX)
+                </p>
             </TableCell>
         );
     }

@@ -5,7 +5,7 @@ import type { Order } from '@repo/data-services/src/types/barfer';
 import { Badge } from '@repo/design-system/components/ui/badge';
 import { Input } from '@repo/design-system/components/ui/input';
 import { STATUS_TRANSLATIONS, PAYMENT_METHOD_TRANSLATIONS } from '../constants';
-import { createLocalDate, normalizeScheduleTime } from '../helpers';
+import { createLocalDate, normalizeScheduleTime, formatPhoneNumber } from '../helpers';
 
 export const columns: ColumnDef<Order>[] = [
     {
@@ -150,7 +150,8 @@ export const columns: ColumnDef<Order>[] = [
         header: 'Teléfono',
         cell: ({ row }: CellContext<Order, unknown>) => {
             const address = row.original.address as Order['address'];
-            return <div className="min-w-[10px] text-sm">{address ? address.phone : 'N/A'}</div>;
+            const formattedPhone = formatPhoneNumber(address?.phone || '');
+            return <div className="min-w-[10px] text-sm">{formattedPhone}</div>;
         }
     },
     {

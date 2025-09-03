@@ -2,7 +2,7 @@
 
 import { getAllOrders } from '@repo/data-services/src/services/barfer/getAllOrders';
 import * as XLSX from 'xlsx';
-import { mapDBProductToSelectOption, normalizeScheduleTime } from './helpers';
+import { mapDBProductToSelectOption, normalizeScheduleTime, formatPhoneNumber } from './helpers';
 
 interface ExportParams {
     search?: string;
@@ -139,7 +139,7 @@ export async function exportOrdersAction({
             }).join('\r\n'),
             'Total': order.total,
             'Medio de Pago': order.paymentMethod || '',
-            'Telefono': order.address?.phone || '',
+            'Telefono': formatPhoneNumber(order.address?.phone || ''),
             'Email': order.user?.email || '',
         }));
 

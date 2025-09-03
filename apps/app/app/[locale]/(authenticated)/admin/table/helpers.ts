@@ -849,4 +849,126 @@ export const normalizeScheduleTime = (schedule: string): string => {
     }
 
     return normalized;
+};
+
+/**
+ * Formatea un número de teléfono argentino según los estándares locales
+ * 
+ * Reglas de formateo:
+ * - La Plata: 221 XXX-XXXX (7 dígitos después del 221)
+ * - CABA y resto de Buenos Aires: 11-XXXX-XXXX o 15-XXXX-XXXX (8 dígitos después del 11 o 15)
+ * 
+ * Elimina prefijos como +54, +549, +54 9, 54, 0, 0221, (221), (+549)
+ * 
+ * @param phone - El número de teléfono en cualquier formato
+ * @returns El número formateado según los estándares argentinos
+ */
+export const formatPhoneNumber = (phone: string): string => {
+    if (!phone) return 'N/A';
+
+    // Convertir a string y limpiar espacios
+    let cleanPhone = phone.toString().trim();
+
+    // Eliminar todos los caracteres no numéricos excepto guiones
+    cleanPhone = cleanPhone.replace(/[^\d-]/g, '');
+
+    // Eliminar guiones para procesar el número
+    let digitsOnly = cleanPhone.replace(/-/g, '');
+
+    // Eliminar prefijos comunes de Argentina
+    const prefixesToRemove = [
+        '549', '54', '0', '0221', '221'
+    ];
+
+    // Buscar y eliminar prefijos al inicio
+    for (const prefix of prefixesToRemove) {
+        if (digitsOnly.startsWith(prefix)) {
+            digitsOnly = digitsOnly.substring(prefix.length);
+            break; // Solo eliminar el primer prefijo encontrado
+        }
+    }
+
+    // Si el número empieza con 9 después de eliminar prefijos, eliminarlo también
+    if (digitsOnly.startsWith('9')) {
+        digitsOnly = digitsOnly.substring(1);
+    }
+
+    // Validar que tengamos un número válido
+    if (digitsOnly.length < 7 || digitsOnly.length > 10) {
+        return phone; // Devolver el original si no es válido
+    }
+
+    // Formatear según las reglas argentinas
+    if (digitsOnly.startsWith('221')) {
+        // La Plata: 221 XXX-XXXX
+        if (digitsOnly.length === 10) {
+            return `${digitsOnly.substring(0, 3)} ${digitsOnly.substring(3, 6)}-${digitsOnly.substring(6)}`;
+        }
+    } else if (digitsOnly.startsWith('11') || digitsOnly.startsWith('15')) {
+        // CABA y resto de Buenos Aires: 11-XXXX-XXXX o 15-XXXX-XXXX
+        if (digitsOnly.length === 10) {
+            return `${digitsOnly.substring(0, 2)}-${digitsOnly.substring(2, 6)}-${digitsOnly.substring(6)}`;
+        }
+    }
+
+    // Si no coincide con ningún patrón conocido, devolver el número limpio
+    return digitsOnly;
+};
+
+/**
+ * Valida y normaliza un número de teléfono argentino antes de guardarlo
+ * 
+ * @param phone - El número de teléfono a validar y normalizar
+ * @returns El número normalizado o null si no es válido
+ */
+export const validateAndNormalizePhone = (phone: string): string | null => {
+    if (!phone) return null;
+
+    // Convertir a string y limpiar espacios
+    let cleanPhone = phone.toString().trim();
+
+    // Eliminar todos los caracteres no numéricos excepto guiones
+    cleanPhone = cleanPhone.replace(/[^\d-]/g, '');
+
+    // Eliminar guiones para procesar el número
+    let digitsOnly = cleanPhone.replace(/-/g, '');
+
+    // Eliminar prefijos comunes de Argentina
+    const prefixesToRemove = [
+        '549', '54', '0', '0221', '221'
+    ];
+
+    // Buscar y eliminar prefijos al inicio
+    for (const prefix of prefixesToRemove) {
+        if (digitsOnly.startsWith(prefix)) {
+            digitsOnly = digitsOnly.substring(prefix.length);
+            break; // Solo eliminar el primer prefijo encontrado
+        }
+    }
+
+    // Si el número empieza con 9 después de eliminar prefijos, eliminarlo también
+    if (digitsOnly.startsWith('9')) {
+        digitsOnly = digitsOnly.substring(1);
+    }
+
+    // Validar que tengamos un número válido
+    if (digitsOnly.length < 7 || digitsOnly.length > 10) {
+        return null;
+    }
+
+    // Validar patrones específicos argentinos
+    if (digitsOnly.startsWith('221')) {
+        // La Plata: debe tener 10 dígitos totales
+        if (digitsOnly.length === 10) {
+            return digitsOnly;
+        }
+    } else if (digitsOnly.startsWith('11') || digitsOnly.startsWith('15')) {
+        // CABA y resto de Buenos Aires: debe tener 10 dígitos totales
+        if (digitsOnly.length === 10) {
+            return digitsOnly;
+        }
+    }
+
+    // Si no coincide con ningún patrón conocido, devolver null
+    return null;
 }; 
