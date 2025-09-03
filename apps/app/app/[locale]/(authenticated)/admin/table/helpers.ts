@@ -877,7 +877,7 @@ export const formatPhoneNumber = (phone: string): string => {
 
     // Eliminar prefijos comunes de Argentina
     const prefixesToRemove = [
-        '549', '54', '0', '0221', '221'
+        '549', '54', '0', '0221'
     ];
 
     // Buscar y eliminar prefijos al inicio
@@ -898,17 +898,21 @@ export const formatPhoneNumber = (phone: string): string => {
         return phone; // Devolver el original si no es válido
     }
 
+    // Si el número tiene 7 dígitos, asumimos que es de La Plata y agregamos 221
+    if (digitsOnly.length === 7) {
+        digitsOnly = '221' + digitsOnly;
+    }
+
     // Formatear según las reglas argentinas
     if (digitsOnly.startsWith('221')) {
         // La Plata: 221 XXX-XXXX
-        if (digitsOnly.length === 10) {
-            return `${digitsOnly.substring(0, 3)} ${digitsOnly.substring(3, 6)}-${digitsOnly.substring(6)}`;
-        }
-    } else if (digitsOnly.startsWith('11') || digitsOnly.startsWith('15')) {
-        // CABA y resto de Buenos Aires: 11-XXXX-XXXX o 15-XXXX-XXXX
-        if (digitsOnly.length === 10) {
-            return `${digitsOnly.substring(0, 2)}-${digitsOnly.substring(2, 6)}-${digitsOnly.substring(6)}`;
-        }
+        return `221 ${digitsOnly.substring(3, 6)}-${digitsOnly.substring(6)}`;
+    } else if (digitsOnly.startsWith('11')) {
+        // CABA: 11-XXXX-XXXX
+        return `11 ${digitsOnly.substring(2, 6)}-${digitsOnly.substring(6)}`;
+    } else if (digitsOnly.startsWith('15')) {
+        // Buenos Aires: 15-XXXX-XXXX
+        return `15 ${digitsOnly.substring(2, 6)}-${digitsOnly.substring(6)}`;
     }
 
     // Si no coincide con ningún patrón conocido, devolver el número limpio
@@ -935,7 +939,7 @@ export const validateAndNormalizePhone = (phone: string): string | null => {
 
     // Eliminar prefijos comunes de Argentina
     const prefixesToRemove = [
-        '549', '54', '0', '0221', '221'
+        '549', '54', '0', '0221'
     ];
 
     // Buscar y eliminar prefijos al inicio
@@ -951,22 +955,29 @@ export const validateAndNormalizePhone = (phone: string): string | null => {
         digitsOnly = digitsOnly.substring(1);
     }
 
-    // Validar que tengamos un número válido
+    // Validar que tengamos un número válido (mínimo 7 dígitos, máximo 10)
     if (digitsOnly.length < 7 || digitsOnly.length > 10) {
         return null;
     }
 
-    // Validar patrones específicos argentinos
-    if (digitsOnly.startsWith('221')) {
-        // La Plata: debe tener 10 dígitos totales
-        if (digitsOnly.length === 10) {
-            return digitsOnly;
-        }
-    } else if (digitsOnly.startsWith('11') || digitsOnly.startsWith('15')) {
-        // CABA y resto de Buenos Aires: debe tener 10 dígitos totales
-        if (digitsOnly.length === 10) {
-            return digitsOnly;
-        }
+    // Si el número ya empieza con 221, 11 o 15, lo aceptamos directamente
+    if (digitsOnly.startsWith('221') || digitsOnly.startsWith('11') || digitsOnly.startsWith('15')) {
+        return digitsOnly;
+    }
+
+    // Si el número tiene 7 dígitos y estamos en La Plata, agregamos el 221
+    if (digitsOnly.length === 7) {
+        return '221' + digitsOnly;
+    }
+
+    // Si el número tiene 8 dígitos y no tiene prefijo, asumimos que es de CABA/BA y agregamos 11
+    if (digitsOnly.length === 8) {
+        return '11' + digitsOnly;
+    }
+
+    // Si llegamos aquí y tenemos 10 dígitos, lo aceptamos (ya sea con 221, 11 o 15)
+    if (digitsOnly.length === 10) {
+        return digitsOnly;
     }
 
     // Si no coincide con ningún patrón conocido, devolver null
