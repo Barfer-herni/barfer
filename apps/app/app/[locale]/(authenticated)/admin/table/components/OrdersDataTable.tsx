@@ -241,10 +241,28 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             return;
         }
 
+        // Procesar items para convertir fullName de vuelta al formato de la DB
+        const processedItems = validItems.map(item => {
+            // Si el item tiene fullName (opción del select), convertirlo al formato de la DB
+            if (item.fullName && item.fullName !== item.name) {
+                const dbFormat = mapSelectOptionToDBFormat(item.fullName);
+                return {
+                    ...item,
+                    id: dbFormat.name,
+                    name: dbFormat.name,
+                    options: [{
+                        ...item.options?.[0],
+                        name: dbFormat.option
+                    }]
+                };
+            }
+            return item;
+        });
+
         setIsCalculatingPrice(true);
         try {
             const result = await calculatePriceAction(
-                validItems,
+                processedItems,
                 editValues.orderType,
                 editValues.paymentMethod
             );
@@ -439,10 +457,28 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             return;
         }
 
+        // Procesar items para convertir fullName de vuelta al formato de la DB
+        const processedItems = validItems.map(item => {
+            // Si el item tiene fullName (opción del select), convertirlo al formato de la DB
+            if (item.fullName && item.fullName !== item.name) {
+                const dbFormat = mapSelectOptionToDBFormat(item.fullName);
+                return {
+                    ...item,
+                    id: dbFormat.name,
+                    name: dbFormat.name,
+                    options: [{
+                        ...item.options?.[0],
+                        name: dbFormat.option
+                    }]
+                };
+            }
+            return item;
+        });
+
         setIsCalculatingPrice(true);
         try {
             const result = await calculatePriceAction(
-                validItems,
+                processedItems,
                 createFormData.orderType,
                 createFormData.paymentMethod
             );

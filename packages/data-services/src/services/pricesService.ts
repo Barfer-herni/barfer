@@ -285,7 +285,7 @@ export async function getProductPrice(
         const weightUpper = weight?.toUpperCase() || '';
         const isOnlyMayoristaProduct = productUpper.includes('GARRAS') ||
             productUpper.includes('CALDO') ||
-            (productUpper.includes('CORNALITOS') && weightUpper === '200GRS') ||
+            (productUpper.includes('CORNALITOS') && (weightUpper === '200GRS' || weightUpper === '30GRS')) ||
             productUpper.includes('HUESOS RECREATIVO') ||
             productUpper.includes('HUESO RECREATIVO');
 
@@ -357,20 +357,18 @@ export async function getProductPrice(
         } else if (searchProduct.includes('CALDO')) {
             searchProduct = 'CALDO DE HUESOS';
         } else if (searchProduct.includes('CORNALITOS') && weight === '200GRS') {
-            // Solo tomar precio de CORNALITOS cuando es 200GRS
+            // CORNALITOS 200GRS usa el peso en la búsqueda
             searchProduct = 'CORNALITOS';
         } else if (searchProduct.includes('CORNALITOS') && weight === '30GRS') {
-            // Para 30GRS no hay precio, devolver error
-            return {
-                success: false,
-                error: `CORNALITOS 30GRS no tiene precio configurado (solo disponible 200GRS)`
-            };
+            // CORNALITOS 30GRS también existe en la DB pero con precio 0
+            searchProduct = 'CORNALITOS';
         }
 
         // Para productos BIG DOG y algunos productos OTROS, el peso puede ser null
         // HUESOS CARNOSOS 5KG tiene el peso en el nombre, por lo que se guarda con weight: null
+        // CORNALITOS usa el peso real (200GRS) en la búsqueda, no null
         const searchWeight = (searchProduct.startsWith('BIG DOG') ||
-            ['GARRAS', 'CALDO DE HUESOS', 'CORNALITOS', 'HUESOS RECREATIVOS', 'COMPLEMENTOS', 'HUESOS CARNOSOS 5KG'].includes(searchProduct))
+            ['GARRAS', 'CALDO DE HUESOS', 'HUESOS RECREATIVOS', 'COMPLEMENTOS', 'HUESOS CARNOSOS 5KG'].includes(searchProduct))
             ? null : weight;
 
         // Debug: Log del mapeo
@@ -595,7 +593,8 @@ export async function initializeDefaultPrices() {
             { section: 'OTROS', product: 'COMPLEMENTOS', priceType: 'EFECTIVO', price: 0 },
             { section: 'OTROS', product: 'COMPLEMENTOS', priceType: 'TRANSFERENCIA', price: 0 },
             { section: 'OTROS', product: 'COMPLEMENTOS', priceType: 'MAYORISTA', price: 0 },
-            { section: 'OTROS', product: 'CORNALITOS', priceType: 'MAYORISTA', price: 0 },
+            { section: 'OTROS', product: 'CORNALITOS', weight: '200GRS', priceType: 'MAYORISTA', price: 0 },
+            { section: 'OTROS', product: 'CORNALITOS', weight: '30GRS', priceType: 'MAYORISTA', price: 0 },
             { section: 'OTROS', product: 'GARRAS', priceType: 'MAYORISTA', price: 0 },
             { section: 'OTROS', product: 'CALDO DE HUESOS', priceType: 'MAYORISTA', price: 0 },
             { section: 'OTROS', product: 'HUESOS RECREATIVOS', priceType: 'MAYORISTA', price: 0 },

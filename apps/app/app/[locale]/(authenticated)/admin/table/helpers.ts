@@ -698,6 +698,11 @@ export const mapSelectOptionToDBFormat = (selectOption: string): { name: string,
                 }
             }
         }
+
+        // Mapear Box de Complementos
+        if (normalizedSelect.includes('complemento')) {
+            return { name: 'COMPLEMENTOS', option: '1 U' };
+        }
     }
 
     // Mapear Big Dog
