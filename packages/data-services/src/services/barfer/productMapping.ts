@@ -15,6 +15,16 @@ export interface ProductMapping {
 export function mapSelectOptionToDBFormat(selectOption: string): ProductMapping {
     const normalizedSelect = selectOption.toLowerCase().trim();
 
+    // Debug específico para CORNALITOS
+    if (normalizedSelect.includes('cornalitos')) {
+        console.log(`🌽 DEBUG MAPEO CORNALITOS (productMapping):`, {
+            original: selectOption,
+            normalized: normalizedSelect,
+            contains30grs: normalizedSelect.includes('30grs'),
+            contains200grs: normalizedSelect.includes('200grs')
+        });
+    }
+
     // Mapear Barfer Box
     if (normalizedSelect.includes('barfer box')) {
         if (normalizedSelect.includes('perro')) {
@@ -127,12 +137,15 @@ export function mapSelectOptionToDBFormat(selectOption: string): ProductMapping 
     }
 
     if (normalizedSelect.includes('cornalitos')) {
-        if (normalizedSelect.includes('30grs')) {
+        if (normalizedSelect.includes('30grs') || normalizedSelect.includes('30 grs') || normalizedSelect.includes('30gr')) {
             return { name: 'CORNALITOS', option: '30GRS' };
         }
-        if (normalizedSelect.includes('200grs')) {
+        if (normalizedSelect.includes('200grs') || normalizedSelect.includes('200 grs') || normalizedSelect.includes('200gr')) {
             return { name: 'CORNALITOS', option: '200GRS' };
         }
+        // Si no se encuentra peso específico, devolver sin opción para debug
+        console.warn(`⚠️ CORNALITOS sin peso específico detectado: "${selectOption}"`);
+        return { name: 'CORNALITOS', option: '' };
     }
 
     // Mapear complementos

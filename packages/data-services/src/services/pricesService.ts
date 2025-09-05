@@ -310,14 +310,14 @@ export async function getProductPrice(
 
         if (productUpper.includes('GATO')) {
             section = 'GATO';
-        } else if (productUpper.includes('PERRO') || productUpper.includes('BOX') || productUpper.includes('BIG DOG')) {
-            section = 'PERRO';
         } else if (productUpper.includes('HUESOS') || productUpper.includes('HUESO') ||
             productUpper.includes('COMPLEMENTOS') || productUpper.includes('COMPLEMENTO') ||
             productUpper.includes('GARRAS') || productUpper.includes('CALDO') ||
             productUpper.includes('CORNALITOS') || productUpper.includes('RECREATIVO') ||
             productUpper.includes('BOX DE COMPLEMENTOS')) {
             section = 'OTROS';
+        } else if (productUpper.includes('PERRO') || productUpper.includes('BOX') || productUpper.includes('BIG DOG')) {
+            section = 'PERRO';
         } else {
             section = 'OTROS';
         }
@@ -334,7 +334,10 @@ export async function getProductPrice(
             searchProduct = 'CERDO';
         } else if (searchProduct.includes('BOX') && searchProduct.includes('CORDERO')) {
             searchProduct = 'CORDERO';
-        } else if (searchProduct.includes('BOX') && searchProduct.includes('COMPLEMENTO')) {
+        } else if (searchProduct.includes('BOX') && (searchProduct.includes('COMPLEMENTO') || searchProduct.includes('COMPLEMENTOS'))) {
+            searchProduct = 'BOX DE COMPLEMENTOS';
+        } else if (searchProduct === 'BOX DE COMPLEMENTOS') {
+            // Ya está en el formato correcto
             searchProduct = 'BOX DE COMPLEMENTOS';
         } else if (searchProduct.includes('BIG DOG') && searchProduct.includes('VACA')) {
             searchProduct = 'BIG DOG VACA';
@@ -357,11 +360,8 @@ export async function getProductPrice(
             searchProduct = 'GARRAS';
         } else if (searchProduct.includes('CALDO')) {
             searchProduct = 'CALDO DE HUESOS';
-        } else if (searchProduct.includes('CORNALITOS') && weight === '200GRS') {
-            // CORNALITOS 200GRS usa el peso en la búsqueda
-            searchProduct = 'CORNALITOS';
-        } else if (searchProduct.includes('CORNALITOS') && weight === '30GRS') {
-            // CORNALITOS 30GRS también existe en la DB pero con precio 0
+        } else if (searchProduct.includes('CORNALITOS')) {
+            // CORNALITOS siempre mapea a 'CORNALITOS', el peso se maneja en searchWeight
             searchProduct = 'CORNALITOS';
         }
 
@@ -385,6 +385,47 @@ export async function getProductPrice(
             isOnlyMayoristaProduct,
             forcedMayorista: isOnlyMayoristaProduct && orderType !== 'mayorista'
         });
+
+        // Debug específico para CORNALITOS
+        if (searchProduct === 'CORNALITOS') {
+            console.log(`🌽 DEBUG CORNALITOS ANTES DE BUSCAR:`, {
+                originalProduct: product,
+                originalWeight: weight,
+                finalSearchWeight: searchWeight,
+                section,
+                priceType,
+                shouldUseWeight: !['GARRAS', 'CALDO DE HUESOS', 'HUESOS RECREATIVOS', 'BOX DE COMPLEMENTOS', 'HUESOS CARNOSOS 5KG'].includes(searchProduct),
+                queryWhere: {
+                    section,
+                    product: searchProduct,
+                    weight: searchWeight,
+                    priceType,
+                    isActive: true
+                }
+            });
+
+            // Buscar todos los registros de CORNALITOS para debug
+            const allCornalitosRecords = await database.price.findMany({
+                where: {
+                    section,
+                    product: searchProduct,
+                    isActive: true
+                },
+                orderBy: [
+                    { weight: 'asc' },
+                    { createdAt: 'desc' }
+                ]
+            });
+
+            console.log(`🌽 TODOS LOS REGISTROS DE CORNALITOS EN DB:`, allCornalitosRecords.map(r => ({
+                id: r.id,
+                product: r.product,
+                weight: r.weight,
+                priceType: r.priceType,
+                price: r.price,
+                section: r.section
+            })));
+        }
 
         // Debug adicional para HUESOS CARNOSOS
         if (product.toUpperCase().includes('HUESO') || product.toUpperCase().includes('CARNOSO')) {
@@ -421,10 +462,27 @@ export async function getProductPrice(
                 weight: searchWeight,
                 priceType,
                 isActive: true
-            }
+            },
+            orderBy: [
+                { weight: 'asc' }, // Ordenar por peso para consistencia
+                { createdAt: 'desc' } // En caso de empate, el más reciente
+            ]
         });
 
         console.log(`💰 Precio encontrado:`, priceRecord ? `$${priceRecord.price}` : 'NO ENCONTRADO');
+
+        // Debug específico para CORNALITOS después de la búsqueda
+        if (searchProduct === 'CORNALITOS' && priceRecord) {
+            console.log(`🌽 REGISTRO ENCONTRADO PARA CORNALITOS:`, {
+                id: priceRecord.id,
+                product: priceRecord.product,
+                weight: priceRecord.weight,
+                priceType: priceRecord.priceType,
+                price: priceRecord.price,
+                section: priceRecord.section,
+                expectedWeight: searchWeight
+            });
+        }
 
         if (!priceRecord) {
             // Debug: Buscar productos similares para ver qué hay en la DB
@@ -488,6 +546,7 @@ export async function calculateOrderTotal(
             let weight = item.options[0]?.name || null;
             let productName = item.name;
             const quantity = item.options[0]?.quantity || 1;
+
 
             // Manejo especial para BIG DOG
             if (productName.includes('BIG DOG (15kg)') && weight && ['VACA', 'POLLO', 'CORDERO'].includes(weight.toUpperCase())) {
