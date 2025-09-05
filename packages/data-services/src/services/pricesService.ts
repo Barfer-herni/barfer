@@ -282,10 +282,12 @@ export async function getProductPrice(
     try {
         // Determinar la sección y producto primero para verificar si es solo mayorista
         const productUpper = product.toUpperCase();
+        const weightUpper = weight?.toUpperCase() || '';
         const isOnlyMayoristaProduct = productUpper.includes('GARRAS') ||
             productUpper.includes('CALDO') ||
-            productUpper.includes('CORNALITOS') ||
-            productUpper.includes('HUESOS RECREATIVO');
+            (productUpper.includes('CORNALITOS') && weightUpper === '200GRS') ||
+            productUpper.includes('HUESOS RECREATIVO') ||
+            productUpper.includes('HUESO RECREATIVO');
 
         // Mapear orderType y paymentMethod a PriceType
         let priceType: PriceType;
@@ -310,9 +312,10 @@ export async function getProductPrice(
             section = 'GATO';
         } else if (productUpper.includes('PERRO') || productUpper.includes('BOX') || productUpper.includes('BIG DOG')) {
             section = 'PERRO';
-        } else if (productUpper.includes('HUESOS') || productUpper.includes('COMPLEMENTOS') ||
+        } else if (productUpper.includes('HUESOS') || productUpper.includes('HUESO') ||
+            productUpper.includes('COMPLEMENTOS') || productUpper.includes('COMPLEMENTO') ||
             productUpper.includes('GARRAS') || productUpper.includes('CALDO') ||
-            productUpper.includes('CORNALITOS')) {
+            productUpper.includes('CORNALITOS') || productUpper.includes('RECREATIVO')) {
             section = 'OTROS';
         } else {
             section = 'OTROS';
@@ -330,31 +333,48 @@ export async function getProductPrice(
             searchProduct = 'CERDO';
         } else if (searchProduct.includes('BOX') && searchProduct.includes('CORDERO')) {
             searchProduct = 'CORDERO';
+        } else if (searchProduct.includes('BOX') && searchProduct.includes('COMPLEMENTO')) {
+            searchProduct = 'COMPLEMENTOS';
         } else if (searchProduct.includes('BIG DOG') && searchProduct.includes('VACA')) {
             searchProduct = 'BIG DOG VACA';
         } else if (searchProduct.includes('BIG DOG') && searchProduct.includes('POLLO')) {
             searchProduct = 'BIG DOG POLLO';
-        } else if (searchProduct.includes('HUESOS CARNOSOS')) {
+        } else if (searchProduct === 'HUESOS CARNOSOS 5KG') {
+            // Ya está en el formato correcto, no cambiar nada
             searchProduct = 'HUESOS CARNOSOS 5KG';
-        } else if (searchProduct.includes('HUESOS') && searchProduct.includes('RECREATIVO')) {
+        } else if (searchProduct.includes('HUESOS CARNOSOS') ||
+            searchProduct.includes('HUESO CARNOSO') ||
+            searchProduct.includes('HUESOS CARNOSO') ||
+            searchProduct.includes('HUESO CARNOSOS') ||
+            (searchProduct.includes('HUESO') && searchProduct.includes('CARNOSO'))) {
+            searchProduct = 'HUESOS CARNOSOS 5KG';
+        } else if (searchProduct.includes('HUESO RECREATIVO') || searchProduct.includes('HUESOS RECREATIVO')) {
             searchProduct = 'HUESOS RECREATIVOS';
-        } else if (searchProduct.includes('COMPLEMENTOS')) {
+        } else if (searchProduct.includes('COMPLEMENTOS') && !searchProduct.includes('BOX')) {
             searchProduct = 'COMPLEMENTOS';
         } else if (searchProduct.includes('GARRAS')) {
             searchProduct = 'GARRAS';
         } else if (searchProduct.includes('CALDO')) {
             searchProduct = 'CALDO DE HUESOS';
-        } else if (searchProduct.includes('CORNALITOS')) {
+        } else if (searchProduct.includes('CORNALITOS') && weight === '200GRS') {
+            // Solo tomar precio de CORNALITOS cuando es 200GRS
             searchProduct = 'CORNALITOS';
+        } else if (searchProduct.includes('CORNALITOS') && weight === '30GRS') {
+            // Para 30GRS no hay precio, devolver error
+            return {
+                success: false,
+                error: `CORNALITOS 30GRS no tiene precio configurado (solo disponible 200GRS)`
+            };
         }
 
-        // Para productos BIG DOG y productos OTROS, el peso puede ser null
+        // Para productos BIG DOG y algunos productos OTROS, el peso puede ser null
+        // HUESOS CARNOSOS 5KG tiene el peso en el nombre, por lo que se guarda con weight: null
         const searchWeight = (searchProduct.startsWith('BIG DOG') ||
-            ['GARRAS', 'CALDO DE HUESOS', 'CORNALITOS', 'HUESOS RECREATIVOS', 'COMPLEMENTOS'].includes(searchProduct))
+            ['GARRAS', 'CALDO DE HUESOS', 'CORNALITOS', 'HUESOS RECREATIVOS', 'COMPLEMENTOS', 'HUESOS CARNOSOS 5KG'].includes(searchProduct))
             ? null : weight;
 
         // Debug: Log del mapeo
-        console.log(`🔍 Mapeo de producto:`, {
+        console.log(`🔍 MAPEO DE PRODUCTO:`, {
             original: product,
             mapped: searchProduct,
             section,
@@ -365,6 +385,33 @@ export async function getProductPrice(
             paymentMethod,
             isOnlyMayoristaProduct,
             forcedMayorista: isOnlyMayoristaProduct && orderType !== 'mayorista'
+        });
+
+        // Debug adicional para HUESOS CARNOSOS
+        if (product.toUpperCase().includes('HUESO') || product.toUpperCase().includes('CARNOSO')) {
+            console.log(`🔍 DEBUG HUESO CARNOSO:`, {
+                productUpper: product.toUpperCase(),
+                searchProductAfterMapping: searchProduct,
+                includesHuesoCarnoso: product.toUpperCase().includes('HUESO CARNOSO'),
+                includesHuesosCarnosos: product.toUpperCase().includes('HUESOS CARNOSOS'),
+                includesHuesoAndCarnoso: product.toUpperCase().includes('HUESO') && product.toUpperCase().includes('CARNOSO'),
+                mappingConditions: {
+                    condition1: searchProduct.includes('HUESOS CARNOSOS'),
+                    condition2: searchProduct.includes('HUESO CARNOSO'),
+                    condition3: searchProduct.includes('HUESOS CARNOSO'),
+                    condition4: searchProduct.includes('HUESO CARNOSOS'),
+                    condition5: (searchProduct.includes('HUESO') && searchProduct.includes('CARNOSO'))
+                }
+            });
+        }
+
+        // Debug: Parámetros de búsqueda en DB
+        console.log(`🔍 BÚSQUEDA EN DB:`, {
+            section,
+            product: searchProduct,
+            weight: searchWeight,
+            priceType,
+            isActive: true
         });
 
         // Buscar el precio en la base de datos
@@ -381,6 +428,26 @@ export async function getProductPrice(
         console.log(`💰 Precio encontrado:`, priceRecord ? `$${priceRecord.price}` : 'NO ENCONTRADO');
 
         if (!priceRecord) {
+            // Debug: Buscar productos similares para ver qué hay en la DB
+            const similarProducts = await database.price.findMany({
+                where: {
+                    section,
+                    isActive: true,
+                    OR: [
+                        { product: { contains: 'HUESO', mode: 'insensitive' } },
+                        { product: { contains: 'CARNOSO', mode: 'insensitive' } }
+                    ]
+                },
+                take: 10
+            });
+
+            console.log(`🔍 PRODUCTOS SIMILARES ENCONTRADOS EN DB:`, similarProducts.map(p => ({
+                product: p.product,
+                weight: p.weight,
+                priceType: p.priceType,
+                price: p.price
+            })));
+
             return {
                 success: false,
                 error: `No se encontró precio para ${product} (${weight}) - ${priceType} | Mapeado como: ${searchProduct} en sección ${section}`
