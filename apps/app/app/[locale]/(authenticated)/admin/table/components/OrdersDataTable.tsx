@@ -147,8 +147,12 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     // Función para manejar cambios en el filtro de búsqueda
     const handleSearchChange = useCallback((value: string) => {
         setSearchInput(value);
-        // Ya no usamos debounce, solo actualizamos el estado local
-    }, []);
+
+        // Si el campo está vacío, ejecutar la búsqueda automáticamente para mostrar todos los resultados
+        if (value.trim() === '') {
+            navigateToSearch('');
+        }
+    }, [navigateToSearch]);
 
     // Función para manejar la búsqueda cuando se presiona Enter
     const handleSearchSubmit = useCallback((value: string) => {
