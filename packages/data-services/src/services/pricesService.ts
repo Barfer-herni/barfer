@@ -315,7 +315,8 @@ export async function getProductPrice(
         } else if (productUpper.includes('HUESOS') || productUpper.includes('HUESO') ||
             productUpper.includes('COMPLEMENTOS') || productUpper.includes('COMPLEMENTO') ||
             productUpper.includes('GARRAS') || productUpper.includes('CALDO') ||
-            productUpper.includes('CORNALITOS') || productUpper.includes('RECREATIVO')) {
+            productUpper.includes('CORNALITOS') || productUpper.includes('RECREATIVO') ||
+            productUpper.includes('BOX DE COMPLEMENTOS')) {
             section = 'OTROS';
         } else {
             section = 'OTROS';
@@ -334,7 +335,7 @@ export async function getProductPrice(
         } else if (searchProduct.includes('BOX') && searchProduct.includes('CORDERO')) {
             searchProduct = 'CORDERO';
         } else if (searchProduct.includes('BOX') && searchProduct.includes('COMPLEMENTO')) {
-            searchProduct = 'COMPLEMENTOS';
+            searchProduct = 'BOX DE COMPLEMENTOS';
         } else if (searchProduct.includes('BIG DOG') && searchProduct.includes('VACA')) {
             searchProduct = 'BIG DOG VACA';
         } else if (searchProduct.includes('BIG DOG') && searchProduct.includes('POLLO')) {
@@ -351,7 +352,7 @@ export async function getProductPrice(
         } else if (searchProduct.includes('HUESO RECREATIVO') || searchProduct.includes('HUESOS RECREATIVO')) {
             searchProduct = 'HUESOS RECREATIVOS';
         } else if (searchProduct.includes('COMPLEMENTOS') && !searchProduct.includes('BOX')) {
-            searchProduct = 'COMPLEMENTOS';
+            searchProduct = 'BOX DE COMPLEMENTOS';
         } else if (searchProduct.includes('GARRAS')) {
             searchProduct = 'GARRAS';
         } else if (searchProduct.includes('CALDO')) {
@@ -368,7 +369,7 @@ export async function getProductPrice(
         // HUESOS CARNOSOS 5KG tiene el peso en el nombre, por lo que se guarda con weight: null
         // CORNALITOS usa el peso real (200GRS) en la búsqueda, no null
         const searchWeight = (searchProduct.startsWith('BIG DOG') ||
-            ['GARRAS', 'CALDO DE HUESOS', 'HUESOS RECREATIVOS', 'COMPLEMENTOS', 'HUESOS CARNOSOS 5KG'].includes(searchProduct))
+            ['GARRAS', 'CALDO DE HUESOS', 'HUESOS RECREATIVOS', 'BOX DE COMPLEMENTOS', 'HUESOS CARNOSOS 5KG'].includes(searchProduct))
             ? null : weight;
 
         // Debug: Log del mapeo
@@ -590,9 +591,9 @@ export async function initializeDefaultPrices() {
             { section: 'OTROS', product: 'HUESOS CARNOSOS 5KG', priceType: 'EFECTIVO', price: 0 },
             { section: 'OTROS', product: 'HUESOS CARNOSOS 5KG', priceType: 'TRANSFERENCIA', price: 0 },
             { section: 'OTROS', product: 'HUESOS CARNOSOS 5KG', priceType: 'MAYORISTA', price: 0 },
-            { section: 'OTROS', product: 'COMPLEMENTOS', priceType: 'EFECTIVO', price: 0 },
-            { section: 'OTROS', product: 'COMPLEMENTOS', priceType: 'TRANSFERENCIA', price: 0 },
-            { section: 'OTROS', product: 'COMPLEMENTOS', priceType: 'MAYORISTA', price: 0 },
+            { section: 'OTROS', product: 'BOX DE COMPLEMENTOS', priceType: 'EFECTIVO', price: 0 },
+            { section: 'OTROS', product: 'BOX DE COMPLEMENTOS', priceType: 'TRANSFERENCIA', price: 0 },
+            { section: 'OTROS', product: 'BOX DE COMPLEMENTOS', priceType: 'MAYORISTA', price: 0 },
             { section: 'OTROS', product: 'CORNALITOS', weight: '200GRS', priceType: 'MAYORISTA', price: 0 },
             { section: 'OTROS', product: 'CORNALITOS', weight: '30GRS', priceType: 'MAYORISTA', price: 0 },
             { section: 'OTROS', product: 'GARRAS', priceType: 'MAYORISTA', price: 0 },

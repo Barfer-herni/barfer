@@ -91,7 +91,7 @@ export function mapSelectOptionToDBFormat(selectOption: string): ProductMapping 
 
     // Mapear Complementos
     if (normalizedSelect.includes('complementos')) {
-        return { name: 'COMPLEMENTOS', option: '1 U' };
+        return { name: 'BOX DE COMPLEMENTOS', option: '1 U' };
     }
 
     // Mapear productos raw
