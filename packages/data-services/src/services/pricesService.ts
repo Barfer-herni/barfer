@@ -271,6 +271,148 @@ export async function deletePrice(id: string) {
 }
 
 /**
+ * Obtener precio específico para un producto basado en tipo de cliente y método de pago
+ */
+export async function getProductPrice(
+    product: string,
+    weight: string | null,
+    orderType: 'minorista' | 'mayorista',
+    paymentMethod: string
+): Promise<{ success: boolean; price?: number; error?: string }> {
+    try {
+        // Mapear orderType y paymentMethod a PriceType
+        let priceType: PriceType;
+
+        if (orderType === 'mayorista') {
+            priceType = 'MAYORISTA';
+        } else {
+            // Para minorista, depende del método de pago
+            if (paymentMethod === 'cash') {
+                priceType = 'EFECTIVO';
+            } else {
+                // transferencia, mercado pago, etc.
+                priceType = 'TRANSFERENCIA';
+            }
+        }
+
+        // Determinar la sección basada en el producto
+        let section: PriceSection;
+        const productUpper = product.toUpperCase();
+
+        if (productUpper.includes('GATO')) {
+            section = 'GATO';
+        } else if (productUpper.includes('PERRO') || productUpper.includes('BOX') || productUpper.includes('BIG DOG')) {
+            section = 'PERRO';
+        } else {
+            section = 'OTROS';
+        }
+
+        // Normalizar el nombre del producto para la búsqueda
+        let searchProduct = product.toUpperCase();
+
+        // Mapear nombres de productos comunes
+        if (searchProduct.includes('BOX') && searchProduct.includes('POLLO')) {
+            searchProduct = 'POLLO';
+        } else if (searchProduct.includes('BOX') && searchProduct.includes('VACA')) {
+            searchProduct = 'VACA';
+        } else if (searchProduct.includes('BOX') && searchProduct.includes('CERDO')) {
+            searchProduct = 'CERDO';
+        } else if (searchProduct.includes('BOX') && searchProduct.includes('CORDERO')) {
+            searchProduct = 'CORDERO';
+        } else if (searchProduct.includes('BIG DOG')) {
+            searchProduct = 'BIG DOG';
+        } else if (searchProduct.includes('HUESOS')) {
+            searchProduct = 'HUESOS CARNOSOS';
+        }
+
+        // Buscar el precio en la base de datos
+        const priceRecord = await database.price.findFirst({
+            where: {
+                section,
+                product: searchProduct,
+                weight: weight,
+                priceType,
+                isActive: true
+            }
+        });
+
+        if (!priceRecord) {
+            return {
+                success: false,
+                error: `No se encontró precio para ${product} (${weight}) - ${priceType}`
+            };
+        }
+
+        return {
+            success: true,
+            price: priceRecord.price
+        };
+    } catch (error) {
+        console.error('Error al obtener precio del producto:', error);
+        return {
+            success: false,
+            error: 'Error al obtener el precio del producto'
+        };
+    }
+}
+
+/**
+ * Calcular el total de una orden basado en sus items, tipo de cliente y método de pago
+ */
+export async function calculateOrderTotal(
+    items: Array<{
+        name: string;
+        options: Array<{
+            name: string;
+            quantity: number;
+        }>;
+    }>,
+    orderType: 'minorista' | 'mayorista',
+    paymentMethod: string
+): Promise<{ success: boolean; total?: number; itemPrices?: Array<{ name: string; weight: string; unitPrice: number; quantity: number; subtotal: number }>; error?: string }> {
+    try {
+        let total = 0;
+        const itemPrices = [];
+
+        for (const item of items) {
+            const weight = item.options[0]?.name || null;
+            const quantity = item.options[0]?.quantity || 1;
+
+            const priceResult = await getProductPrice(item.name, weight, orderType, paymentMethod);
+
+            if (!priceResult.success || !priceResult.price) {
+                console.warn(`No se pudo obtener precio para ${item.name} (${weight}):`, priceResult.error);
+                // Continuar con los otros items, no fallar toda la orden
+                continue;
+            }
+
+            const subtotal = priceResult.price * quantity;
+            total += subtotal;
+
+            itemPrices.push({
+                name: item.name,
+                weight: weight || 'N/A',
+                unitPrice: priceResult.price,
+                quantity,
+                subtotal
+            });
+        }
+
+        return {
+            success: true,
+            total,
+            itemPrices
+        };
+    } catch (error) {
+        console.error('Error al calcular total de la orden:', error);
+        return {
+            success: false,
+            error: 'Error al calcular el total de la orden'
+        };
+    }
+}
+
+/**
  * Inicializar precios por defecto según la estructura definida
  */
 export async function initializeDefaultPrices() {

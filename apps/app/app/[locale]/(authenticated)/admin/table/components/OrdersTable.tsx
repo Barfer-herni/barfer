@@ -58,6 +58,7 @@ interface OrdersTableProps<TData extends { _id: string }, TValue> extends DataTa
     onProductSearchChange: (value: string) => void;
     onPaginationChange: (pageIndex: number, pageSize: number) => void;
     onSortingChange: (sorting: any) => void;
+    isCalculatingPrice?: boolean;
 }
 
 export function OrdersTable<TData extends { _id: string }, TValue>({
@@ -83,6 +84,7 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
     onProductSearchChange,
     onPaginationChange,
     onSortingChange,
+    isCalculatingPrice = false,
 }: OrdersTableProps<TData, TValue>) {
     const table = useReactTable({
         data,
@@ -203,7 +205,7 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                 {row.getVisibleCells().map((cell, index) => {
                                     // Edición inline para campos editables
                                     if (editingRowId === row.id) {
-                                        return renderEditableCell(cell, index, editValues, onEditValueChange, productSearchFilter, onProductSearchChange);
+                                        return renderEditableCell(cell, index, editValues, onEditValueChange, productSearchFilter, onProductSearchChange, isCalculatingPrice);
                                     }
 
                                     // Aplicar color de fondo para celdas específicas
@@ -400,7 +402,7 @@ function findMatchingProduct(itemName: string, availableProducts: string[], item
     return itemName;
 }
 
-function renderEditableCell(cell: any, index: number, editValues: any, onEditValueChange: (field: string, value: any) => void, productSearchFilter: string, onProductSearchChange: (value: string) => void) {
+function renderEditableCell(cell: any, index: number, editValues: any, onEditValueChange: (field: string, value: any) => void, productSearchFilter: string, onProductSearchChange: (value: string) => void, isCalculatingPrice?: boolean) {
     if (cell.column.id === 'notesOwn') {
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
@@ -794,12 +796,26 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
     const fieldKey = fieldMapping[cell.column.id] || cell.column.id;
 
     if (fieldKey in editValues) {
+        // Renderizado especial para el campo total con indicador de cálculo automático
+        if (cell.column.id === 'total') {
+            return (
+                <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
+                    <Input
+                        type="number"
+                        value={editValues[fieldKey] === undefined ? '' : editValues[fieldKey]}
+                        placeholder={isCalculatingPrice ? "Calculando..." : "Auto"}
+                        onChange={e => onEditValueChange(fieldKey, e.target.value || undefined)}
+                        className={`w-full text-xs text-center ${isCalculatingPrice ? 'bg-blue-50' : ''}`}
+                    />
+                </TableCell>
+            );
+        }
+
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <Input
-                    type={cell.column.id === 'total' ? 'number' : 'text'}
+                    type="text"
                     value={editValues[fieldKey] === undefined ? '' : editValues[fieldKey]}
-                    placeholder={cell.column.id === 'total' ? '0' : ''}
                     onChange={e => onEditValueChange(fieldKey, e.target.value || undefined)}
                     className="w-full text-xs text-center"
                 />

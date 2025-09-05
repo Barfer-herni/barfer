@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { Input } from '@repo/design-system/components/ui/input';
 import { Button } from '@repo/design-system/components/ui/button';
-import { updateOrderAction, deleteOrderAction, createOrderAction, updateOrdersStatusBulkAction, undoLastChangeAction, getBackupsCountAction, clearAllBackupsAction } from '../actions';
+import { updateOrderAction, deleteOrderAction, createOrderAction, updateOrdersStatusBulkAction, undoLastChangeAction, getBackupsCountAction, clearAllBackupsAction, calculatePriceAction } from '../actions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@repo/design-system/components/ui/dialog';
 import { Label } from '@repo/design-system/components/ui/label';
 import { Textarea } from '@repo/design-system/components/ui/textarea';
@@ -68,6 +68,33 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     const [isPending, startTransition] = useTransition();
     const [backupsCount, setBackupsCount] = useState(0);
     const [selectedMayorista, setSelectedMayorista] = useState<MayoristaOrder | null>(null);
+    const [isCalculatingPrice, setIsCalculatingPrice] = useState(false);
+
+    // useEffect para calcular precio automáticamente en el formulario de creación
+    useEffect(() => {
+        const validItems = filterValidItems(createFormData.items);
+        if (validItems.length > 0 && createFormData.orderType && createFormData.paymentMethod && !isCalculatingPrice) {
+            const timeoutId = setTimeout(() => {
+                calculateAutomaticPrice();
+            }, 300); // Debounce de 300ms para evitar cálculos excesivos
+
+            return () => clearTimeout(timeoutId);
+        }
+    }, [createFormData.items, createFormData.orderType, createFormData.paymentMethod]);
+
+    // useEffect para calcular precio automáticamente en la edición inline
+    useEffect(() => {
+        if (editingRowId) {
+            const validItems = filterValidItems(editValues.items || []);
+            if (validItems.length > 0 && editValues.orderType && editValues.paymentMethod && !isCalculatingPrice) {
+                const timeoutId = setTimeout(() => {
+                    calculateInlinePrice();
+                }, 300); // Debounce de 300ms para evitar cálculos excesivos
+
+                return () => clearTimeout(timeoutId);
+            }
+        }
+    }, [editValues.items, editValues.orderType, editValues.paymentMethod, editingRowId]);
 
 
 
@@ -205,6 +232,31 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             // Para otros campos, usar el comportamiento normal
             return { ...prev, [field]: value };
         });
+    };
+
+    // Función para calcular precio automáticamente en edición inline
+    const calculateInlinePrice = async () => {
+        const validItems = filterValidItems(editValues.items || []);
+        if (validItems.length === 0 || !editValues.orderType || !editValues.paymentMethod) {
+            return;
+        }
+
+        setIsCalculatingPrice(true);
+        try {
+            const result = await calculatePriceAction(
+                validItems,
+                editValues.orderType,
+                editValues.paymentMethod
+            );
+
+            if (result.success && result.total !== undefined) {
+                setEditValues((prev: any) => ({ ...prev, total: result.total! }));
+            }
+        } catch (error) {
+            console.error('Error calculando precio automático en edición inline:', error);
+        } finally {
+            setIsCalculatingPrice(false);
+        }
     };
 
     const handleSave = async (row: any) => {
@@ -375,6 +427,36 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             alert(e instanceof Error ? e.message : 'Error al crear la orden');
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Función para calcular precio automáticamente
+    const calculateAutomaticPrice = async () => {
+        if (isCalculatingPrice) return; // Evitar cálculos múltiples
+
+        const validItems = filterValidItems(createFormData.items);
+        if (validItems.length === 0 || !createFormData.orderType || !createFormData.paymentMethod) {
+            return;
+        }
+
+        setIsCalculatingPrice(true);
+        try {
+            const result = await calculatePriceAction(
+                validItems,
+                createFormData.orderType,
+                createFormData.paymentMethod
+            );
+
+            if (result.success && result.total !== undefined) {
+                setCreateFormData(prev => ({
+                    ...prev,
+                    total: result.total!.toString()
+                }));
+            }
+        } catch (error) {
+            console.error('Error calculando precio automático:', error);
+        } finally {
+            setIsCalculatingPrice(false);
         }
     };
 
@@ -776,7 +858,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                     </p>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label>Total *</Label>
+                                    <Label>Total * {isCalculatingPrice && <span className="text-blue-500">(Calculando...)</span>}</Label>
                                     <Input
                                         type="number"
                                         value={createFormData.total === '' ? '' : createFormData.total}
@@ -791,9 +873,13 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                                 }
                                             }
                                         }}
-                                        placeholder="Ingrese el total"
+                                        placeholder={isCalculatingPrice ? "Calculando precio..." : "Se calcula automáticamente"}
                                         required
+                                        className={isCalculatingPrice ? "bg-blue-50" : ""}
                                     />
+                                    <p className="text-xs text-gray-500">
+                                        El precio se calcula automáticamente basado en los productos, tipo de cliente y método de pago.
+                                    </p>
                                 </div>
                                 <div className="space-y-2">
                                     <Label>Notas Cliente</Label>
@@ -1015,6 +1101,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 onProductSearchChange={setProductSearchFilter}
                 onPaginationChange={navigateToPagination}
                 onSortingChange={navigateToSorting}
+                isCalculatingPrice={isCalculatingPrice}
             />
         </div>
     );

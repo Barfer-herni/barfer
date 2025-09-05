@@ -3,6 +3,7 @@ import { createOrder, updateOrder, deleteOrder, migrateClientType } from '@repo/
 import { revalidatePath } from 'next/cache';
 import { updateOrdersStatusBulk } from '@repo/data-services/src/services/barfer/updateOrder';
 import { validateAndNormalizePhone } from './helpers';
+import { calculateOrderTotal } from '@repo/data-services/src/services/pricesService';
 
 export async function updateOrderAction(id: string, data: any) {
     try {
@@ -200,6 +201,44 @@ export async function searchMayoristasAction(searchTerm: string) {
             error: 'Error al buscar mayoristas',
             orders: [],
             total: 0
+        };
+    }
+}
+
+// Nueva acción para calcular el precio automáticamente
+export async function calculatePriceAction(
+    items: Array<{
+        name: string;
+        options: Array<{
+            name: string;
+            quantity: number;
+        }>;
+    }>,
+    orderType: 'minorista' | 'mayorista',
+    paymentMethod: string
+) {
+    'use server';
+
+    try {
+        const result = await calculateOrderTotal(items, orderType, paymentMethod);
+
+        if (result.success) {
+            return {
+                success: true,
+                total: result.total,
+                itemPrices: result.itemPrices
+            };
+        }
+
+        return {
+            success: false,
+            error: result.error
+        };
+    } catch (error) {
+        console.error('Error in calculatePriceAction:', error);
+        return {
+            success: false,
+            error: 'Error al calcular el precio automático'
         };
     }
 } 
