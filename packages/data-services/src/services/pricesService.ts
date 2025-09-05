@@ -280,10 +280,18 @@ export async function getProductPrice(
     paymentMethod: string
 ): Promise<{ success: boolean; price?: number; error?: string }> {
     try {
+        // Determinar la sección y producto primero para verificar si es solo mayorista
+        const productUpper = product.toUpperCase();
+        const isOnlyMayoristaProduct = productUpper.includes('GARRAS') ||
+            productUpper.includes('CALDO') ||
+            productUpper.includes('CORNALITOS') ||
+            productUpper.includes('HUESOS RECREATIVO');
+
         // Mapear orderType y paymentMethod a PriceType
         let priceType: PriceType;
 
-        if (orderType === 'mayorista') {
+        if (orderType === 'mayorista' || isOnlyMayoristaProduct) {
+            // Si es mayorista O es un producto que solo existe en mayorista
             priceType = 'MAYORISTA';
         } else {
             // Para minorista, depende del método de pago
@@ -297,12 +305,15 @@ export async function getProductPrice(
 
         // Determinar la sección basada en el producto
         let section: PriceSection;
-        const productUpper = product.toUpperCase();
 
         if (productUpper.includes('GATO')) {
             section = 'GATO';
         } else if (productUpper.includes('PERRO') || productUpper.includes('BOX') || productUpper.includes('BIG DOG')) {
             section = 'PERRO';
+        } else if (productUpper.includes('HUESOS') || productUpper.includes('COMPLEMENTOS') ||
+            productUpper.includes('GARRAS') || productUpper.includes('CALDO') ||
+            productUpper.includes('CORNALITOS')) {
+            section = 'OTROS';
         } else {
             section = 'OTROS';
         }
@@ -319,27 +330,60 @@ export async function getProductPrice(
             searchProduct = 'CERDO';
         } else if (searchProduct.includes('BOX') && searchProduct.includes('CORDERO')) {
             searchProduct = 'CORDERO';
-        } else if (searchProduct.includes('BIG DOG')) {
-            searchProduct = 'BIG DOG';
-        } else if (searchProduct.includes('HUESOS')) {
-            searchProduct = 'HUESOS CARNOSOS';
+        } else if (searchProduct.includes('BIG DOG') && searchProduct.includes('VACA')) {
+            searchProduct = 'BIG DOG VACA';
+        } else if (searchProduct.includes('BIG DOG') && searchProduct.includes('POLLO')) {
+            searchProduct = 'BIG DOG POLLO';
+        } else if (searchProduct.includes('HUESOS CARNOSOS')) {
+            searchProduct = 'HUESOS CARNOSOS 5KG';
+        } else if (searchProduct.includes('HUESOS') && searchProduct.includes('RECREATIVO')) {
+            searchProduct = 'HUESOS RECREATIVOS';
+        } else if (searchProduct.includes('COMPLEMENTOS')) {
+            searchProduct = 'COMPLEMENTOS';
+        } else if (searchProduct.includes('GARRAS')) {
+            searchProduct = 'GARRAS';
+        } else if (searchProduct.includes('CALDO')) {
+            searchProduct = 'CALDO DE HUESOS';
+        } else if (searchProduct.includes('CORNALITOS')) {
+            searchProduct = 'CORNALITOS';
         }
+
+        // Para productos BIG DOG y productos OTROS, el peso puede ser null
+        const searchWeight = (searchProduct.startsWith('BIG DOG') ||
+            ['GARRAS', 'CALDO DE HUESOS', 'CORNALITOS', 'HUESOS RECREATIVOS', 'COMPLEMENTOS'].includes(searchProduct))
+            ? null : weight;
+
+        // Debug: Log del mapeo
+        console.log(`🔍 Mapeo de producto:`, {
+            original: product,
+            mapped: searchProduct,
+            section,
+            originalWeight: weight,
+            searchWeight,
+            priceType,
+            orderType,
+            paymentMethod,
+            isOnlyMayoristaProduct,
+            forcedMayorista: isOnlyMayoristaProduct && orderType !== 'mayorista'
+        });
 
         // Buscar el precio en la base de datos
         const priceRecord = await database.price.findFirst({
             where: {
                 section,
                 product: searchProduct,
-                weight: weight,
+                weight: searchWeight,
                 priceType,
                 isActive: true
             }
         });
 
+        console.log(`💰 Precio encontrado:`, priceRecord ? `$${priceRecord.price}` : 'NO ENCONTRADO');
+
         if (!priceRecord) {
             return {
                 success: false,
-                error: `No se encontró precio para ${product} (${weight}) - ${priceType}`
+                error: `No se encontró precio para ${product} (${weight}) - ${priceType} | Mapeado como: ${searchProduct} en sección ${section}`
             };
         }
 
@@ -375,10 +419,18 @@ export async function calculateOrderTotal(
         const itemPrices = [];
 
         for (const item of items) {
-            const weight = item.options[0]?.name || null;
+            let weight = item.options[0]?.name || null;
+            let productName = item.name;
             const quantity = item.options[0]?.quantity || 1;
 
-            const priceResult = await getProductPrice(item.name, weight, orderType, paymentMethod);
+            // Manejo especial para BIG DOG
+            if (productName.includes('BIG DOG (15kg)') && weight && ['VACA', 'POLLO', 'CORDERO'].includes(weight.toUpperCase())) {
+                // Para BIG DOG, el sabor está en weight y el producto debe ser "BIG DOG SABOR"
+                productName = `BIG DOG ${weight.toUpperCase()}`;
+                weight = null; // BIG DOG no tiene peso específico en la tabla de precios
+            }
+
+            const priceResult = await getProductPrice(productName, weight, orderType, paymentMethod);
 
             if (!priceResult.success || !priceResult.price) {
                 console.warn(`No se pudo obtener precio para ${item.name} (${weight}):`, priceResult.error);
