@@ -723,8 +723,8 @@ export const mapSelectOptionToDBFormat = (selectOption: string): { name: string,
         }
     }
 
-    // Mapear Huesos
-    if (normalizedSelect.includes('huesos')) {
+    // Mapear Huesos (pero no si es caldo de huesos)
+    if (normalizedSelect.includes('huesos') && !normalizedSelect.includes('caldo')) {
         return { name: 'HUESOS CARNOSOS', option: '5KG' };
     }
 
