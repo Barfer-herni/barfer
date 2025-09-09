@@ -697,8 +697,9 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     return (
         <div>
             <div className="flex flex-col gap-4 py-4">
-                <div className="flex items-center gap-4 flex-wrap">
-                    <div className="relative max-w-sm">
+                {/* Filtros de búsqueda */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+                    <div className="relative flex-1 min-w-0">
                         <Input
                             placeholder="Buscar en todas las columnas (presiona Enter)..."
                             value={searchInput}
@@ -718,404 +719,412 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                             <Search className="h-4 w-4" />
                         </Button>
                     </div>
-                    <DateRangeFilter />
-                    <OrderTypeFilter />
+                    <div className="flex flex-col sm:flex-row gap-2">
+                        <DateRangeFilter />
+                        <OrderTypeFilter />
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <Button
-                        onClick={handleExport}
-                        disabled={isExporting}
-                        className="bg-green-600 text-white hover:bg-green-700"
-                    >
-                        {isExporting ? 'Exportando...' : 'Exportar a Excel'}
-                    </Button>
-
-                    {/* Botón de Deshacer */}
-                    {backupsCount > 0 && (
+                {/* Botones de acción - una fila en desktop, múltiples filas en móvil */}
+                <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4">
+                    {/* En desktop: todos los botones en una fila */}
+                    <div className="flex flex-col sm:flex-row lg:flex-row gap-2 lg:gap-2">
                         <Button
-                            onClick={handleUndo}
-                            disabled={loading}
-                            variant="outline"
-                            className="text-blue-600 hover:text-blue-700 border-blue-600"
+                            onClick={handleExport}
+                            disabled={isExporting}
+                            className="bg-green-600 text-white hover:bg-green-700 flex-1 sm:flex-none lg:flex-none"
                         >
-                            <RotateCcw className="w-4 h-4 mr-2" />
-                            Deshacer último cambio ({backupsCount})
+                            {isExporting ? 'Exportando...' : 'Exportar a Excel'}
                         </Button>
-                    )}
 
-                    {/* Botón de Limpiar Historial */}
-                    {backupsCount > 0 && (
-                        <Button
-                            onClick={handleClearHistory}
-                            disabled={loading}
-                            variant="outline"
-                            className="text-red-600 hover:text-red-700 border-red-600"
-                        >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Limpiar historial
-                        </Button>
-                    )}
-
-                    <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-                        <DialogTrigger asChild>
-                            <Button variant="default">Crear Orden</Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                            <DialogHeader>
-                                <DialogTitle>Crear Nueva Orden</DialogTitle>
-                            </DialogHeader>
-                            <div className="grid grid-cols-2 gap-4">
-                                {/* Información del Cliente */}
-                                <div className="space-y-2">
-                                    <Label>Nombre</Label>
-                                    <Input
-                                        value={createFormData.user.name}
-                                        onChange={(e) => handleCreateFormChange('user.name', e.target.value)}
-                                        placeholder="Nombre del cliente"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Apellido</Label>
-                                    <Input
-                                        value={createFormData.user.lastName}
-                                        onChange={(e) => handleCreateFormChange('user.lastName', e.target.value)}
-                                        placeholder="Apellido del cliente"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Email</Label>
-                                    <Input
-                                        type="email"
-                                        value={createFormData.user.email}
-                                        onChange={(e) => handleCreateFormChange('user.email', e.target.value)}
-                                        placeholder="Email del cliente"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Teléfono</Label>
-                                    <Input
-                                        value={createFormData.address.phone}
-                                        onChange={(e) => handleCreateFormChange('address.phone', e.target.value)}
-                                        placeholder="Teléfono"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Dirección</Label>
-                                    <Input
-                                        value={createFormData.address.address}
-                                        onChange={(e) => handleCreateFormChange('address.address', e.target.value)}
-                                        placeholder="Dirección"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Ciudad</Label>
-                                    <Input
-                                        value={createFormData.address.city}
-                                        onChange={(e) => handleCreateFormChange('address.city', e.target.value)}
-                                        placeholder="Ciudad"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Medio de Pago</Label>
-                                    <select
-                                        value={createFormData.paymentMethod}
-                                        onChange={(e) => handleCreateFormChange('paymentMethod', e.target.value)}
-                                        className="w-full p-2 border border-gray-300 rounded-md"
-                                    >
-                                        {PAYMENT_METHOD_OPTIONS.map(option => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Estado</Label>
-                                    <select
-                                        value={createFormData.status}
-                                        onChange={(e) => handleCreateFormChange('status', e.target.value)}
-                                        className="w-full p-2 border border-gray-300 rounded-md"
-                                    >
-                                        {STATUS_OPTIONS.map(option => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Tipo de Cliente</Label>
-                                    <select
-                                        value={createFormData.orderType}
-                                        onChange={(e) => handleCreateFormChange('orderType', e.target.value)}
-                                        className="w-full p-2 border border-gray-300 rounded-md"
-                                    >
-                                        {ORDER_TYPE_OPTIONS.map(option => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                {/* Búsqueda de mayorista existente - solo mostrar cuando sea mayorista */}
-                                {createFormData.orderType === 'mayorista' && (
-                                    <div className="space-y-2 col-span-2">
-                                        <MayoristaSearch
-                                            onMayoristaSelect={handleMayoristaSelect}
-                                            disabled={loading}
+                        <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+                            <DialogTrigger asChild>
+                                <Button variant="default" className="flex-1 sm:flex-none lg:flex-none">Crear Orden</Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                                <DialogHeader>
+                                    <DialogTitle>Crear Nueva Orden</DialogTitle>
+                                </DialogHeader>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {/* Información del Cliente */}
+                                    <div className="space-y-2">
+                                        <Label>Nombre</Label>
+                                        <Input
+                                            value={createFormData.user.name}
+                                            onChange={(e) => handleCreateFormChange('user.name', e.target.value)}
+                                            placeholder="Nombre del cliente"
                                         />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Apellido</Label>
+                                        <Input
+                                            value={createFormData.user.lastName}
+                                            onChange={(e) => handleCreateFormChange('user.lastName', e.target.value)}
+                                            placeholder="Apellido del cliente"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Email</Label>
+                                        <Input
+                                            type="email"
+                                            value={createFormData.user.email}
+                                            onChange={(e) => handleCreateFormChange('user.email', e.target.value)}
+                                            placeholder="Email del cliente"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Teléfono</Label>
+                                        <Input
+                                            value={createFormData.address.phone}
+                                            onChange={(e) => handleCreateFormChange('address.phone', e.target.value)}
+                                            placeholder="Teléfono"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Dirección</Label>
+                                        <Input
+                                            value={createFormData.address.address}
+                                            onChange={(e) => handleCreateFormChange('address.address', e.target.value)}
+                                            placeholder="Dirección"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Ciudad</Label>
+                                        <Input
+                                            value={createFormData.address.city}
+                                            onChange={(e) => handleCreateFormChange('address.city', e.target.value)}
+                                            placeholder="Ciudad"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Medio de Pago</Label>
+                                        <select
+                                            value={createFormData.paymentMethod}
+                                            onChange={(e) => handleCreateFormChange('paymentMethod', e.target.value)}
+                                            className="w-full p-2 border border-gray-300 rounded-md"
+                                        >
+                                            {PAYMENT_METHOD_OPTIONS.map(option => (
+                                                <option key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Estado</Label>
+                                        <select
+                                            value={createFormData.status}
+                                            onChange={(e) => handleCreateFormChange('status', e.target.value)}
+                                            className="w-full p-2 border border-gray-300 rounded-md"
+                                        >
+                                            {STATUS_OPTIONS.map(option => (
+                                                <option key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Tipo de Cliente</Label>
+                                        <select
+                                            value={createFormData.orderType}
+                                            onChange={(e) => handleCreateFormChange('orderType', e.target.value)}
+                                            className="w-full p-2 border border-gray-300 rounded-md"
+                                        >
+                                            {ORDER_TYPE_OPTIONS.map(option => (
+                                                <option key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
 
-                                        {/* Indicador de mayorista seleccionado */}
-                                        {selectedMayorista && (
-                                            <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-                                                <div className="text-sm text-green-800">
-                                                    <div className="font-medium">
-                                                        ✅ Mayorista seleccionado: {selectedMayorista.user.name} {selectedMayorista.user.lastName}
-                                                    </div>
-                                                    <div className="text-xs mt-1 text-green-600">
-                                                        Los campos de cliente y dirección se han autocompletado.
-                                                        Puedes modificar cualquier campo si es necesario.
+                                    {/* Búsqueda de mayorista existente - solo mostrar cuando sea mayorista */}
+                                    {createFormData.orderType === 'mayorista' && (
+                                        <div className="space-y-2 col-span-2">
+                                            <MayoristaSearch
+                                                onMayoristaSelect={handleMayoristaSelect}
+                                                disabled={loading}
+                                            />
+
+                                            {/* Indicador de mayorista seleccionado */}
+                                            {selectedMayorista && (
+                                                <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                                                    <div className="text-sm text-green-800">
+                                                        <div className="font-medium">
+                                                            ✅ Mayorista seleccionado: {selectedMayorista.user.name} {selectedMayorista.user.lastName}
+                                                        </div>
+                                                        <div className="text-xs mt-1 text-green-600">
+                                                            Los campos de cliente y dirección se han autocompletado.
+                                                            Puedes modificar cualquier campo si es necesario.
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                                <div className="space-y-2">
-                                    <Label>Rango Horario</Label>
-                                    <Input
-                                        value={createFormData.deliveryArea.schedule}
-                                        onChange={(e) => {
-                                            // No normalizar en tiempo real, solo guardar el valor tal como lo escribe el usuario
-                                            handleCreateFormChange('deliveryArea.schedule', e.target.value);
-                                        }}
-                                        placeholder="Ej: De 18 a 19:30hs aprox (acepta . o :)"
-                                    />
-                                    <p className="text-xs text-gray-500">
-                                        Puedes usar . o : para minutos (ej: 18.30 o 18:30). Se normalizará automáticamente al guardar.
-                                    </p>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Total * {isCalculatingPrice && <span className="text-blue-500">(Calculando...)</span>}</Label>
-                                    <Input
-                                        type="number"
-                                        value={createFormData.total === '' ? '' : createFormData.total}
-                                        onChange={(e) => {
-                                            const value = e.target.value;
-                                            if (value === '') {
-                                                handleCreateFormChange('total', '');
-                                            } else {
-                                                const numValue = Number(value);
-                                                if (!isNaN(numValue)) {
-                                                    handleCreateFormChange('total', numValue);
-                                                }
-                                            }
-                                        }}
-                                        placeholder={isCalculatingPrice ? "Calculando precio..." : "Se calcula automáticamente"}
-                                        required
-                                        className={isCalculatingPrice ? "bg-blue-50" : ""}
-                                    />
-                                    <p className="text-xs text-gray-500">
-                                        El precio se calcula automáticamente basado en los productos, tipo de cliente y método de pago.
-                                    </p>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Notas Cliente</Label>
-                                    <Textarea
-                                        value={createFormData.notes}
-                                        onChange={(e) => handleCreateFormChange('notes', e.target.value)}
-                                        placeholder="Notas del cliente"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Notas Propias</Label>
-                                    <Textarea
-                                        value={createFormData.notesOwn}
-                                        onChange={(e) => handleCreateFormChange('notesOwn', e.target.value)}
-                                        placeholder="Notas propias"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="flex items-center gap-1">
-                                        Fecha de Entrega
-                                        <span className="text-red-500">*</span>
-                                    </Label>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Input
-                                                readOnly
-                                                value={createFormData.deliveryDay ? (() => {
-                                                    // Usar la función helper para crear una fecha local
-                                                    const date = createLocalDate(createFormData.deliveryDay);
-                                                    return format(date, 'PPP', { locale: es });
-                                                })() : ''}
-                                                placeholder="Seleccionar fecha"
-                                                className={!createFormData.deliveryDay ? "border-red-500 focus:border-red-500" : ""}
-                                            />
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0">
-                                            <Calendar
-                                                mode="single"
-                                                selected={createFormData.deliveryDay ? (() => {
-                                                    // Usar la función helper para crear una fecha local
-                                                    return createLocalDate(createFormData.deliveryDay);
-                                                })() : undefined}
-                                                onSelect={(date) => {
-                                                    if (date) {
-                                                        // Usar la función helper para crear una fecha ISO local
-                                                        handleCreateFormChange('deliveryDay', createLocalDateISO(date));
-                                                    }
-                                                }}
-                                                locale={es}
-                                                initialFocus
-                                            />
-                                        </PopoverContent>
-                                    </Popover>
-                                    {!createFormData.deliveryDay && (
-                                        <p className="text-sm text-red-500">
-                                            La fecha de entrega es obligatoria
-                                        </p>
+                                            )}
+                                        </div>
                                     )}
-                                </div>
-                                <div className="space-y-2 col-span-2">
-                                    <Label>Items</Label>
                                     <div className="space-y-2">
-                                        {createFormData.items?.map((item: any, index: number) => (
-                                            <div key={index} className="flex gap-2">
-                                                <select
-                                                    value={item.fullName || item.name || ''}
-                                                    onChange={(e) => {
-                                                        const newItems = [...createFormData.items];
-                                                        const selectedProductName = e.target.value;
-
-                                                        // Crear un item temporal para procesar
-                                                        const tempItem = {
-                                                            ...newItems[index],
-                                                            name: selectedProductName,
-                                                            fullName: selectedProductName
-                                                        };
-
-                                                        // Procesar solo este item
-                                                        const processedItem = processSingleItem(tempItem);
-                                                        newItems[index] = processedItem;
-
-                                                        handleCreateFormChange('items', newItems);
-                                                    }}
-                                                    className="flex-1 p-2 border border-gray-300 rounded-md"
-                                                >
-                                                    <option value="">Seleccionar producto</option>
-                                                    {getProductsByClientType(createFormData.orderType).map(product => (
-                                                        <option key={product} value={product}>
-                                                            {product}
-                                                        </option>
-                                                    ))}
-                                                </select>
+                                        <Label>Rango Horario</Label>
+                                        <Input
+                                            value={createFormData.deliveryArea.schedule}
+                                            onChange={(e) => {
+                                                // No normalizar en tiempo real, solo guardar el valor tal como lo escribe el usuario
+                                                handleCreateFormChange('deliveryArea.schedule', e.target.value);
+                                            }}
+                                            placeholder="Ej: De 18 a 19:30hs aprox (acepta . o :)"
+                                        />
+                                        <p className="text-xs text-gray-500">
+                                            Puedes usar . o : para minutos (ej: 18.30 o 18:30). Se normalizará automáticamente al guardar.
+                                        </p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Total * {isCalculatingPrice && <span className="text-blue-500">(Calculando...)</span>}</Label>
+                                        <Input
+                                            type="number"
+                                            value={createFormData.total === '' ? '' : createFormData.total}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                if (value === '') {
+                                                    handleCreateFormChange('total', '');
+                                                } else {
+                                                    const numValue = Number(value);
+                                                    if (!isNaN(numValue)) {
+                                                        handleCreateFormChange('total', numValue);
+                                                    }
+                                                }
+                                            }}
+                                            placeholder={isCalculatingPrice ? "Calculando precio..." : "Se calcula automáticamente"}
+                                            required
+                                            className={isCalculatingPrice ? "bg-blue-50" : ""}
+                                        />
+                                        <p className="text-xs text-gray-500">
+                                            El precio se calcula automáticamente basado en los productos, tipo de cliente y método de pago.
+                                        </p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Notas Cliente</Label>
+                                        <Textarea
+                                            value={createFormData.notes}
+                                            onChange={(e) => handleCreateFormChange('notes', e.target.value)}
+                                            placeholder="Notas del cliente"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Notas Propias</Label>
+                                        <Textarea
+                                            value={createFormData.notesOwn}
+                                            onChange={(e) => handleCreateFormChange('notesOwn', e.target.value)}
+                                            placeholder="Notas propias"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="flex items-center gap-1">
+                                            Fecha de Entrega
+                                            <span className="text-red-500">*</span>
+                                        </Label>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
                                                 <Input
-                                                    type="number"
-                                                    value={item.options?.[0]?.quantity || 1}
-                                                    onChange={(e) => {
-                                                        const quantity = parseInt(e.target.value) || 0;
-
-                                                        if (quantity <= 0) {
-                                                            // Eliminar el item si la cantidad es 0 o menor
-                                                            const newItems = createFormData.items.filter((_: any, i: number) => i !== index);
-                                                            handleCreateFormChange('items', newItems);
-                                                        } else {
-                                                            // Actualizar la cantidad
-                                                            const newItems = [...createFormData.items];
-
-                                                            // Preservar las opciones existentes del item
-                                                            const existingOptions = newItems[index].options || [];
-                                                            const firstOption = existingOptions[0] || { name: 'Default', price: 0, quantity: 1 };
-
-                                                            newItems[index] = {
-                                                                ...newItems[index],
-                                                                options: [{
-                                                                    ...firstOption,
-                                                                    quantity: quantity
-                                                                }]
-                                                            };
-                                                            handleCreateFormChange('items', newItems);
+                                                    readOnly
+                                                    value={createFormData.deliveryDay ? (() => {
+                                                        // Usar la función helper para crear una fecha local
+                                                        const date = createLocalDate(createFormData.deliveryDay);
+                                                        return format(date, 'PPP', { locale: es });
+                                                    })() : ''}
+                                                    placeholder="Seleccionar fecha"
+                                                    className={!createFormData.deliveryDay ? "border-red-500 focus:border-red-500" : ""}
+                                                />
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0">
+                                                <Calendar
+                                                    mode="single"
+                                                    selected={createFormData.deliveryDay ? (() => {
+                                                        // Usar la función helper para crear una fecha local
+                                                        return createLocalDate(createFormData.deliveryDay);
+                                                    })() : undefined}
+                                                    onSelect={(date) => {
+                                                        if (date) {
+                                                            // Usar la función helper para crear una fecha ISO local
+                                                            handleCreateFormChange('deliveryDay', createLocalDateISO(date));
                                                         }
                                                     }}
-                                                    className="w-20 p-2"
-                                                    placeholder="Qty"
+                                                    locale={es}
+                                                    initialFocus
                                                 />
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => {
-                                                        const newItems = createFormData.items.filter((_: any, i: number) => i !== index);
-                                                        handleCreateFormChange('items', newItems);
-                                                    }}
-                                                >
-                                                    X
-                                                </Button>
-                                            </div>
-                                        ))}
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => {
-                                                const newItems = [...createFormData.items, {
-                                                    id: '',
-                                                    name: '',
-                                                    fullName: '',
-                                                    description: '',
-                                                    images: [],
-                                                    options: [{ name: 'Default', price: 0, quantity: 1 }],
-                                                    price: 0,
-                                                    salesCount: 0,
-                                                    discountApllied: 0,
-                                                }];
-                                                handleCreateFormChange('items', newItems);
-                                            }}
-                                        >
-                                            + Agregar Item
-                                        </Button>
+                                            </PopoverContent>
+                                        </Popover>
+                                        {!createFormData.deliveryDay && (
+                                            <p className="text-sm text-red-500">
+                                                La fecha de entrega es obligatoria
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-2 col-span-2">
+                                        <Label>Items</Label>
+                                        <div className="space-y-2">
+                                            {createFormData.items?.map((item: any, index: number) => (
+                                                <div key={index} className="flex gap-2">
+                                                    <select
+                                                        value={item.fullName || item.name || ''}
+                                                        onChange={(e) => {
+                                                            const newItems = [...createFormData.items];
+                                                            const selectedProductName = e.target.value;
+
+                                                            // Crear un item temporal para procesar
+                                                            const tempItem = {
+                                                                ...newItems[index],
+                                                                name: selectedProductName,
+                                                                fullName: selectedProductName
+                                                            };
+
+                                                            // Procesar solo este item
+                                                            const processedItem = processSingleItem(tempItem);
+                                                            newItems[index] = processedItem;
+
+                                                            handleCreateFormChange('items', newItems);
+                                                        }}
+                                                        className="flex-1 p-2 border border-gray-300 rounded-md"
+                                                    >
+                                                        <option value="">Seleccionar producto</option>
+                                                        {getProductsByClientType(createFormData.orderType).map(product => (
+                                                            <option key={product} value={product}>
+                                                                {product}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    <Input
+                                                        type="number"
+                                                        value={item.options?.[0]?.quantity || 1}
+                                                        onChange={(e) => {
+                                                            const quantity = parseInt(e.target.value) || 0;
+
+                                                            if (quantity <= 0) {
+                                                                // Eliminar el item si la cantidad es 0 o menor
+                                                                const newItems = createFormData.items.filter((_: any, i: number) => i !== index);
+                                                                handleCreateFormChange('items', newItems);
+                                                            } else {
+                                                                // Actualizar la cantidad
+                                                                const newItems = [...createFormData.items];
+
+                                                                // Preservar las opciones existentes del item
+                                                                const existingOptions = newItems[index].options || [];
+                                                                const firstOption = existingOptions[0] || { name: 'Default', price: 0, quantity: 1 };
+
+                                                                newItems[index] = {
+                                                                    ...newItems[index],
+                                                                    options: [{
+                                                                        ...firstOption,
+                                                                        quantity: quantity
+                                                                    }]
+                                                                };
+                                                                handleCreateFormChange('items', newItems);
+                                                            }
+                                                        }}
+                                                        className="w-20 p-2"
+                                                        placeholder="Qty"
+                                                    />
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => {
+                                                            const newItems = createFormData.items.filter((_: any, i: number) => i !== index);
+                                                            handleCreateFormChange('items', newItems);
+                                                        }}
+                                                    >
+                                                        X
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => {
+                                                    const newItems = [...createFormData.items, {
+                                                        id: '',
+                                                        name: '',
+                                                        fullName: '',
+                                                        description: '',
+                                                        images: [],
+                                                        options: [{ name: 'Default', price: 0, quantity: 1 }],
+                                                        price: 0,
+                                                        salesCount: 0,
+                                                        discountApllied: 0,
+                                                    }];
+                                                    handleCreateFormChange('items', newItems);
+                                                }}
+                                            >
+                                                + Agregar Item
+                                            </Button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div className="flex justify-end gap-2 mt-4">
+                                <div className="flex justify-end gap-2 mt-4">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            setShowCreateModal(false);
+                                            setSelectedMayorista(null); // Limpiar mayorista seleccionado
+                                        }}
+                                    >
+                                        Cancelar
+                                    </Button>
+                                    <Button onClick={handleCreateOrder} disabled={loading}>
+                                        {loading ? 'Creando...' : 'Crear Orden'}
+                                    </Button>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
+
+                        {/* Botones de historial (solo si hay backups) */}
+                        {backupsCount > 0 && (
+                            <>
                                 <Button
+                                    onClick={handleUndo}
+                                    disabled={loading}
                                     variant="outline"
-                                    onClick={() => {
-                                        setShowCreateModal(false);
-                                        setSelectedMayorista(null); // Limpiar mayorista seleccionado
-                                    }}
+                                    className="text-blue-600 hover:text-blue-700 border-blue-600 flex-1 sm:flex-none lg:flex-none"
                                 >
-                                    Cancelar
+                                    <RotateCcw className="w-4 h-4 mr-2" />
+                                    Deshacer último cambio ({backupsCount})
                                 </Button>
-                                <Button onClick={handleCreateOrder} disabled={loading}>
-                                    {loading ? 'Creando...' : 'Crear Orden'}
+
+                                <Button
+                                    onClick={handleClearHistory}
+                                    disabled={loading}
+                                    variant="outline"
+                                    className="text-red-600 hover:text-red-700 border-red-600 flex-1 sm:flex-none lg:flex-none"
+                                >
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Limpiar historial
                                 </Button>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
-                    <Button
-                        variant="default"
-                        disabled={Object.keys(rowSelection).length === 0 || loading}
-                        onClick={async () => {
-                            const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
-                            setLoading(true);
-                            try {
-                                const result = await updateOrdersStatusBulkAction(selectedIds, 'confirmed');
-                                if (result.success) {
-                                    setRowSelection({});
-                                    router.refresh();
-                                } else {
-                                    alert('No se pudo actualizar el estado.');
+                            </>
+                        )}
+
+                        {/* Marcar como Entregado */}
+                        <Button
+                            variant="default"
+                            disabled={Object.keys(rowSelection).length === 0 || loading}
+                            onClick={async () => {
+                                const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
+                                setLoading(true);
+                                try {
+                                    const result = await updateOrdersStatusBulkAction(selectedIds, 'confirmed');
+                                    if (result.success) {
+                                        setRowSelection({});
+                                        router.refresh();
+                                    } else {
+                                        alert('No se pudo actualizar el estado.');
+                                    }
+                                } catch (e) {
+                                    alert('Ocurrió un error al actualizar las órdenes.');
+                                } finally {
+                                    setLoading(false);
                                 }
-                            } catch (e) {
-                                alert('Ocurrió un error al actualizar las órdenes.');
-                            } finally {
-                                setLoading(false);
-                            }
-                        }}
-                    >
-                        Marcar como Entregado
-                    </Button>
+                            }}
+                            className="flex-1 sm:flex-none lg:flex-none"
+                        >
+                            Marcar como Entregado
+                        </Button>
+                    </div>
                 </div>
             </div>
             <OrdersTable
