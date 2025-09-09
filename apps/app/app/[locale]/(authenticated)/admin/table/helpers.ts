@@ -30,7 +30,7 @@ export const getFilteredProducts = (clientType: 'minorista' | 'mayorista', searc
 // Función para determinar el color de la fila
 export const shouldHighlightRow = (row: any) => {
     const status = row.original.status?.toLowerCase();
-    if (status === 'delivered') return 'green';
+    if (status === 'delivered' || status === 'confirmed') return 'green';
     return null;
 };
 
