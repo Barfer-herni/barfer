@@ -732,7 +732,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             <div className="flex flex-col gap-4 py-4">
                 {/* Filtros de búsqueda */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-                    <div className="relative flex-1 min-w-0">
+                    <div className="relative w-full sm:w-80 lg:w-96">
                         <Input
                             placeholder="Buscar en todas las columnas (presiona Enter)..."
                             value={searchInput}

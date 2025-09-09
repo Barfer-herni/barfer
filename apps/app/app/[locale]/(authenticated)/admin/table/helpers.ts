@@ -730,6 +730,11 @@ export const mapSelectOptionToDBFormat = (selectOption: string): { name: string,
         }
     }
 
+    // Mapear complementos - IMPORTANTE: debe ir ANTES que huesos para evitar conflictos
+    if (normalizedSelect.includes('caldo')) {
+        return { name: 'CALDO DE HUESOS', option: '' };
+    }
+
     // Mapear Huesos (pero no si es caldo de huesos)
     if (normalizedSelect.includes('huesos') && !normalizedSelect.includes('caldo')) {
         return { name: 'HUESOS CARNOSOS', option: '5KG' };
@@ -782,11 +787,6 @@ export const mapSelectOptionToDBFormat = (selectOption: string): { name: string,
         // Si no se encuentra peso específico, devolver sin opción para debug
         console.warn(`⚠️ CORNALITOS sin peso específico detectado: "${selectOption}"`);
         return { name: 'CORNALITOS', option: '' };
-    }
-
-    // Mapear complementos
-    if (normalizedSelect.includes('caldo')) {
-        return { name: 'CALDO DE HUESOS', option: '' };
     }
 
     if (normalizedSelect.includes('hueso recreativo')) {
