@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { Input } from '@repo/design-system/components/ui/input';
 import { Button } from '@repo/design-system/components/ui/button';
-import { updateOrderAction, deleteOrderAction, createOrderAction, updateOrdersStatusBulkAction, undoLastChangeAction, getBackupsCountAction, clearAllBackupsAction, calculatePriceAction } from '../actions';
+import { updateOrderAction, deleteOrderAction, createOrderAction, updateOrdersStatusBulkAction, undoLastChangeAction, getBackupsCountAction, clearAllBackupsAction, calculatePriceAction, duplicateOrderAction } from '../actions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@repo/design-system/components/ui/dialog';
 import { Label } from '@repo/design-system/components/ui/label';
 import { Textarea } from '@repo/design-system/components/ui/textarea';
@@ -69,6 +69,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     const [backupsCount, setBackupsCount] = useState(0);
     const [selectedMayorista, setSelectedMayorista] = useState<MayoristaOrder | null>(null);
     const [isCalculatingPrice, setIsCalculatingPrice] = useState(false);
+    const [shouldAutoCalculatePrice, setShouldAutoCalculatePrice] = useState(false);
 
     // useEffect para calcular precio automáticamente en el formulario de creación
     useEffect(() => {
@@ -84,7 +85,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
 
     // useEffect para calcular precio automáticamente en la edición inline
     useEffect(() => {
-        if (editingRowId) {
+        if (editingRowId && shouldAutoCalculatePrice) {
             const validItems = filterValidItems(editValues.items || []);
             if (validItems.length > 0 && editValues.orderType && editValues.paymentMethod && !isCalculatingPrice) {
                 const timeoutId = setTimeout(() => {
@@ -94,7 +95,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 return () => clearTimeout(timeoutId);
             }
         }
-    }, [editValues.items, editValues.orderType, editValues.paymentMethod, editingRowId]);
+    }, [editValues.items, editValues.orderType, editValues.paymentMethod, editingRowId, shouldAutoCalculatePrice]);
 
 
 
@@ -170,6 +171,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     const handleEditClick = (row: any) => {
         setEditingRowId(row.id);
         setProductSearchFilter('');
+        setShouldAutoCalculatePrice(false); // No calcular automáticamente al inicio
         const editValuesData = {
             notes: row.original.notes !== undefined && row.original.notes !== null ? row.original.notes : '',
             notesOwn: row.original.notesOwn !== undefined && row.original.notesOwn !== null ? row.original.notesOwn : '',
@@ -218,9 +220,15 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
         setEditingRowId(null);
         setEditValues({});
         setProductSearchFilter('');
+        setShouldAutoCalculatePrice(false);
     };
 
     const handleChange = (field: string, value: any) => {
+        // Activar cálculo automático si se modifican campos relevantes
+        if (field === 'items' || field === 'orderType' || field === 'paymentMethod') {
+            setShouldAutoCalculatePrice(true);
+        }
+
         setEditValues((prev: any) => {
             // Verificar si el campo es 'address' y es un objeto
             if (field === 'address' && typeof value === 'object' && value !== null) {
@@ -279,6 +287,12 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
         } finally {
             setIsCalculatingPrice(false);
         }
+    };
+
+    // Función para forzar el recálculo manual del precio
+    const forceRecalculatePrice = async () => {
+        setShouldAutoCalculatePrice(true);
+        await calculateInlinePrice();
     };
 
     const handleSave = async (row: any) => {
@@ -352,6 +366,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             setEditingRowId(null);
             setEditValues({});
             setProductSearchFilter('');
+            setShouldAutoCalculatePrice(false);
 
             // Hacer refresh para mostrar los cambios actualizados
             router.refresh();
@@ -377,6 +392,24 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             updateBackupsCount(); // Actualizar contador después de eliminar
         } catch (e) {
             alert(e instanceof Error ? e.message : 'Error al eliminar la orden');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDuplicate = async (row: any) => {
+        if (!confirm('¿Estás seguro de que quieres duplicar esta orden? Se creará una nueva orden con los mismos datos marcada como "DUPLICADO".')) {
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const result = await duplicateOrderAction(row.id);
+            if (!result.success) throw new Error(result.error || 'Error al duplicar');
+            router.refresh();
+            alert(result.message || 'Pedido duplicado correctamente');
+        } catch (e) {
+            alert(e instanceof Error ? e.message : 'Error al duplicar la orden');
         } finally {
             setLoading(false);
         }
@@ -1145,12 +1178,14 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 onCancel={handleCancel}
                 onSave={handleSave}
                 onDelete={handleDelete}
+                onDuplicate={handleDuplicate}
                 onEditValueChange={handleChange}
                 onRowSelectionChange={setRowSelection}
                 onProductSearchChange={setProductSearchFilter}
                 onPaginationChange={navigateToPagination}
                 onSortingChange={navigateToSorting}
                 isCalculatingPrice={isCalculatingPrice}
+                onForceRecalculatePrice={forceRecalculatePrice}
             />
         </div>
     );

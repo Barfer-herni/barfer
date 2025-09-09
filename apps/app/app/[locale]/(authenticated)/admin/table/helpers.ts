@@ -30,7 +30,14 @@ export const getFilteredProducts = (clientType: 'minorista' | 'mayorista', searc
 // Función para determinar el color de la fila
 export const shouldHighlightRow = (row: any) => {
     const status = row.original.status?.toLowerCase();
+    const notesOwn = row.original.notesOwn || '';
+
+    // Verificar si es un pedido duplicado
+    if (notesOwn.toLowerCase().includes('duplicado')) return 'orange';
+
+    // Estados entregados/confirmados
     if (status === 'delivered' || status === 'confirmed') return 'green';
+
     return null;
 };
 

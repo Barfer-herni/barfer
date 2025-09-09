@@ -241,4 +241,54 @@ export async function calculatePriceAction(
             error: 'Error al calcular el precio automático'
         };
     }
+}
+
+// Nueva acción para duplicar un pedido
+export async function duplicateOrderAction(id: string) {
+    'use server';
+
+    try {
+        // Obtener la orden original
+        const { getCollection, ObjectId } = await import('@repo/database');
+        const ordersCollection = await getCollection('orders');
+        const originalOrder = await ordersCollection.findOne({ _id: new ObjectId(id) });
+
+        if (!originalOrder) {
+            return { success: false, error: 'Orden no encontrada' };
+        }
+
+        // Validar y normalizar el número de teléfono si está presente
+        if (originalOrder.address?.phone) {
+            const normalizedPhone = validateAndNormalizePhone(originalOrder.address.phone);
+            if (!normalizedPhone) {
+                return { success: false, error: 'El número de teléfono no es válido. Use el formato: La Plata (221 XXX-XXXX) o CABA/BA (11-XXXX-XXXX / 15-XXXX-XXXX)' };
+            }
+            // Actualizar el teléfono normalizado en la orden original
+            originalOrder.address.phone = normalizedPhone;
+        }
+
+        // Crear una copia de la orden con modificaciones para indicar que es duplicada
+        const duplicatedOrderData = {
+            ...originalOrder,
+            _id: undefined, // Remover el ID para crear una nueva orden
+            status: 'pending' as const, // Resetear el estado a pendiente
+            notesOwn: `DUPLICADO - ${originalOrder.notesOwn || ''}`, // Marcar como duplicado en notas propias
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            // Mantener la fecha de entrega original para que el usuario pueda modificarla si es necesario
+            deliveryDay: originalOrder.deliveryDay
+        };
+
+        // Crear la orden duplicada usando el servicio existente
+        const result = await createOrder(duplicatedOrderData as any);
+        if (!result.success) {
+            return { success: false, error: result.error };
+        }
+
+        revalidatePath('/admin/table');
+        return { success: true, order: result.order, message: 'Pedido duplicado correctamente' };
+    } catch (error) {
+        console.error('Error in duplicateOrderAction:', error);
+        return { success: false, error: 'Error al duplicar la orden' };
+    }
 } 

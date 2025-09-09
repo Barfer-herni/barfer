@@ -8,7 +8,7 @@ import {
     useReactTable,
     type Table as TanstackTable,
 } from '@tanstack/react-table';
-import { Pencil, Save, Trash2, X } from 'lucide-react';
+import { Pencil, Save, Trash2, X, Copy, Calculator } from 'lucide-react';
 
 import {
     Table,
@@ -53,12 +53,14 @@ interface OrdersTableProps<TData extends { _id: string }, TValue> extends DataTa
     onCancel: () => void;
     onSave: (row: any) => void;
     onDelete: (row: any) => void;
+    onDuplicate: (row: any) => void;
     onEditValueChange: (field: string, value: any) => void;
     onRowSelectionChange: (selection: Record<string, boolean>) => void;
     onProductSearchChange: (value: string) => void;
     onPaginationChange: (pageIndex: number, pageSize: number) => void;
     onSortingChange: (sorting: any) => void;
     isCalculatingPrice?: boolean;
+    onForceRecalculatePrice?: () => void;
 }
 
 export function OrdersTable<TData extends { _id: string }, TValue>({
@@ -79,12 +81,14 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
     onCancel,
     onSave,
     onDelete,
+    onDuplicate,
     onEditValueChange,
     onRowSelectionChange,
     onProductSearchChange,
     onPaginationChange,
     onSortingChange,
     isCalculatingPrice = false,
+    onForceRecalculatePrice,
 }: OrdersTableProps<TData, TValue>) {
     const table = useReactTable({
         data,
@@ -190,7 +194,9 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                 className={
                                     shouldHighlightRow(row) === 'green'
                                         ? 'bg-green-100 dark:bg-green-900/40'
-                                        : ''
+                                        : shouldHighlightRow(row) === 'orange'
+                                            ? 'bg-orange-100 dark:bg-orange-900/40'
+                                            : ''
                                 }
                             >
                                 <TableCell className="px-0 py-1 border-r border-border">
@@ -205,7 +211,7 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                 {row.getVisibleCells().map((cell, index) => {
                                     // Edición inline para campos editables
                                     if (editingRowId === row.id) {
-                                        return renderEditableCell(cell, index, editValues, onEditValueChange, productSearchFilter, onProductSearchChange, isCalculatingPrice);
+                                        return renderEditableCell(cell, index, editValues, onEditValueChange, productSearchFilter, onProductSearchChange, isCalculatingPrice, onForceRecalculatePrice);
                                     }
 
                                     // Aplicar color de fondo para celdas específicas
@@ -255,14 +261,17 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                             </Button>
                                         </div>
                                     ) : (
-                                        <div className="flex gap-2 justify-center">
+                                        <div className="flex gap-1 justify-center">
                                             {canEdit && (
-                                                <Button size="icon" variant="outline" onClick={() => onEditClick(row)}>
+                                                <Button size="icon" variant="outline" onClick={() => onEditClick(row)} title="Editar">
                                                     <Pencil className="w-4 h-4" />
                                                 </Button>
                                             )}
+                                            <Button size="icon" variant="outline" onClick={() => onDuplicate(row)} disabled={loading} title="Duplicar pedido" className="border-blue-500 text-blue-600 hover:bg-blue-50">
+                                                <Copy className="w-4 h-4" />
+                                            </Button>
                                             {canDelete && (
-                                                <Button size="icon" variant="destructive" onClick={() => onDelete(row)} disabled={loading}>
+                                                <Button size="icon" variant="destructive" onClick={() => onDelete(row)} disabled={loading} title="Eliminar">
                                                     <Trash2 className="w-4 h-4" />
                                                 </Button>
                                             )}
@@ -402,7 +411,7 @@ function findMatchingProduct(itemName: string, availableProducts: string[], item
     return itemName;
 }
 
-function renderEditableCell(cell: any, index: number, editValues: any, onEditValueChange: (field: string, value: any) => void, productSearchFilter: string, onProductSearchChange: (value: string) => void, isCalculatingPrice?: boolean) {
+function renderEditableCell(cell: any, index: number, editValues: any, onEditValueChange: (field: string, value: any) => void, productSearchFilter: string, onProductSearchChange: (value: string) => void, isCalculatingPrice?: boolean, onForceRecalculatePrice?: () => void) {
     if (cell.column.id === 'notesOwn') {
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
@@ -800,13 +809,27 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
         if (cell.column.id === 'total') {
             return (
                 <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
-                    <Input
-                        type="number"
-                        value={editValues[fieldKey] === undefined ? '' : editValues[fieldKey]}
-                        placeholder={isCalculatingPrice ? "Calculando..." : "Auto"}
-                        onChange={e => onEditValueChange(fieldKey, e.target.value || undefined)}
-                        className={`w-full text-xs text-center ${isCalculatingPrice ? 'bg-blue-50' : ''}`}
-                    />
+                    <div className="flex items-center gap-1">
+                        <Input
+                            type="number"
+                            value={editValues[fieldKey] === undefined ? '' : editValues[fieldKey]}
+                            placeholder={isCalculatingPrice ? "Calculando..." : "Auto"}
+                            onChange={e => onEditValueChange(fieldKey, e.target.value || undefined)}
+                            className={`flex-1 text-xs text-center ${isCalculatingPrice ? 'bg-blue-50' : ''}`}
+                        />
+                        {onForceRecalculatePrice && (
+                            <Button
+                                size="icon"
+                                variant="outline"
+                                onClick={onForceRecalculatePrice}
+                                disabled={isCalculatingPrice}
+                                title="Recalcular precio automáticamente"
+                                className="h-6 w-6 border-blue-500 text-blue-600 hover:bg-blue-50"
+                            >
+                                <Calculator className="w-3 h-3" />
+                            </Button>
+                        )}
+                    </div>
                 </TableCell>
             );
         }
