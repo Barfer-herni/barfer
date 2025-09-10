@@ -198,15 +198,23 @@ export const columns: ColumnDef<Order>[] = [
         header: 'Estado',
         cell: ({ row }: CellContext<Order, unknown>) => {
             const status = row.getValue('status') as Order['status'];
-            const translatedStatus = STATUS_TRANSLATIONS[status] || status;
+            const translatedStatus = STATUS_TRANSLATIONS[status] || status || 'Sin estado';
             const paymentMethod = row.original.paymentMethod;
             let colorClass = '';
-            if (status === 'pending' && paymentMethod !== 'cash') colorClass = 'bg-red-500 force-dark-black text-white';
-            if (status === 'confirmed') colorClass = 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300';
+
+            if (status === 'pending' && paymentMethod !== 'cash') {
+                colorClass = 'bg-red-500 force-dark-black text-white';
+            }
+            if (status === 'confirmed') {
+                colorClass = 'font-semibold';
+            }
+
             return (
-                <span className={`text-xs px-2 py-1 rounded ${colorClass}`}>
-                    {translatedStatus}
-                </span>
+                <div className="h-full flex items-center justify-center">
+                    <span className={`text-xs px-2 py-1 rounded ${colorClass}`}>
+                        {translatedStatus}
+                    </span>
+                </div>
             );
         }
     },

@@ -223,10 +223,14 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                         ? getStatusCellBackgroundColor((row.original as any).status, (row.original as any).paymentMethod)
                                         : '';
 
+                                    const statusTextColor = cell.column.id === 'status' && (row.original as any).status === 'confirmed'
+                                        ? 'text-white'
+                                        : '';
+
                                     return (
                                         <TableCell
                                             key={cell.id}
-                                            className={`px-0 py-1 border-r border-border ${dateBgColor} ${statusBgColor} text-center${dateBgColor ? ' force-dark-black' : ''}`}
+                                            className={`px-0 py-1 border-r border-border ${dateBgColor} ${statusBgColor} ${statusTextColor} text-center${dateBgColor ? ' force-dark-black' : ''}`}
                                             style={{
                                                 width: index === 0 ? `${COLUMN_WIDTHS.orderType}px` :
                                                     index === 1 ? `${COLUMN_WIDTHS.date}px` :

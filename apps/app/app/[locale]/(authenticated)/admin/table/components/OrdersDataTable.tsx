@@ -1140,7 +1140,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                 const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
                                 setLoading(true);
                                 try {
-                                    const result = await updateOrdersStatusBulkAction(selectedIds, 'confirmed');
+                                    const result = await updateOrdersStatusBulkAction(selectedIds, 'delivered');
                                     if (result.success) {
                                         setRowSelection({});
                                         router.refresh();

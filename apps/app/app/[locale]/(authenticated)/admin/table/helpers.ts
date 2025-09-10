@@ -36,7 +36,7 @@ export const shouldHighlightRow = (row: any) => {
     if (notesOwn.toLowerCase().includes('duplicado')) return 'orange';
 
     // Estados entregados/confirmados
-    if (status === 'delivered' || status === 'confirmed') return 'green';
+    if (status === 'delivered') return 'green';
 
     return null;
 };
@@ -55,6 +55,9 @@ export const getDateCellBackgroundColor = (deliveryDay: string | Date | { $date:
 export const getStatusCellBackgroundColor = (status: string, paymentMethod: string) => {
     if (status === 'pending' && paymentMethod !== 'cash') {
         return 'bg-red-500';
+    }
+    if (status === 'confirmed') {
+        return 'bg-green-600';
     }
     return '';
 };
