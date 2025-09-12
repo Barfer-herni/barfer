@@ -276,7 +276,16 @@ export async function duplicateOrderAction(id: string) {
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             // Mantener la fecha de entrega original para que el usuario pueda modificarla si es necesario
-            deliveryDay: originalOrder.deliveryDay
+            deliveryDay: originalOrder.deliveryDay,
+            // Normalizar campos opcionales que pueden causar problemas de validación
+            deliveryArea: {
+                ...originalOrder.deliveryArea,
+                _id: originalOrder.deliveryArea?._id || '',
+                sheetName: originalOrder.deliveryArea?.sheetName || '',
+                whatsappNumber: originalOrder.deliveryArea?.whatsappNumber || ''
+            },
+            // Manejar coupon que puede ser null
+            coupon: originalOrder.coupon || undefined
         };
 
         // Crear la orden duplicada usando el servicio existente

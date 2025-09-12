@@ -88,7 +88,7 @@ const createOrderSchema = z.object({
         discountApllied: z.number().optional(),
     })),
     deliveryArea: z.object({
-        _id: z.string(),
+        _id: z.string().optional(),
         description: z.string(),
         coordinates: z.array(z.array(z.number())),
         schedule: z.string(),
@@ -96,14 +96,14 @@ const createOrderSchema = z.object({
         enabled: z.boolean(),
         sameDayDelivery: z.boolean(),
         sameDayDeliveryDays: z.array(z.string()),
-        whatsappNumber: z.string(),
-        sheetName: z.string(),
+        whatsappNumber: z.string().optional(),
+        sheetName: z.string().optional(),
     }),
     coupon: z.object({
         code: z.string(),
         discount: z.number(),
         type: z.enum(['percentage', 'fixed']),
-    }).optional(),
+    }).optional().nullable(),
     deliveryDay: z.union([z.string(), z.date()]).refine((val) => val !== undefined && val !== null && val !== '', {
         message: "La fecha de entrega es obligatoria"
     }),
