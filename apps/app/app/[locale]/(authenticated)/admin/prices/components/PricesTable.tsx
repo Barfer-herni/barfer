@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dictionary } from '@repo/internationalization';
 import { PriceSection, PriceType } from '@repo/database';
-import { updatePriceAction, initializeDefaultPricesAction } from '../actions';
+import { updatePriceAction, getPricesByMonthAction, getAllPricesAction, initializePricesForPeriodAction, deletePriceAction, fixBigDogWeightAction, cleanBigDogDuplicatesAction, recreateBigDogProductsAction, ensureBigDogPricesCurrentMonthAction } from '../actions';
+import { CreateProductModal } from './CreateProductModal';
 import {
     Table,
     TableBody,
@@ -16,11 +17,12 @@ import { Input } from '@repo/design-system/components/ui/input';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Badge } from '@repo/design-system/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/design-system/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@repo/design-system/components/ui/select';
 import { Checkbox } from '@repo/design-system/components/ui/checkbox';
 import { Label } from '@repo/design-system/components/ui/label';
 import { Separator } from '@repo/design-system/components/ui/separator';
 import { toast } from '@repo/design-system/hooks/use-toast';
-import { Pencil, Check, X, Filter, RotateCcw } from 'lucide-react';
+import { Pencil, Check, X, Filter, RotateCcw, Trash2 } from 'lucide-react';
 import {
     Collapsible,
     CollapsibleContent,
@@ -56,24 +58,46 @@ interface Filters {
     sections: PriceSection[];
     weights: string[];
     priceTypes: PriceType[];
+    month: number | null;
+    year: number | null;
 }
 
 export function PricesTable({ prices, dictionary, userPermissions }: PricesTableProps) {
     const [isUpdating, setIsUpdating] = useState<string | null>(null);
     const [localPrices, setLocalPrices] = useState<Price[]>(prices);
-    const [isInitializing, setIsInitializing] = useState(false);
     const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
     const [editValue, setEditValue] = useState<number | string>(0);
     const [showFilters, setShowFilters] = useState(true);
+    const [isLoadingPrices, setIsLoadingPrices] = useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isInitializingPeriod, setIsInitializingPeriod] = useState(false);
+    const [deletingPriceId, setDeletingPriceId] = useState<string | null>(null);
+    const [isFixingBigDog, setIsFixingBigDog] = useState(false);
+    const [isCleaningDuplicates, setIsCleaningDuplicates] = useState(false);
+    const [isRecreatingBigDog, setIsRecreatingBigDog] = useState(false);
+    const [isEnsuringCurrentMonth, setIsEnsuringCurrentMonth] = useState(false);
 
     // Verificar permisos del usuario
     const canEditPrices = userPermissions.includes('prices:edit');
 
-    // Estados de filtros
-    const [filters, setFilters] = useState<Filters>({
-        sections: [],
-        weights: [],
-        priceTypes: [],
+    // Estados de filtros - Inicializar con mes y año actual
+    const getCurrentDate = () => {
+        const now = new Date();
+        return {
+            month: now.getMonth() + 1, // getMonth() devuelve 0-11, necesitamos 1-12
+            year: now.getFullYear()
+        };
+    };
+
+    const [filters, setFilters] = useState<Filters>(() => {
+        const { month, year } = getCurrentDate();
+        return {
+            sections: [],
+            weights: [],
+            priceTypes: [],
+            month,
+            year,
+        };
     });
 
     // Obtener valores únicos para los filtros
@@ -86,6 +110,12 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
     };
 
     const { sections: availableSections, weights: availableWeights, priceTypes: availablePriceTypes } = getUniqueValues();
+
+    // Cargar precios del mes/año actual al montar el componente
+    useEffect(() => {
+        const { month, year } = getCurrentDate();
+        loadPricesByDate(month, year);
+    }, []); // Solo ejecutar una vez al montar
 
     // Agrupar precios por producto y peso para crear filas
     const groupedPrices = () => {
@@ -215,7 +245,256 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
             sections: [],
             weights: [],
             priceTypes: [],
+            month: null,
+            year: null,
         });
+    };
+
+    // Función para cargar precios por fecha
+    const loadPricesByDate = async (month: number, year: number) => {
+        setIsLoadingPrices(true);
+        try {
+            const result = await getPricesByMonthAction(month, year);
+            if (result.success) {
+                const transformedPrices = (result.prices || []).map((price: any) => ({
+                    id: String(price._id), // Convertir explícitamente a string
+                    section: price.section as PriceSection,
+                    product: String(price.product),
+                    weight: price.weight ? String(price.weight) : null,
+                    priceType: price.priceType as PriceType,
+                    price: Number(price.price),
+                    isActive: Boolean(price.isActive)
+                }));
+                setLocalPrices(transformedPrices);
+                toast({
+                    title: "Precios cargados",
+                    description: `Mostrando precios de ${getMonthName(month)} ${year}`,
+                });
+            } else {
+                toast({
+                    title: "Error",
+                    description: result.message || "Error al cargar precios por fecha",
+                    variant: "destructive"
+                });
+            }
+        } catch (error) {
+            console.error('Error loading prices by date:', error);
+            toast({
+                title: "Error",
+                description: "Error al cargar los precios por fecha",
+                variant: "destructive"
+            });
+        } finally {
+            setIsLoadingPrices(false);
+        }
+    };
+
+    // Función para obtener el nombre del mes
+    const getMonthName = (month: number) => {
+        const months = [
+            'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+        ];
+        return months[month - 1];
+    };
+
+    // Función para crear un nuevo producto
+    const handleCreateProduct = () => {
+        setIsCreateModalOpen(true);
+    };
+
+    // Función que se ejecuta después de crear un producto
+    const handleProductCreated = async () => {
+        // Recargar los precios según los filtros actuales
+        await loadPricesByDate(filters.month!, filters.year!);
+    };
+
+    // Función para inicializar precios para el período actual
+    const handleInitializePricesForPeriod = async () => {
+        if (!filters.month || !filters.year) return;
+
+        setIsInitializingPeriod(true);
+        try {
+            const result = await initializePricesForPeriodAction(filters.month, filters.year);
+            if (result.success) {
+                toast({
+                    title: "Precios inicializados",
+                    description: `Se han creado los precios base para ${getMonthName(filters.month)} ${filters.year}`,
+                });
+                // Recargar los precios para mostrar los nuevos datos
+                await loadPricesByDate(filters.month, filters.year);
+            } else {
+                toast({
+                    title: "Error",
+                    description: result.message || "Error al inicializar precios",
+                    variant: "destructive"
+                });
+            }
+        } catch (error) {
+            console.error('Error initializing prices for period:', error);
+            toast({
+                title: "Error",
+                description: "Error al inicializar precios para el período",
+                variant: "destructive"
+            });
+        } finally {
+            setIsInitializingPeriod(false);
+        }
+    };
+
+    // Función para eliminar un precio
+    const handleDeletePrice = async (priceId: string) => {
+        setDeletingPriceId(priceId);
+        try {
+            const result = await deletePriceAction(priceId);
+            if (result.success) {
+                // Actualizar el estado local removiendo el precio eliminado
+                setLocalPrices(prev => prev.filter(p => p.id !== priceId));
+                toast({
+                    title: "Precio eliminado",
+                    description: "El precio se ha eliminado correctamente.",
+                });
+            } else {
+                toast({
+                    title: "Error",
+                    description: result.message || "Error al eliminar el precio",
+                    variant: "destructive"
+                });
+            }
+        } catch (error) {
+            console.error('Error deleting price:', error);
+            toast({
+                title: "Error",
+                description: "Error al eliminar el precio",
+                variant: "destructive"
+            });
+        } finally {
+            setDeletingPriceId(null);
+        }
+    };
+
+    // Función para corregir el peso de productos BIG DOG
+    const handleFixBigDogWeight = async () => {
+        setIsFixingBigDog(true);
+        try {
+            const result = await fixBigDogWeightAction();
+            if (result.success) {
+                toast({
+                    title: "Productos BIG DOG corregidos",
+                    description: result.message || "Se corrigieron los pesos de productos BIG DOG",
+                });
+                // Recargar los precios para mostrar los cambios
+                await loadPricesByDate(filters.month!, filters.year!);
+            } else {
+                toast({
+                    title: "Error",
+                    description: result.message || "Error al corregir productos BIG DOG",
+                    variant: "destructive"
+                });
+            }
+        } catch (error) {
+            console.error('Error fixing BIG DOG weight:', error);
+            toast({
+                title: "Error",
+                description: "Error al corregir productos BIG DOG",
+                variant: "destructive"
+            });
+        } finally {
+            setIsFixingBigDog(false);
+        }
+    };
+
+    // Función para limpiar duplicados de productos BIG DOG
+    const handleCleanBigDogDuplicates = async () => {
+        setIsCleaningDuplicates(true);
+        try {
+            const result = await cleanBigDogDuplicatesAction();
+            if (result.success) {
+                toast({
+                    title: "Duplicados BIG DOG eliminados",
+                    description: result.message || "Se eliminaron los productos BIG DOG duplicados",
+                });
+                // Recargar los precios para mostrar los cambios
+                await loadPricesByDate(filters.month!, filters.year!);
+            } else {
+                toast({
+                    title: "Error",
+                    description: result.message || "Error al limpiar duplicados BIG DOG",
+                    variant: "destructive"
+                });
+            }
+        } catch (error) {
+            console.error('Error cleaning BIG DOG duplicates:', error);
+            toast({
+                title: "Error",
+                description: "Error al limpiar duplicados BIG DOG",
+                variant: "destructive"
+            });
+        } finally {
+            setIsCleaningDuplicates(false);
+        }
+    };
+
+    // Función para recrear completamente los productos BIG DOG
+    const handleRecreateBigDogProducts = async () => {
+        setIsRecreatingBigDog(true);
+        try {
+            const result = await recreateBigDogProductsAction();
+            if (result.success) {
+                toast({
+                    title: "Productos BIG DOG recreados",
+                    description: result.message || "Se recrearon completamente los productos BIG DOG",
+                });
+                // Recargar los precios para mostrar los cambios
+                await loadPricesByDate(filters.month!, filters.year!);
+            } else {
+                toast({
+                    title: "Error",
+                    description: result.message || "Error al recrear productos BIG DOG",
+                    variant: "destructive"
+                });
+            }
+        } catch (error) {
+            console.error('Error recreating BIG DOG products:', error);
+            toast({
+                title: "Error",
+                description: "Error al recrear productos BIG DOG",
+                variant: "destructive"
+            });
+        } finally {
+            setIsRecreatingBigDog(false);
+        }
+    };
+
+    // Función para asegurar precios BIG DOG en el mes actual
+    const handleEnsureBigDogCurrentMonth = async () => {
+        setIsEnsuringCurrentMonth(true);
+        try {
+            const result = await ensureBigDogPricesCurrentMonthAction();
+            if (result.success) {
+                toast({
+                    title: "Precios BIG DOG verificados",
+                    description: result.message || "Se verificaron los precios BIG DOG para el mes actual",
+                });
+                // Recargar los precios para mostrar los cambios
+                await loadPricesByDate(filters.month!, filters.year!);
+            } else {
+                toast({
+                    title: "Error",
+                    description: result.message || "Error al verificar precios BIG DOG",
+                    variant: "destructive"
+                });
+            }
+        } catch (error) {
+            console.error('Error ensuring BIG DOG current month:', error);
+            toast({
+                title: "Error",
+                description: "Error al verificar precios BIG DOG",
+                variant: "destructive"
+            });
+        } finally {
+            setIsEnsuringCurrentMonth(false);
+        }
     };
 
     const hasActiveFilters = filters.sections.length > 0 || filters.weights.length > 0 || filters.priceTypes.length > 0;
@@ -269,35 +548,6 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
         }
     };
 
-    const handleInitializePrices = async () => {
-        setIsInitializing(true);
-        try {
-            const result = await initializeDefaultPricesAction();
-            if (result.success) {
-                toast({
-                    title: "Precios inicializados",
-                    description: result.message,
-                });
-                // Recargar la página para mostrar los nuevos precios
-                window.location.reload();
-            } else {
-                toast({
-                    title: "Error",
-                    description: result.message || "Error al inicializar precios",
-                    variant: "destructive"
-                });
-            }
-        } catch (error) {
-            console.error('Error initializing prices:', error);
-            toast({
-                title: "Error",
-                description: "Error al inicializar los precios",
-                variant: "destructive"
-            });
-        } finally {
-            setIsInitializing(false);
-        }
-    };
 
     const renderPriceInput = (price: Price | null, placeholder: string = "—") => {
         if (!price) {
@@ -364,15 +614,30 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
                                 ${price.price.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                             </span>
                             {canEditPrices && (
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => handleStartEdit(price)}
-                                    disabled={isLoading}
-                                    className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                >
-                                    <Pencil className="h-3 w-3" />
-                                </Button>
+                                <>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => handleStartEdit(price)}
+                                        disabled={isLoading || deletingPriceId === price.id}
+                                        className="h-6 w-6 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                    >
+                                        <Pencil className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => handleDeletePrice(price.id)}
+                                        disabled={isLoading || deletingPriceId === price.id}
+                                        className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    >
+                                        {deletingPriceId === price.id ? (
+                                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
+                                        ) : (
+                                            <Trash2 className="h-3 w-3" />
+                                        )}
+                                    </Button>
+                                </>
                             )}
                         </>
                     )}
@@ -519,17 +784,102 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
     if (localPrices.length === 0) {
         return (
             <div className="text-center py-12">
-                <p className="text-muted-foreground mb-6">
-                    No hay precios configurados. {canEditPrices ? '¿Deseas inicializar la tabla con la estructura por defecto?' : 'Contacta al administrador para configurar los precios.'}
+                <p className="text-muted-foreground mb-4">
+                    No hay precios configurados para {getMonthName(filters.month!)} {filters.year}.
                 </p>
-                {canEditPrices && (
-                    <Button
-                        onClick={handleInitializePrices}
-                        disabled={isInitializing}
-                        size="lg"
-                    >
-                        {isInitializing ? "Inicializando..." : "Inicializar Precios por Defecto"}
-                    </Button>
+                {canEditPrices ? (
+                    <div className="space-y-4">
+                        <p className="text-sm text-muted-foreground">
+                            Puedes inicializar los precios base para este período y luego editarlos manualmente.
+                        </p>
+                        <div className="space-y-2">
+                            <Button
+                                onClick={handleInitializePricesForPeriod}
+                                disabled={isInitializingPeriod}
+                                className="bg-blue-600 hover:bg-blue-700 w-full"
+                            >
+                                {isInitializingPeriod ? (
+                                    <div className="flex items-center gap-2">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                        Inicializando...
+                                    </div>
+                                ) : (
+                                    `Inicializar Precios para ${getMonthName(filters.month!)} ${filters.year}`
+                                )}
+                            </Button>
+
+                            <Button
+                                onClick={handleFixBigDogWeight}
+                                disabled={isFixingBigDog}
+                                variant="outline"
+                                className="w-full border-orange-200 text-orange-700 hover:bg-orange-50"
+                            >
+                                {isFixingBigDog ? (
+                                    <div className="flex items-center gap-2">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600"></div>
+                                        Corrigiendo...
+                                    </div>
+                                ) : (
+                                    "🔧 Corregir BIG DOG"
+                                )}
+                            </Button>
+
+                            <Button
+                                onClick={handleCleanBigDogDuplicates}
+                                disabled={isCleaningDuplicates}
+                                variant="outline"
+                                className="w-full border-red-200 text-red-700 hover:bg-red-50"
+                            >
+                                {isCleaningDuplicates ? (
+                                    <div className="flex items-center gap-2">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                                        Limpiando...
+                                    </div>
+                                ) : (
+                                    "🧹 Limpiar Duplicados BIG DOG"
+                                )}
+                            </Button>
+
+                            <Button
+                                onClick={handleRecreateBigDogProducts}
+                                disabled={isRecreatingBigDog}
+                                variant="outline"
+                                className="w-full border-purple-200 text-purple-700 hover:bg-purple-50"
+                            >
+                                {isRecreatingBigDog ? (
+                                    <div className="flex items-center gap-2">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+                                        Recreando...
+                                    </div>
+                                ) : (
+                                    "🔄 Recrear BIG DOG (Solución Definitiva)"
+                                )}
+                            </Button>
+
+                            <Button
+                                onClick={handleEnsureBigDogCurrentMonth}
+                                disabled={isEnsuringCurrentMonth}
+                                variant="outline"
+                                className="w-full border-green-200 text-green-700 hover:bg-green-50"
+                            >
+                                {isEnsuringCurrentMonth ? (
+                                    <div className="flex items-center gap-2">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+                                        Verificando...
+                                    </div>
+                                ) : (
+                                    "✅ Verificar BIG DOG Mes Actual"
+                                )}
+                            </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            Esto creará todos los productos con precio $0, luego podrás editarlos manualmente.
+                        </p>
+                    </div>
+                ) : (
+                    <p className="text-sm text-muted-foreground">
+                        Contacta al administrador para configurar los productos y precios.
+                    </p>
                 )}
             </div>
         );
@@ -568,9 +918,16 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
                     )}
                 </div>
 
-                <p className="text-sm text-muted-foreground">
-                    Mostrando {rows.length} productos
-                </p>
+                <div className="text-sm text-muted-foreground">
+                    {isLoadingPrices ? (
+                        <div className="flex items-center gap-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                            Cargando precios...
+                        </div>
+                    ) : (
+                        <p>Mostrando {rows.length} productos</p>
+                    )}
+                </div>
             </div>
 
             {/* Panel de filtros */}
@@ -581,6 +938,89 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
                             <CardTitle className="text-sm font-medium">Filtrar precios</CardTitle>
                         </CardHeader>
                         <CardContent className="pt-0">
+                            {/* Filtros de Fecha */}
+                            <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                                <Label className="text-sm font-medium mb-3 block text-blue-900">
+                                    📅 Filtrar por Período Histórico
+                                </Label>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <Label className="text-xs font-medium mb-2 block">Mes</Label>
+                                        <Select
+                                            value={filters.month?.toString() || "1"}
+                                            onValueChange={(value) => {
+                                                const month = parseInt(value);
+                                                setFilters(prev => ({ ...prev, month }));
+                                                loadPricesByDate(month, filters.year!);
+                                            }}
+                                        >
+                                            <SelectTrigger className="w-full">
+                                                <SelectValue placeholder="Seleccionar mes" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="1">Enero</SelectItem>
+                                                <SelectItem value="2">Febrero</SelectItem>
+                                                <SelectItem value="3">Marzo</SelectItem>
+                                                <SelectItem value="4">Abril</SelectItem>
+                                                <SelectItem value="5">Mayo</SelectItem>
+                                                <SelectItem value="6">Junio</SelectItem>
+                                                <SelectItem value="7">Julio</SelectItem>
+                                                <SelectItem value="8">Agosto</SelectItem>
+                                                <SelectItem value="9">Septiembre</SelectItem>
+                                                <SelectItem value="10">Octubre</SelectItem>
+                                                <SelectItem value="11">Noviembre</SelectItem>
+                                                <SelectItem value="12">Diciembre</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div>
+                                        <Label className="text-xs font-medium mb-2 block">Año</Label>
+                                        <Select
+                                            value={filters.year?.toString() || "2025"}
+                                            onValueChange={(value) => {
+                                                const year = parseInt(value);
+                                                setFilters(prev => ({ ...prev, year }));
+                                                loadPricesByDate(filters.month!, year);
+                                            }}
+                                        >
+                                            <SelectTrigger className="w-full">
+                                                <SelectValue placeholder="Seleccionar año" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="2025">2025</SelectItem>
+                                                <SelectItem value="2024">2024</SelectItem>
+                                                <SelectItem value="2023">2023</SelectItem>
+                                                <SelectItem value="2022">2022</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="flex items-end">
+                                        {canEditPrices && (
+                                            <Button
+                                                variant="default"
+                                                size="sm"
+                                                onClick={handleCreateProduct}
+                                                className="w-full bg-blue-600 hover:bg-blue-700"
+                                            >
+                                                + Crear Producto
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="mt-2">
+                                    <p className="text-xs text-blue-700">
+                                        Mostrando precios de {getMonthName(filters.month!)} {filters.year}
+                                    </p>
+                                    {rows.length === 0 && canEditPrices && (
+                                        <p className="text-xs text-amber-700 mt-1">
+                                            ⚠️ No hay precios para este período. Los productos deben ser creados primero en el gestor.
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
+                            <Separator className="my-4" />
+
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 {/* Filtro por Sección */}
                                 <div>
@@ -696,10 +1136,20 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
 
             <div className="text-sm text-muted-foreground">
                 <p>• Haz clic en el icono ✏️ para editar un precio</p>
+                <p>• Haz clic en el icono 🗑️ para eliminar un precio</p>
                 <p>• Usa ✅ para guardar o ❌ para cancelar</p>
                 <p>• "—" indica que ese tipo de precio no está disponible</p>
                 <p>• Total de precios configurados: {localPrices.length}</p>
             </div>
+
+            {/* Modal para crear producto */}
+            <CreateProductModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onProductCreated={handleProductCreated}
+                currentMonth={filters.month!}
+                currentYear={filters.year!}
+            />
         </div>
     );
 } 

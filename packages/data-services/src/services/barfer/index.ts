@@ -42,8 +42,36 @@ export { migrateClientType } from './migrateClientType';
 export { markWhatsAppContacted, getWhatsAppContactStatus } from './markWhatsAppContacted';
 
 // ===== PRICES =====
-export { getAllPrices, updateProductPrice, initializeBarferPrices } from './pricesService';
-export type { BarferPriceData, BarferUpdatePriceData } from './pricesService';
+export {
+    getAllPrices as getAllBarferPrices,
+    getPrices as getBarferPrices,
+    createPrice as createBarferPrice,
+    updatePrice as updateBarferPrice,
+    deletePrice as deleteBarferPrice,
+    getAllUniqueProducts as getAllUniqueBarferProducts,
+    deleteProductPrices as deleteBarferProductPrices,
+    updateProductPrices as updateBarferProductPrices,
+    updateProductPriceTypes as updateBarferProductPriceTypes,
+    getCurrentPrices as getCurrentBarferPrices,
+    getPriceHistory as getBarferPriceHistory,
+    getPriceStats as getBarferPriceStats,
+    initializeBarferPrices,
+    initializePricesForPeriod
+} from './pricesService';
+export { getPricesByMonth, getPriceEvolution, comparePricesPeriods, getMostVolatilePrices, getPriceChangesSummary } from './priceHistoryService';
+
+// ===== CÁLCULO DE PRECIOS PARA ÓRDENES =====
+export { getProductPrice, calculateOrderTotal, debugPriceCalculation } from './pricesCalculationService';
+
+// ===== PRODUCTOS GESTOR =====
+export {
+    getAllProductosGestor,
+    createProductoGestor,
+    updateProductoGestor,
+    deleteProductoGestor,
+    initializeProductosGestor
+} from './productosGestorService';
+export type { ProductoGestor, CreateProductoGestorData, UpdateProductoGestorData } from '../../types/barfer';
 
 // ===== REPARTOS =====
 export {

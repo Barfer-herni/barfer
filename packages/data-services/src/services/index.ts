@@ -7,7 +7,7 @@ export * from './imageService';
 export * from './uploadR2Image';
 export * from './userService';
 export * from './templateService';
-export * from './pricesService';
+// export * from './pricesService'; // DEPRECATED: Migrado a MongoDB en barfer/pricesCalculationService.ts
 export * from './salidasService';
 export * from './salidasAnalyticsService';
 export { getSalidasDetailsByCategory } from './salidasService';

@@ -617,7 +617,9 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                                         const tempItem = {
                                             ...newItems[itemIndex],
                                             name: selectedProductName,
-                                            fullName: selectedProductName
+                                            fullName: selectedProductName,
+                                            // Resetear las options para que no contengan peso del item anterior
+                                            options: [{ name: 'Default', price: 0, quantity: newItems[itemIndex].options?.[0]?.quantity || 1 }]
                                         };
 
                                         // Procesar solo este item
@@ -816,10 +818,21 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                     <div className="flex items-center gap-1">
                         <Input
                             type="number"
-                            value={editValues[fieldKey] === undefined ? '' : editValues[fieldKey]}
+                            value={editValues[fieldKey] === undefined || editValues[fieldKey] === null ? '' : editValues[fieldKey]}
                             placeholder={isCalculatingPrice ? "Calculando..." : "Auto"}
-                            onChange={e => onEditValueChange(fieldKey, e.target.value || undefined)}
-                            className={`flex-1 text-xs text-center ${isCalculatingPrice ? 'bg-blue-50' : ''}`}
+                            onChange={e => {
+                                const value = e.target.value;
+                                if (value === '') {
+                                    onEditValueChange(fieldKey, undefined);
+                                } else {
+                                    const numValue = Number(value);
+                                    if (!isNaN(numValue)) {
+                                        onEditValueChange(fieldKey, numValue);
+                                    }
+                                }
+                            }}
+                            className={`flex-1 text-xs text-center ${isCalculatingPrice ? 'bg-blue-50 border-blue-300' : ''}`}
+                            disabled={isCalculatingPrice}
                         />
                         {onForceRecalculatePrice && (
                             <Button

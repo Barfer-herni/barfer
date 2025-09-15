@@ -119,6 +119,8 @@ export const createDefaultOrderData = () => ({
 export const extractWeightFromProductName = (productName: string): string => {
     if (!productName) return 'Default';
 
+    console.log(`🔍 extractWeightFromProductName: Analizando "${productName}"`);
+
     // Patrones que NO son peso (productos que no necesitan extracción)
     const nonWeightPatterns = [
         /\b\d+\s*x\s*\d+\b/i,        // "traquea x1", "producto x2", etc.
@@ -155,20 +157,29 @@ export const extractWeightFromProductName = (productName: string): string => {
     for (const pattern of weightPatterns) {
         const match = productName.match(pattern);
         if (match) {
+            console.log(`✅ Patrón encontrado: "${match[0]}" (peso: ${match[1]}, unidad: "${match[0].replace(match[1], '').trim()}")`);
             const weight = match[1];
             const unit = match[0].replace(weight, '').trim();
 
             // Normalizar la unidad
             if (unit.toLowerCase().includes('kg') || unit.toLowerCase().includes('kilo')) {
-                return `${weight}KG`;
+                const result = `${weight}KG`;
+                console.log(`✅ Peso extraído: "${result}"`);
+                return result;
             } else if (unit.toLowerCase().includes('gramo') || unit.toLowerCase().includes('g')) {
-                return `${weight}G`;
+                const result = `${weight}G`;
+                console.log(`✅ Peso extraído: "${result}"`);
+                return result;
             } else if (unit.toLowerCase().includes('litro') || unit.toLowerCase().includes('l')) {
-                return `${weight}L`;
+                const result = `${weight}L`;
+                console.log(`✅ Peso extraído: "${result}"`);
+                return result;
             }
 
             // Si no se reconoce la unidad, devolver el valor encontrado
-            return match[0].toUpperCase();
+            const result = match[0].toUpperCase();
+            console.log(`✅ Peso extraído (unidad no reconocida): "${result}"`);
+            return result;
         }
     }
 
@@ -194,6 +205,7 @@ export const extractWeightFromProductName = (productName: string): string => {
     }
 
     // Si no se encuentra peso, devolver 'Default'
+    console.log(`❌ No se encontró patrón de peso en "${productName}", usando Default`);
     return 'Default';
 };
 
@@ -284,6 +296,13 @@ export const extractBaseProductName = (productName: string): string => {
 export const processSingleItem = (item: any): any => {
     if (!item.name || !item.name.trim()) return item;
 
+    console.log(`🔄 processSingleItem: Procesando item:`, {
+        name: item.name,
+        fullName: item.fullName,
+        options: item.options,
+        originalWeight: item.options?.[0]?.name
+    });
+
     // Si ya tiene fullName y options.name no es 'Default', no procesar
     if (item.fullName && item.options?.[0]?.name && item.options[0].name !== 'Default') {
         console.log(`🔄 Item "${item.name}" ya procesado, saltando...`);
@@ -292,6 +311,7 @@ export const processSingleItem = (item: any): any => {
 
     // Si no tenemos fullName, usar el nombre actual
     const originalName = item.fullName || item.name;
+    console.log(`🔄 Nombre original para procesar: "${originalName}"`);
 
     // Si el nombre parece ser una opción del select (contiene "barfer box", "big dog", etc.)
     // usar el mapeo inverso para obtener el formato de la DB
@@ -330,7 +350,8 @@ export const processSingleItem = (item: any): any => {
     const baseName = extractBaseProductName(originalName);
 
     console.log(`⚖️ Procesando item "${originalName}":`);
-    console.log(`  → Peso extraído: ${weight}`);
+    console.log(`  → Peso extraído del nombre: ${weight}`);
+    console.log(`  → Peso original del item: ${item.options?.[0]?.name}`);
     console.log(`  → Nombre base: "${baseName}"`);
 
     // Crear una copia del item para no modificar el original
@@ -341,11 +362,11 @@ export const processSingleItem = (item: any): any => {
         fullName: originalName, // Nombre completo original para referencia
         options: [{
             ...item.options?.[0],
-            name: weight     // Peso extraído (5KG, 10KG, etc.)
+            name: weight     // Peso extraído del nombre (5KG, 10KG, etc.) - NO del item original
         }]
     };
 
-    console.log(`✅ Item procesado: "${baseName}" con opción "${weight}"`);
+    console.log(`✅ Item procesado: "${baseName}" con opción "${weight}" (ignorando peso original: ${item.options?.[0]?.name})`);
     return processedItem;
 };
 
@@ -722,14 +743,18 @@ export const mapSelectOptionToDBFormat = (selectOption: string): { name: string,
 
     // Mapear Big Dog
     if (normalizedSelect.includes('big dog')) {
+        console.log(`🐕 BIG DOG detectado en mapeo: "${normalizedSelect}"`);
         if (normalizedSelect.includes('pollo')) {
-            return { name: 'BIG DOG (15kg)', option: 'POLLO' };
+            console.log(`🐕 BIG DOG POLLO mapeado a: name: 'BIG DOG POLLO', option: '15KG'`);
+            return { name: 'BIG DOG POLLO', option: '15KG' };
         }
         if (normalizedSelect.includes('vaca')) {
-            return { name: 'BIG DOG (15kg)', option: 'VACA' };
+            console.log(`🐕 BIG DOG VACA mapeado a: name: 'BIG DOG VACA', option: '15KG'`);
+            return { name: 'BIG DOG VACA', option: '15KG' };
         }
         if (normalizedSelect.includes('cordero')) {
-            return { name: 'BIG DOG (15kg)', option: 'CORDERO' };
+            console.log(`🐕 BIG DOG CORDERO mapeado a: name: 'BIG DOG CORDERO', option: '15KG'`);
+            return { name: 'BIG DOG CORDERO', option: '15KG' };
         }
     }
 

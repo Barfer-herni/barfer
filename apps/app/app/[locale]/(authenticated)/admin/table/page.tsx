@@ -5,6 +5,7 @@ import { columns } from './components/columns';
 import { OrdersDataTable } from './components/OrdersDataTable';
 import type { PaginationState, SortingState } from '@tanstack/react-table';
 import { getCurrentUserWithPermissions } from '@repo/auth/server-permissions';
+import { DebugPriceCalculationButton } from './components/DebugPriceCalculationButton';
 
 export default async function TablePage({
     params,
@@ -56,14 +57,19 @@ export default async function TablePage({
     return (
         <div className="h-full w-full">
             <div className="mb-5 p-5">
-                <h1 className="text-2xl font-bold">
-                    {/* TODO: Move to dictionary */}
-                    Tabla de Órdenes
-                </h1>
-                <p className="text-muted-foreground">
-                    {/* TODO: Move to dictionary */}
-                    Una lista de todas las órdenes en el sistema.
-                </p>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-2xl font-bold">
+                            {/* TODO: Move to dictionary */}
+                            Tabla de Órdenes
+                        </h1>
+                        <p className="text-muted-foreground">
+                            {/* TODO: Move to dictionary */}
+                            Una lista de todas las órdenes en el sistema.
+                        </p>
+                    </div>
+                    <DebugPriceCalculationButton />
+                </div>
             </div>
             <div>
                 <OrdersDataTable

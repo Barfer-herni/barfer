@@ -85,14 +85,30 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
 
     // useEffect para calcular precio automáticamente en la edición inline
     useEffect(() => {
+        console.log('🔄 useEffect cálculo automático activado');
+        console.log('📊 editingRowId:', editingRowId);
+        console.log('📊 shouldAutoCalculatePrice:', shouldAutoCalculatePrice);
+        console.log('📊 isCalculatingPrice:', isCalculatingPrice);
+
         if (editingRowId && shouldAutoCalculatePrice) {
             const validItems = filterValidItems(editValues.items || []);
+            console.log('📊 validItems en useEffect:', validItems);
+            console.log('📊 editValues.orderType:', editValues.orderType);
+            console.log('📊 editValues.paymentMethod:', editValues.paymentMethod);
+
             if (validItems.length > 0 && editValues.orderType && editValues.paymentMethod && !isCalculatingPrice) {
+                console.log('✅ Condiciones cumplidas, programando cálculo en 300ms...');
                 const timeoutId = setTimeout(() => {
+                    console.log('⏰ Ejecutando cálculo automático...');
                     calculateInlinePrice();
                 }, 300); // Debounce de 300ms para evitar cálculos excesivos
 
-                return () => clearTimeout(timeoutId);
+                return () => {
+                    console.log('🧹 Limpiando timeout del cálculo automático');
+                    clearTimeout(timeoutId);
+                };
+            } else {
+                console.log('❌ Condiciones no cumplidas para cálculo automático');
             }
         }
     }, [editValues.items, editValues.orderType, editValues.paymentMethod, editingRowId, shouldAutoCalculatePrice]);
@@ -224,8 +240,21 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     };
 
     const handleChange = (field: string, value: any) => {
+        console.log('🔄 handleChange llamado:', { field, value });
+
+        // Log específico para el campo total
+        if (field === 'total') {
+            console.log('💰 Cambio en campo total:', {
+                valorAnterior: editValues.total,
+                valorNuevo: value,
+                tipoValorAnterior: typeof editValues.total,
+                tipoValorNuevo: typeof value
+            });
+        }
+
         // Activar cálculo automático si se modifican campos relevantes
         if (field === 'items' || field === 'orderType' || field === 'paymentMethod') {
+            console.log('✅ Activando cálculo automático para campo:', field);
             setShouldAutoCalculatePrice(true);
         }
 
@@ -242,22 +271,106 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             }
 
             // Para otros campos, usar el comportamiento normal
-            return { ...prev, [field]: value };
+            const newValues = { ...prev, [field]: value };
+            console.log('📊 Nuevos editValues:', newValues);
+            return newValues;
         });
     };
 
     // Función para calcular precio automáticamente en edición inline
     const calculateInlinePrice = async () => {
+        console.log('🔄 calculateInlinePrice iniciado');
+        console.log('📊 editValues.items:', editValues.items);
+        console.log('📊 editValues.orderType:', editValues.orderType);
+        console.log('📊 editValues.paymentMethod:', editValues.paymentMethod);
+
         const validItems = filterValidItems(editValues.items || []);
+        console.log('✅ validItems filtrados:', validItems);
+
         if (validItems.length === 0 || !editValues.orderType || !editValues.paymentMethod) {
+            console.log('❌ Condiciones no cumplidas para cálculo automático');
             return;
         }
 
         // Procesar items para convertir fullName de vuelta al formato de la DB
         const processedItems = validItems.map(item => {
+            console.log('🔄 Procesando item para cálculo:', {
+                name: item.name,
+                fullName: item.fullName,
+                options: item.options,
+                pesoOriginal: item.options?.[0]?.name
+            });
             // Si el item tiene fullName (opción del select), convertirlo al formato de la DB
             if (item.fullName && item.fullName !== item.name) {
                 const dbFormat = mapSelectOptionToDBFormat(item.fullName);
+                console.log('🔄 Mapeando fullName a formato DB:', { fullName: item.fullName, dbFormat });
+                return {
+                    ...item,
+                    id: dbFormat.name,
+                    name: dbFormat.name,
+                    options: [{
+                        ...item.options?.[0],
+                        name: dbFormat.option
+                    }]
+                };
+            }
+            console.log('✅ Item sin cambios:', item);
+            return item;
+        });
+
+        console.log('📦 processedItems para cálculo:', processedItems);
+
+        setIsCalculatingPrice(true);
+        try {
+            console.log('💰 Llamando a calculatePriceAction...');
+            const result = await calculatePriceAction(
+                processedItems,
+                editValues.orderType,
+                editValues.paymentMethod
+            );
+
+            console.log('💰 Resultado del cálculo:', result);
+
+            if (result.success && result.total !== undefined) {
+                console.log('✅ Actualizando total a:', result.total);
+                setEditValues((prev: any) => ({ ...prev, total: result.total! }));
+            } else {
+                console.log('❌ Error en el cálculo:', result.error);
+            }
+        } catch (error) {
+            console.error('❌ Error calculando precio automático en edición inline:', error);
+        } finally {
+            setIsCalculatingPrice(false);
+        }
+    };
+
+    // Función para debuggear el cálculo de precios en tiempo real
+    const debugPriceCalculation = async () => {
+        console.log('🔍 DEBUG: Iniciando debug del cálculo de precios...');
+        console.log('📊 editValues actuales:', editValues);
+
+        const validItems = filterValidItems(editValues.items || []);
+        console.log('✅ Items válidos:', validItems);
+
+        if (validItems.length === 0) {
+            console.log('❌ No hay items válidos para calcular');
+            return;
+        }
+
+        if (!editValues.orderType || !editValues.paymentMethod) {
+            console.log('❌ Faltan orderType o paymentMethod:', {
+                orderType: editValues.orderType,
+                paymentMethod: editValues.paymentMethod
+            });
+            return;
+        }
+
+        // Procesar items para el cálculo
+        const processedItems = validItems.map(item => {
+            console.log('🔄 Procesando item:', item);
+            if (item.fullName && item.fullName !== item.name) {
+                const dbFormat = mapSelectOptionToDBFormat(item.fullName);
+                console.log('🔄 Mapeando a formato DB:', dbFormat);
                 return {
                     ...item,
                     id: dbFormat.name,
@@ -271,7 +384,8 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             return item;
         });
 
-        setIsCalculatingPrice(true);
+        console.log('📦 Items procesados para cálculo:', processedItems);
+
         try {
             const result = await calculatePriceAction(
                 processedItems,
@@ -279,20 +393,17 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 editValues.paymentMethod
             );
 
-            if (result.success && result.total !== undefined) {
+            console.log('💰 Resultado del cálculo:', result);
+
+            if (result.success) {
+                console.log('✅ Cálculo exitoso, actualizando total...');
                 setEditValues((prev: any) => ({ ...prev, total: result.total! }));
+            } else {
+                console.log('❌ Error en el cálculo:', result.error);
             }
         } catch (error) {
-            console.error('Error calculando precio automático en edición inline:', error);
-        } finally {
-            setIsCalculatingPrice(false);
+            console.error('❌ Error en debug:', error);
         }
-    };
-
-    // Función para forzar el recálculo manual del precio
-    const forceRecalculatePrice = async () => {
-        setShouldAutoCalculatePrice(true);
-        await calculateInlinePrice();
     };
 
     const handleSave = async (row: any) => {
@@ -1007,7 +1118,9 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                                             const tempItem = {
                                                                 ...newItems[index],
                                                                 name: selectedProductName,
-                                                                fullName: selectedProductName
+                                                                fullName: selectedProductName,
+                                                                // Resetear las options para que no contengan peso del item anterior
+                                                                options: [{ name: 'Default', price: 0, quantity: newItems[index].options?.[0]?.quantity || 1 }]
                                                             };
 
                                                             // Procesar solo este item
@@ -1185,7 +1298,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 onPaginationChange={navigateToPagination}
                 onSortingChange={navigateToSorting}
                 isCalculatingPrice={isCalculatingPrice}
-                onForceRecalculatePrice={forceRecalculatePrice}
+                onForceRecalculatePrice={debugPriceCalculation}
             />
         </div>
     );

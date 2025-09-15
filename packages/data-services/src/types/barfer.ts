@@ -292,4 +292,110 @@ export interface MayoristaOrder {
     whatsappContactedAt?: string;
     createdAt: string;
     updatedAt: string;
+}
+
+// Enums para precios (equivalentes a los de Prisma)
+export type PriceSection = 'PERRO' | 'GATO' | 'OTROS';
+export type PriceType = 'EFECTIVO' | 'TRANSFERENCIA' | 'MAYORISTA';
+
+// Interfaz principal para precios con historial
+export interface Price {
+    _id: string;
+    section: PriceSection;
+    product: string;
+    weight?: string; // 5KG, 10KG (opcional para algunos productos)
+    priceType: PriceType;
+    price: number;
+    isActive: boolean;
+    // Campos de fecha para historial
+    effectiveDate: string; // Fecha desde cuando es efectivo este precio (YYYY-MM-DD)
+    month: number; // Mes (1-12) para consultas rápidas
+    year: number; // Año para consultas rápidas
+    createdAt: string;
+    updatedAt: string;
+}
+
+// Interfaz para consultar precios históricos
+export interface PriceHistoryQuery {
+    section?: PriceSection;
+    product?: string;
+    weight?: string;
+    priceType?: PriceType;
+    month?: number;
+    year?: number;
+    effectiveDate?: string;
+    isActive?: boolean;
+}
+
+// Interfaz para crear/actualizar precios
+export interface CreatePriceData {
+    section: PriceSection;
+    product: string;
+    weight?: string;
+    priceType: PriceType;
+    price: number;
+    isActive?: boolean;
+    effectiveDate?: string; // Si no se proporciona, usa la fecha actual
+}
+
+export interface UpdatePriceData {
+    price?: number;
+    isActive?: boolean;
+    effectiveDate?: string; // Para cambios de precio con fecha específica
+}
+
+// Interfaz para respuesta de historial de precios
+export interface PriceHistory {
+    product: string;
+    section: PriceSection;
+    weight?: string;
+    priceType: PriceType;
+    history: {
+        price: number;
+        effectiveDate: string;
+        month: number;
+        year: number;
+        createdAt: string;
+    }[];
+}
+
+// Interfaz para estadísticas de precios
+export interface PriceStats {
+    totalPrices: number;
+    pricesBySection: Record<PriceSection, number>;
+    pricesByType: Record<PriceType, number>;
+    averagePriceBySection: Record<PriceSection, number>;
+    priceChangesThisMonth: number;
+    mostRecentChanges: Price[];
+}
+
+// ===== PRODUCTOS GESTOR =====
+export interface ProductoGestor {
+    _id: string;
+    section: PriceSection;
+    product: string;
+    weight?: string; // 5KG, 10KG, etc. (opcional)
+    priceTypes: PriceType[]; // Qué tipos de precio maneja este producto
+    isActive: boolean;
+    order: number; // Para ordenar los productos
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CreateProductoGestorData {
+    section: PriceSection;
+    product: string;
+    weight?: string;
+    priceTypes: PriceType[];
+    isActive?: boolean;
+    order?: number;
+}
+
+export interface UpdateProductoGestorData {
+    section?: PriceSection;
+    product?: string;
+    weight?: string;
+    priceTypes?: PriceType[];
+    isActive?: boolean;
+    order?: number;
 } 

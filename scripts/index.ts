@@ -13,6 +13,7 @@ import { testSimpleConversion } from './test-simple-conversion.js';
 import { testFinalConversion } from './test-final-conversion.js';
 import { testExportFormat } from './test-export-format.js';
 import { testBigDogExport } from './test-big-dog-export.js';
+import { debugPriceCalculation } from './debug-price-calculation.js';
 
 program
   .command('init')
@@ -81,5 +82,10 @@ program
   .command('test-big-dog-export')
   .description('Test BIG DOG export format specifically')
   .action(testBigDogExport);
+
+program
+  .command('debug-price-calculation')
+  .description('Debug price calculation issues')
+  .action(debugPriceCalculation);
 
 program.parse(process.argv);

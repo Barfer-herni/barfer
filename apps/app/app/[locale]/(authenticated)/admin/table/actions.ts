@@ -3,7 +3,7 @@ import { createOrder, updateOrder, deleteOrder, migrateClientType } from '@repo/
 import { revalidatePath } from 'next/cache';
 import { updateOrdersStatusBulk } from '@repo/data-services/src/services/barfer/updateOrder';
 import { validateAndNormalizePhone } from './helpers';
-import { calculateOrderTotal } from '@repo/data-services/src/services/pricesService';
+import { calculateOrderTotal, debugPriceCalculation } from '@repo/data-services';
 
 export async function updateOrderAction(id: string, data: any) {
     try {
@@ -239,6 +239,22 @@ export async function calculatePriceAction(
         return {
             success: false,
             error: 'Error al calcular el precio automático'
+        };
+    }
+}
+
+// Nueva acción para debuggear el cálculo de precios
+export async function debugPriceCalculationAction() {
+    'use server';
+
+    try {
+        const result = await debugPriceCalculation();
+        return result;
+    } catch (error) {
+        console.error('Error in debugPriceCalculationAction:', error);
+        return {
+            success: false,
+            error: 'Error al ejecutar el debug de cálculo de precios'
         };
     }
 }
