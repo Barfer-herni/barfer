@@ -344,67 +344,6 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
         }
     };
 
-    // Función para debuggear el cálculo de precios en tiempo real
-    const debugPriceCalculation = async () => {
-        console.log('🔍 DEBUG: Iniciando debug del cálculo de precios...');
-        console.log('📊 editValues actuales:', editValues);
-
-        const validItems = filterValidItems(editValues.items || []);
-        console.log('✅ Items válidos:', validItems);
-
-        if (validItems.length === 0) {
-            console.log('❌ No hay items válidos para calcular');
-            return;
-        }
-
-        if (!editValues.orderType || !editValues.paymentMethod) {
-            console.log('❌ Faltan orderType o paymentMethod:', {
-                orderType: editValues.orderType,
-                paymentMethod: editValues.paymentMethod
-            });
-            return;
-        }
-
-        // Procesar items para el cálculo
-        const processedItems = validItems.map(item => {
-            console.log('🔄 Procesando item:', item);
-            if (item.fullName && item.fullName !== item.name) {
-                const dbFormat = mapSelectOptionToDBFormat(item.fullName);
-                console.log('🔄 Mapeando a formato DB:', dbFormat);
-                return {
-                    ...item,
-                    id: dbFormat.name,
-                    name: dbFormat.name,
-                    options: [{
-                        ...item.options?.[0],
-                        name: dbFormat.option
-                    }]
-                };
-            }
-            return item;
-        });
-
-        console.log('📦 Items procesados para cálculo:', processedItems);
-
-        try {
-            const result = await calculatePriceAction(
-                processedItems,
-                editValues.orderType,
-                editValues.paymentMethod
-            );
-
-            console.log('💰 Resultado del cálculo:', result);
-
-            if (result.success) {
-                console.log('✅ Cálculo exitoso, actualizando total...');
-                setEditValues((prev: any) => ({ ...prev, total: result.total! }));
-            } else {
-                console.log('❌ Error en el cálculo:', result.error);
-            }
-        } catch (error) {
-            console.error('❌ Error en debug:', error);
-        }
-    };
 
     const handleSave = async (row: any) => {
         setLoading(true);
@@ -1298,7 +1237,6 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 onPaginationChange={navigateToPagination}
                 onSortingChange={navigateToSorting}
                 isCalculatingPrice={isCalculatingPrice}
-                onForceRecalculatePrice={debugPriceCalculation}
             />
         </div>
     );

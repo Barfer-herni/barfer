@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Dictionary } from '@repo/internationalization';
 import { PriceSection, PriceType } from '@repo/database';
-import { updatePriceAction, getPricesByMonthAction, getAllPricesAction, initializePricesForPeriodAction, deletePriceAction, fixBigDogWeightAction, cleanBigDogDuplicatesAction, recreateBigDogProductsAction, ensureBigDogPricesCurrentMonthAction } from '../actions';
+import { updatePriceAction, getPricesByMonthAction, getAllPricesAction, initializePricesForPeriodAction, deletePriceAction } from '../actions';
 import { CreateProductModal } from './CreateProductModal';
 import {
     Table,
@@ -72,10 +72,6 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isInitializingPeriod, setIsInitializingPeriod] = useState(false);
     const [deletingPriceId, setDeletingPriceId] = useState<string | null>(null);
-    const [isFixingBigDog, setIsFixingBigDog] = useState(false);
-    const [isCleaningDuplicates, setIsCleaningDuplicates] = useState(false);
-    const [isRecreatingBigDog, setIsRecreatingBigDog] = useState(false);
-    const [isEnsuringCurrentMonth, setIsEnsuringCurrentMonth] = useState(false);
 
     // Verificar permisos del usuario
     const canEditPrices = userPermissions.includes('prices:edit');
@@ -373,129 +369,6 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
         }
     };
 
-    // Función para corregir el peso de productos BIG DOG
-    const handleFixBigDogWeight = async () => {
-        setIsFixingBigDog(true);
-        try {
-            const result = await fixBigDogWeightAction();
-            if (result.success) {
-                toast({
-                    title: "Productos BIG DOG corregidos",
-                    description: result.message || "Se corrigieron los pesos de productos BIG DOG",
-                });
-                // Recargar los precios para mostrar los cambios
-                await loadPricesByDate(filters.month!, filters.year!);
-            } else {
-                toast({
-                    title: "Error",
-                    description: result.message || "Error al corregir productos BIG DOG",
-                    variant: "destructive"
-                });
-            }
-        } catch (error) {
-            console.error('Error fixing BIG DOG weight:', error);
-            toast({
-                title: "Error",
-                description: "Error al corregir productos BIG DOG",
-                variant: "destructive"
-            });
-        } finally {
-            setIsFixingBigDog(false);
-        }
-    };
-
-    // Función para limpiar duplicados de productos BIG DOG
-    const handleCleanBigDogDuplicates = async () => {
-        setIsCleaningDuplicates(true);
-        try {
-            const result = await cleanBigDogDuplicatesAction();
-            if (result.success) {
-                toast({
-                    title: "Duplicados BIG DOG eliminados",
-                    description: result.message || "Se eliminaron los productos BIG DOG duplicados",
-                });
-                // Recargar los precios para mostrar los cambios
-                await loadPricesByDate(filters.month!, filters.year!);
-            } else {
-                toast({
-                    title: "Error",
-                    description: result.message || "Error al limpiar duplicados BIG DOG",
-                    variant: "destructive"
-                });
-            }
-        } catch (error) {
-            console.error('Error cleaning BIG DOG duplicates:', error);
-            toast({
-                title: "Error",
-                description: "Error al limpiar duplicados BIG DOG",
-                variant: "destructive"
-            });
-        } finally {
-            setIsCleaningDuplicates(false);
-        }
-    };
-
-    // Función para recrear completamente los productos BIG DOG
-    const handleRecreateBigDogProducts = async () => {
-        setIsRecreatingBigDog(true);
-        try {
-            const result = await recreateBigDogProductsAction();
-            if (result.success) {
-                toast({
-                    title: "Productos BIG DOG recreados",
-                    description: result.message || "Se recrearon completamente los productos BIG DOG",
-                });
-                // Recargar los precios para mostrar los cambios
-                await loadPricesByDate(filters.month!, filters.year!);
-            } else {
-                toast({
-                    title: "Error",
-                    description: result.message || "Error al recrear productos BIG DOG",
-                    variant: "destructive"
-                });
-            }
-        } catch (error) {
-            console.error('Error recreating BIG DOG products:', error);
-            toast({
-                title: "Error",
-                description: "Error al recrear productos BIG DOG",
-                variant: "destructive"
-            });
-        } finally {
-            setIsRecreatingBigDog(false);
-        }
-    };
-
-    // Función para asegurar precios BIG DOG en el mes actual
-    const handleEnsureBigDogCurrentMonth = async () => {
-        setIsEnsuringCurrentMonth(true);
-        try {
-            const result = await ensureBigDogPricesCurrentMonthAction();
-            if (result.success) {
-                toast({
-                    title: "Precios BIG DOG verificados",
-                    description: result.message || "Se verificaron los precios BIG DOG para el mes actual",
-                });
-                // Recargar los precios para mostrar los cambios
-                await loadPricesByDate(filters.month!, filters.year!);
-            } else {
-                toast({
-                    title: "Error",
-                    description: result.message || "Error al verificar precios BIG DOG",
-                    variant: "destructive"
-                });
-            }
-        } catch (error) {
-            console.error('Error ensuring BIG DOG current month:', error);
-            toast({
-                title: "Error",
-                description: "Error al verificar precios BIG DOG",
-                variant: "destructive"
-            });
-        } finally {
-            setIsEnsuringCurrentMonth(false);
-        }
-    };
 
     const hasActiveFilters = filters.sections.length > 0 || filters.weights.length > 0 || filters.priceTypes.length > 0;
 
@@ -808,69 +681,6 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
                                 )}
                             </Button>
 
-                            <Button
-                                onClick={handleFixBigDogWeight}
-                                disabled={isFixingBigDog}
-                                variant="outline"
-                                className="w-full border-orange-200 text-orange-700 hover:bg-orange-50"
-                            >
-                                {isFixingBigDog ? (
-                                    <div className="flex items-center gap-2">
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600"></div>
-                                        Corrigiendo...
-                                    </div>
-                                ) : (
-                                    "🔧 Corregir BIG DOG"
-                                )}
-                            </Button>
-
-                            <Button
-                                onClick={handleCleanBigDogDuplicates}
-                                disabled={isCleaningDuplicates}
-                                variant="outline"
-                                className="w-full border-red-200 text-red-700 hover:bg-red-50"
-                            >
-                                {isCleaningDuplicates ? (
-                                    <div className="flex items-center gap-2">
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
-                                        Limpiando...
-                                    </div>
-                                ) : (
-                                    "🧹 Limpiar Duplicados BIG DOG"
-                                )}
-                            </Button>
-
-                            <Button
-                                onClick={handleRecreateBigDogProducts}
-                                disabled={isRecreatingBigDog}
-                                variant="outline"
-                                className="w-full border-purple-200 text-purple-700 hover:bg-purple-50"
-                            >
-                                {isRecreatingBigDog ? (
-                                    <div className="flex items-center gap-2">
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
-                                        Recreando...
-                                    </div>
-                                ) : (
-                                    "🔄 Recrear BIG DOG (Solución Definitiva)"
-                                )}
-                            </Button>
-
-                            <Button
-                                onClick={handleEnsureBigDogCurrentMonth}
-                                disabled={isEnsuringCurrentMonth}
-                                variant="outline"
-                                className="w-full border-green-200 text-green-700 hover:bg-green-50"
-                            >
-                                {isEnsuringCurrentMonth ? (
-                                    <div className="flex items-center gap-2">
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
-                                        Verificando...
-                                    </div>
-                                ) : (
-                                    "✅ Verificar BIG DOG Mes Actual"
-                                )}
-                            </Button>
                         </div>
                         <p className="text-xs text-muted-foreground">
                             Esto creará todos los productos con precio $0, luego podrás editarlos manualmente.

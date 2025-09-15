@@ -5,7 +5,6 @@ import { columns } from './components/columns';
 import { OrdersDataTable } from './components/OrdersDataTable';
 import type { PaginationState, SortingState } from '@tanstack/react-table';
 import { getCurrentUserWithPermissions } from '@repo/auth/server-permissions';
-import { DebugPriceCalculationButton } from './components/DebugPriceCalculationButton';
 
 export default async function TablePage({
     params,
@@ -68,7 +67,6 @@ export default async function TablePage({
                             Una lista de todas las órdenes en el sistema.
                         </p>
                     </div>
-                    <DebugPriceCalculationButton />
                 </div>
             </div>
             <div>
