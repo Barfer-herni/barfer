@@ -151,6 +151,9 @@ importers:
       '@repo/design-system':
         specifier: workspace:*
         version: link:../../packages/design-system
+      '@repo/email':
+        specifier: workspace:*
+        version: link:../../packages/email
       '@repo/feature-flags':
         specifier: workspace:*
         version: link:../../packages/feature-flags
