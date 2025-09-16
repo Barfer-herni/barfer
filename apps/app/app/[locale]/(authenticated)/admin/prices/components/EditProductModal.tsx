@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react';
-import { PriceSection, PriceType } from '@repo/database';
+import { PriceSection, PriceType } from '@repo/data-services';
 import { updateProductAction, deleteProductAction, updateProductPriceTypesAction } from '../actions';
 import {
     Dialog,

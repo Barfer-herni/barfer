@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react';
-import { PriceSection, PriceType } from '@repo/database';
+import { PriceSection, PriceType } from '@repo/data-services';
 import { createPriceAction } from '../actions';
 import type { CreatePriceData } from '@repo/data-services';
 import {
@@ -58,6 +58,7 @@ export function CreateProductModal({ isOpen, onClose, onProductCreated, currentM
         { value: 'PERRO', label: '🐕 PERRO' },
         { value: 'GATO', label: '🐱 GATO' },
         { value: 'OTROS', label: '🦴 OTROS' },
+        { value: 'RAW', label: '🥩 RAW' },
     ];
 
     const priceTypeOptions: { value: PriceType; label: string }[] = [

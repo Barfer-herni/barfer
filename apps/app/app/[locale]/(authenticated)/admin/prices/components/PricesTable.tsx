@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Dictionary } from '@repo/internationalization';
-import { PriceSection, PriceType } from '@repo/database';
+import { PriceSection, PriceType } from '@repo/data-services';
 import { updatePriceAction, getPricesByMonthAction, getAllPricesAction, initializePricesForPeriodAction, deletePriceAction } from '../actions';
 import { CreateProductModal } from './CreateProductModal';
 import {
@@ -166,7 +166,7 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
         return Object.values(groups).sort((a, b) => {
             if (a.section !== b.section) {
                 // Orden: PERRO, GATO, OTROS
-                const sectionOrder = { PERRO: 1, GATO: 2, OTROS: 3 };
+                const sectionOrder = { PERRO: 1, GATO: 2, OTROS: 3, RAW: 4 };
                 return sectionOrder[a.section] - sectionOrder[b.section];
             }
             if (a.product !== b.product) {
@@ -526,6 +526,7 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
             case 'PERRO': return 'PERRO';
             case 'GATO': return 'GATO';
             case 'OTROS': return 'OTROS';
+            case 'RAW': return 'RAW';
             default: return section;
         }
     };
@@ -535,6 +536,7 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
             case 'PERRO': return 'bg-blue-100 text-blue-800 border-blue-200';
             case 'GATO': return 'bg-purple-100 text-purple-800 border-purple-200';
             case 'OTROS': return 'bg-green-100 text-green-800 border-green-200';
+            case 'RAW': return 'bg-orange-100 text-orange-800 border-orange-200';
             default: return 'bg-gray-100 text-gray-800 border-gray-200';
         }
     };

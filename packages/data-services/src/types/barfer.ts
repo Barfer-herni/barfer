@@ -297,7 +297,7 @@ export interface MayoristaOrder {
 }
 
 // Enums para precios (equivalentes a los de Prisma)
-export type PriceSection = 'PERRO' | 'GATO' | 'OTROS';
+export type PriceSection = 'PERRO' | 'GATO' | 'OTROS' | 'RAW';
 export type PriceType = 'EFECTIVO' | 'TRANSFERENCIA' | 'MAYORISTA';
 
 // Interfaz principal para precios con historial
