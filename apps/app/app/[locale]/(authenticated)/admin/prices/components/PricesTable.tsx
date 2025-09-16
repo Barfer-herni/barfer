@@ -262,6 +262,8 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
                     isActive: Boolean(price.isActive)
                 }));
                 setLocalPrices(transformedPrices);
+                // Actualizar los filtros con la nueva fecha sin perder otros filtros
+                setFilters(prev => ({ ...prev, month, year }));
                 toast({
                     title: "Precios cargados",
                     description: `Mostrando precios de ${getMonthName(month)} ${year}`,
@@ -654,46 +656,44 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
         return elements;
     };
 
-    if (localPrices.length === 0) {
-        return (
-            <div className="text-center py-12">
-                <p className="text-muted-foreground mb-4">
-                    No hay precios configurados para {getMonthName(filters.month!)} {filters.year}.
-                </p>
-                {canEditPrices ? (
-                    <div className="space-y-4">
-                        <p className="text-sm text-muted-foreground">
-                            Puedes inicializar los precios base para este período y luego editarlos manualmente.
-                        </p>
-                        <div className="space-y-2">
-                            <Button
-                                onClick={handleInitializePricesForPeriod}
-                                disabled={isInitializingPeriod}
-                                className="bg-blue-600 hover:bg-blue-700 w-full"
-                            >
-                                {isInitializingPeriod ? (
-                                    <div className="flex items-center gap-2">
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                                        Inicializando...
-                                    </div>
-                                ) : (
-                                    `Inicializar Precios para ${getMonthName(filters.month!)} ${filters.year}`
-                                )}
-                            </Button>
-
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            Esto creará todos los productos con precio $0, luego podrás editarlos manualmente.
-                        </p>
-                    </div>
-                ) : (
+    // Función para renderizar el estado vacío
+    const renderEmptyState = () => (
+        <div className="text-center py-12">
+            <p className="text-muted-foreground mb-4">
+                No hay precios configurados para {getMonthName(filters.month!)} {filters.year}.
+            </p>
+            {canEditPrices ? (
+                <div className="space-y-4">
                     <p className="text-sm text-muted-foreground">
-                        Contacta al administrador para configurar los productos y precios.
+                        Puedes inicializar los precios base para este período y luego editarlos manualmente.
                     </p>
-                )}
-            </div>
-        );
-    }
+                    <div className="space-y-2">
+                        <Button
+                            onClick={handleInitializePricesForPeriod}
+                            disabled={isInitializingPeriod}
+                            className="bg-blue-600 hover:bg-blue-700 w-full"
+                        >
+                            {isInitializingPeriod ? (
+                                <div className="flex items-center gap-2">
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                    Inicializando...
+                                </div>
+                            ) : (
+                                `Inicializar Precios para ${getMonthName(filters.month!)} ${filters.year}`
+                            )}
+                        </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        Esto creará todos los productos con precio $0, luego podrás editarlos manualmente.
+                    </p>
+                </div>
+            ) : (
+                <p className="text-sm text-muted-foreground">
+                    Contacta al administrador para configurar los productos y precios.
+                </p>
+            )}
+        </div>
+    );
 
     return (
         <div className="space-y-4">
@@ -734,6 +734,8 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
                             Cargando precios...
                         </div>
+                    ) : localPrices.length === 0 ? (
+                        <p>No hay precios para {getMonthName(filters.month!)} {filters.year}</p>
                     ) : (
                         <p>Mostrando {rows.length} productos</p>
                     )}
@@ -760,7 +762,6 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
                                             value={filters.month?.toString() || "1"}
                                             onValueChange={(value) => {
                                                 const month = parseInt(value);
-                                                setFilters(prev => ({ ...prev, month }));
                                                 loadPricesByDate(month, filters.year!);
                                             }}
                                         >
@@ -789,7 +790,6 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
                                             value={filters.year?.toString() || "2025"}
                                             onValueChange={(value) => {
                                                 const year = parseInt(value);
-                                                setFilters(prev => ({ ...prev, year }));
                                                 loadPricesByDate(filters.month!, year);
                                             }}
                                         >
@@ -925,24 +925,30 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
                 </CollapsibleContent>
             </Collapsible>
 
-            {/* Tabla de precios */}
-            <div className="rounded-lg border">
-                <Table>
-                    <TableHeader>
-                        <TableRow className="bg-muted/50">
-                            <TableHead className="font-semibold">Sección</TableHead>
-                            <TableHead className="font-semibold">Producto</TableHead>
-                            <TableHead className="font-semibold text-center">Peso</TableHead>
-                            <TableHead className="font-semibold text-center">Efectivo</TableHead>
-                            <TableHead className="font-semibold text-center">Transferencia</TableHead>
-                            <TableHead className="font-semibold text-center">Mayorista</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {renderRowsWithSeparators()}
-                    </TableBody>
-                </Table>
-            </div>
+            {/* Tabla de precios o estado vacío */}
+            {localPrices.length === 0 ? (
+                <div className="rounded-lg border">
+                    {renderEmptyState()}
+                </div>
+            ) : (
+                <div className="rounded-lg border">
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="bg-muted/50">
+                                <TableHead className="font-semibold">Sección</TableHead>
+                                <TableHead className="font-semibold">Producto</TableHead>
+                                <TableHead className="font-semibold text-center">Peso</TableHead>
+                                <TableHead className="font-semibold text-center">Efectivo</TableHead>
+                                <TableHead className="font-semibold text-center">Transferencia</TableHead>
+                                <TableHead className="font-semibold text-center">Mayorista</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {renderRowsWithSeparators()}
+                        </TableBody>
+                    </Table>
+                </div>
+            )}
 
             <div className="text-sm text-muted-foreground">
                 <p>• Haz clic en el icono ✏️ para editar un precio</p>
@@ -950,6 +956,7 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
                 <p>• Usa ✅ para guardar o ❌ para cancelar</p>
                 <p>• "—" indica que ese tipo de precio no está disponible</p>
                 <p>• Total de precios configurados: {localPrices.length}</p>
+                <p>• Período actual: {getMonthName(filters.month!)} {filters.year}</p>
             </div>
 
             {/* Modal para crear producto */}
