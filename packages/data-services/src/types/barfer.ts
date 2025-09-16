@@ -1,5 +1,7 @@
 // Tipos para la base de datos Barfer MongoDB
 
+import { ObjectId } from '@repo/database';
+
 export interface Product {
     _id: string;
     name: string;
@@ -300,7 +302,7 @@ export type PriceType = 'EFECTIVO' | 'TRANSFERENCIA' | 'MAYORISTA';
 
 // Interfaz principal para precios con historial
 export interface Price {
-    _id: string;
+    _id: string | ObjectId;
     section: PriceSection;
     product: string;
     weight?: string; // 5KG, 10KG (opcional para algunos productos)
@@ -371,7 +373,7 @@ export interface PriceStats {
 
 // ===== PRODUCTOS GESTOR =====
 export interface ProductoGestor {
-    _id: string;
+    _id: string | ObjectId;
     section: PriceSection;
     product: string;
     weight?: string; // 5KG, 10KG, etc. (opcional)

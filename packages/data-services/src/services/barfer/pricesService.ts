@@ -211,7 +211,7 @@ export async function createPrice(data: CreatePriceData): Promise<{
         const now = new Date().toISOString();
 
         const newPrice: Price = {
-            _id: new ObjectId().toString(),
+            _id: new ObjectId(),
             section: data.section,
             product: data.product,
             weight: data.weight,
@@ -230,9 +230,15 @@ export async function createPrice(data: CreatePriceData): Promise<{
         // Revalidar la página de precios
         revalidatePath('/admin/prices');
 
+        // Convertir ObjectId a string para compatibilidad con Client Components
+        const serializedPrice = {
+            ...newPrice,
+            _id: newPrice._id.toString()
+        };
+
         return {
             success: true,
-            price: newPrice,
+            price: serializedPrice,
             message: 'Precio creado exitosamente'
         };
     } catch (error) {

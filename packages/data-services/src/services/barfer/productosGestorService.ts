@@ -92,7 +92,7 @@ export async function createProductoGestor(data: CreateProductoGestorData): Prom
         const now = new Date().toISOString();
 
         const newProducto: ProductoGestor = {
-            _id: new ObjectId().toString(),
+            _id: new ObjectId(),
             section: data.section,
             product: data.product,
             weight: data.weight,
@@ -107,9 +107,15 @@ export async function createProductoGestor(data: CreateProductoGestorData): Prom
 
         revalidatePath('/admin/prices');
 
+        // Convertir ObjectId a string para compatibilidad con Client Components
+        const serializedProducto = {
+            ...newProducto,
+            _id: newProducto._id.toString()
+        };
+
         return {
             success: true,
-            producto: newProducto,
+            producto: serializedProducto,
             message: 'Producto creado exitosamente'
         };
     } catch (error) {
