@@ -752,6 +752,9 @@ importers:
       '@types/mongodb':
         specifier: ^4.0.7
         version: 4.0.7(socks@2.8.5)
+      aws4:
+        specifier: ^1.12.0
+        version: 1.13.2
       mongodb:
         specifier: ^6.17.0
         version: 6.17.0(socks@2.8.5)
@@ -5795,6 +5798,9 @@ packages:
   await-to-js@3.0.0:
     resolution: {integrity: sha512-zJAaP9zxTcvTHRlejau3ZOY4V7SRpiByf3/dxx2uyKxxor19tpmpV2QRsTKikckwhaPmr2dVpxxMr7jOCYVp5g==}
     engines: {node: '>=6.0.0'}
+
+  aws4@1.13.2:
+    resolution: {integrity: sha512-lHe62zvbTB5eEABUVi/AwVh0ZKY9rMMDhmm+eeyuuUQbQ3+J+fONVQOZyj+DdrvD4BY33uYniyRJ4UJIaSKAfw==}
 
   axios-retry@4.5.0:
     resolution: {integrity: sha512-aR99oXhpEDGo0UuAlYcn2iGRds30k366Zfa05XWScR9QaQD4JYiP3/1Qt1u7YlefUOK+cn0CcwoL1oefavQUlQ==}
@@ -16322,6 +16328,8 @@ snapshots:
       possible-typed-array-names: 1.1.0
 
   await-to-js@3.0.0: {}
+
+  aws4@1.13.2: {}
 
   axios-retry@4.5.0(axios@1.10.0):
     dependencies:
