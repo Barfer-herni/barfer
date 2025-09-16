@@ -520,11 +520,19 @@ export async function updateProductPrices(
         if (oldWeight !== null) {
             filter.weight = oldWeight;
         } else {
+            // Para productos sin peso específico, buscar documentos donde weight es null o no existe
             filter.$or = [
                 { weight: null },
                 { weight: { $exists: false } }
             ];
         }
+
+        console.log('🔧 FILTER DEBUG:', {
+            oldSection,
+            oldProduct,
+            oldWeight,
+            filter
+        });
 
         const updateData: any = {
             updatedAt: new Date().toISOString()
@@ -532,15 +540,37 @@ export async function updateProductPrices(
 
         if (newData.section) updateData.section = newData.section;
         if (newData.product) updateData.product = newData.product;
-        if (newData.weight !== undefined) {
-            if (newData.weight === null) {
-                updateData.$unset = { weight: "" };
-            } else {
-                updateData.weight = newData.weight;
-            }
+
+        // Solo agregar weight si no es null
+        if (newData.weight !== undefined && newData.weight !== null) {
+            updateData.weight = newData.weight;
         }
 
-        const result = await collection.updateMany(filter, { $set: updateData });
+        // Preparar la operación de actualización
+        let updateOperation: any = { $set: updateData };
+
+        // Si el peso es null, necesitamos usar $unset para eliminar el campo
+        if (newData.weight !== undefined && newData.weight === null) {
+            updateOperation = {
+                $set: updateData,
+                $unset: { weight: "" }
+            };
+        }
+
+        console.log('🔧 UPDATE PRODUCT PRICES DEBUG:', {
+            filter,
+            updateOperation,
+            oldWeight,
+            newWeight: newData.weight
+        });
+
+        const result = await collection.updateMany(filter, updateOperation);
+
+        console.log('🔧 UPDATE RESULT:', {
+            matchedCount: result.matchedCount,
+            modifiedCount: result.modifiedCount,
+            acknowledged: result.acknowledged
+        });
 
         revalidatePath('/admin/prices');
 

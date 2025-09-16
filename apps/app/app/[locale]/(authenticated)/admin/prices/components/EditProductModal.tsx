@@ -59,6 +59,7 @@ export function EditProductModal({ isOpen, onClose, onProductUpdated, product }:
         { value: 'PERRO', label: '🐕 PERRO' },
         { value: 'GATO', label: '🐱 GATO' },
         { value: 'OTROS', label: '🦴 OTROS' },
+        { value: 'RAW', label: '🥩 RAW' },
     ];
 
     const weightOptions = [
@@ -136,6 +137,13 @@ export function EditProductModal({ isOpen, onClose, onProductUpdated, product }:
         try {
             const weight = formData.weight === 'none' ? null : formData.weight;
 
+            console.log('🔧 FRONTEND UPDATE DEBUG:', {
+                originalProduct: product,
+                formData,
+                convertedWeight: weight,
+                weightConversion: `${formData.weight} -> ${weight}`
+            });
+
             // Actualizar datos básicos del producto
             const basicResult = await updateProductAction(
                 product.section,
@@ -147,6 +155,8 @@ export function EditProductModal({ isOpen, onClose, onProductUpdated, product }:
                     weight,
                 }
             );
+
+            console.log('🔧 BASIC RESULT:', basicResult);
 
             // Actualizar tipos de precio si cambiaron
             const priceTypesChanged = JSON.stringify(product.priceTypes.sort()) !== JSON.stringify(formData.priceTypes.sort());
