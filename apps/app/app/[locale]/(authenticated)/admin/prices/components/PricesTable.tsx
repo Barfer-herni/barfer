@@ -102,7 +102,39 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
         const weights = [...new Set(localPrices.map(p => p.weight).filter((w): w is string => w !== null))];
         const priceTypes = [...new Set(localPrices.map(p => p.priceType))];
 
-        return { sections, weights, priceTypes };
+        // Ordenar secciones: Perro-Gato-Otros-Raw
+        const sectionOrder = { PERRO: 1, GATO: 2, OTROS: 3, RAW: 4 };
+        const sortedSections = sections.sort((a, b) => {
+            const orderA = sectionOrder[a] || 999;
+            const orderB = sectionOrder[b] || 999;
+            return orderA - orderB;
+        });
+
+        // Ordenar pesos: 5kg-10kg-15kg-otros pesos
+        const sortedWeights = weights.sort((a, b) => {
+            // Extraer números de los pesos para comparación
+            const getWeightNumber = (weight: string) => {
+                const match = weight.match(/(\d+)/);
+                return match ? parseInt(match[1]) : 999;
+            };
+
+            const numA = getWeightNumber(a);
+            const numB = getWeightNumber(b);
+
+            // Si ambos tienen números, ordenar por número
+            if (numA !== 999 && numB !== 999) {
+                return numA - numB;
+            }
+
+            // Si solo uno tiene número, el que tiene número va primero
+            if (numA !== 999 && numB === 999) return -1;
+            if (numA === 999 && numB !== 999) return 1;
+
+            // Si ninguno tiene número, ordenar alfabéticamente
+            return a.localeCompare(b);
+        });
+
+        return { sections: sortedSections, weights: sortedWeights, priceTypes };
     };
 
     const { sections: availableSections, weights: availableWeights, priceTypes: availablePriceTypes } = getUniqueValues();
