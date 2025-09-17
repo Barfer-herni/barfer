@@ -68,6 +68,7 @@ export function EditProductModal({ isOpen, onClose, onProductUpdated, product }:
         { value: '10KG', label: '10KG' },
         { value: '15KG', label: '15KG' },
         { value: '200GRS', label: '200GRS' },
+        { value: '100GRS', label: '100GRS' },
         { value: '30GRS', label: '30GRS' },
     ];
 

@@ -73,6 +73,7 @@ export function CreateProductModal({ isOpen, onClose, onProductCreated, currentM
         { value: '10KG', label: '10KG' },
         { value: '15KG', label: '15KG' },
         { value: '200GRS', label: '200GRS' },
+        { value: '100GRS', label: '100GRS' },
         { value: '30GRS', label: '30GRS' },
     ];
 

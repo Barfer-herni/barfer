@@ -514,10 +514,16 @@ export async function getProductsForSelect(): Promise<{
 
         const formattedProducts = productsWithDetails.map(p => p.formattedName);
 
+        // Eliminar duplicados de productos y detalles
+        const uniqueProducts = [...new Set(formattedProducts)];
+        const uniqueProductsWithDetails = productsWithDetails.filter((product, index, self) =>
+            index === self.findIndex(p => p.formattedName === product.formattedName)
+        );
+
         return {
             success: true,
-            products: formattedProducts,
-            productsWithDetails
+            products: uniqueProducts,
+            productsWithDetails: uniqueProductsWithDetails
         };
     } catch (error) {
         console.error('Error getting products for select:', error);

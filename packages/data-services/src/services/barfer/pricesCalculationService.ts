@@ -39,7 +39,7 @@ export async function getProductPrice(
             }
         }
 
-        // Determinar la sección basada en el producto
+        // Determinar la sección basada en el producto y peso
         let section: PriceSection;
 
         if (productUpper.includes('GATO')) {
@@ -51,8 +51,15 @@ export async function getProductPrice(
             productUpper.includes('BOX DE COMPLEMENTOS')) {
             section = 'OTROS';
         } else if (productUpper.includes('PERRO') || productUpper.includes('BOX') || productUpper.includes('BIG DOG') ||
-            productUpper.includes('POLLO') || productUpper.includes('VACA') || productUpper.includes('CERDO') || productUpper.includes('CORDERO')) {
+            productUpper.includes('VACA') || productUpper.includes('CERDO') || productUpper.includes('CORDERO')) {
             section = 'PERRO';
+        } else if (productUpper.includes('POLLO')) {
+            // POLLO puede ser PERRO o OTROS dependiendo del peso
+            if (weight && (weight.includes('100GRS') || weight.includes('200GRS') || weight.includes('30GRS'))) {
+                section = 'OTROS'; // POLLO con peso en gramos es complemento
+            } else {
+                section = 'PERRO'; // POLLO con peso en KG es producto principal
+            }
         } else {
             // Para productos que no encajan en las categorías anteriores, 
             // intentar buscar primero en RAW antes de asignar OTROS
@@ -128,26 +135,64 @@ export async function getProductPrice(
             searchWeight = '15KG';
         }
 
-        // Debug: Log del mapeo
+        // Debug: Log del mapeo inicial (antes de buscar en DB)
         console.log(`🔍 MAPEO DE PRODUCTO:`, {
             original: product,
             mapped: searchProduct,
-            section,
+            calculatedSection: section,
             originalWeight: weight,
             mappedWeight: searchWeight,
             priceType,
             orderType,
             paymentMethod,
             isOnlyMayoristaProduct,
-            forcedMayorista: isOnlyMayoristaProduct && orderType !== 'mayorista'
+            forcedMayorista: isOnlyMayoristaProduct && orderType !== 'mayorista',
+            note: 'Sección calculada inicialmente, se verificará contra la base de datos'
         });
 
         // Buscar el precio en MongoDB
         const collection = await getCollection('prices');
 
-        // Construir query para MongoDB (case-insensitive para product)
+        // Primero buscar el producto en la base de datos para obtener su sección real
+        const productQuery: any = {
+            product: { $regex: `^${searchProduct.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' },
+            isActive: true
+        };
+
+        // Solo agregar weight al query si no es null
+        if (searchWeight !== null) {
+            productQuery.weight = searchWeight;
+        } else {
+            // Para productos sin peso específico, buscar donde weight sea null o undefined
+            productQuery.$or = [
+                { weight: null },
+                { weight: { $exists: false } }
+            ];
+        }
+
+        // Buscar el producto para obtener su sección real
+        const productRecord = await collection.findOne(productQuery);
+
+        if (!productRecord) {
+            console.warn(`❌ No se encontró producto en la base de datos:`, {
+                product: searchProduct,
+                weight: searchWeight,
+                note: 'Intentando buscar por nombre de producto sin sección específica'
+            });
+
+            return {
+                success: false,
+                error: `No se encontró el producto "${product}" en la base de datos. Verifica que el producto esté configurado en la gestión de precios.`
+            };
+        }
+
+        // Usar la sección real de la base de datos
+        const realSection = productRecord.section;
+        console.log(`✅ Producto encontrado en sección real: ${realSection} (calculada: ${section})`);
+
+        // Construir query final para obtener el precio
         const query: any = {
-            section,
+            section: realSection,
             product: { $regex: `^${searchProduct.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' }, // Case-insensitive exact match
             priceType,
             isActive: true
@@ -204,14 +249,13 @@ export async function getProductPrice(
 
         console.log(`💰 Precio encontrado:`, priceRecord ? `$${priceRecord.price}` : 'NO ENCONTRADO');
 
-        // Si no encontró el producto y la sección inicial era RAW, intentar buscar en OTROS como fallback
-        if (!priceRecord && section === 'RAW') {
+        // Si no encontró el producto y la sección real era RAW, intentar buscar en OTROS como fallback
+        if (!priceRecord && realSection === 'RAW') {
             console.log(`🔄 No se encontró en RAW, intentando buscar en OTROS como fallback...`);
 
             const fallbackQuery = {
                 ...query,
-                section: 'OTROS',
-                product: { $regex: `^${searchProduct.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } // Case-insensitive exact match
+                section: 'OTROS'
             };
 
             // Primero buscar en el mes actual
