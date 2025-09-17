@@ -54,7 +54,9 @@ export async function getProductPrice(
             productUpper.includes('POLLO') || productUpper.includes('VACA') || productUpper.includes('CERDO') || productUpper.includes('CORDERO')) {
             section = 'PERRO';
         } else {
-            section = 'OTROS';
+            // Para productos que no encajan en las categorías anteriores, 
+            // intentar buscar primero en RAW antes de asignar OTROS
+            section = 'RAW';
         }
 
         // Normalizar el nombre del producto para la búsqueda
@@ -143,10 +145,10 @@ export async function getProductPrice(
         // Buscar el precio en MongoDB
         const collection = await getCollection('prices');
 
-        // Construir query para MongoDB
+        // Construir query para MongoDB (case-insensitive para product)
         const query: any = {
             section,
-            product: searchProduct,
+            product: { $regex: `^${searchProduct.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' }, // Case-insensitive exact match
             priceType,
             isActive: true
         };
@@ -201,6 +203,41 @@ export async function getProductPrice(
         }
 
         console.log(`💰 Precio encontrado:`, priceRecord ? `$${priceRecord.price}` : 'NO ENCONTRADO');
+
+        // Si no encontró el producto y la sección inicial era RAW, intentar buscar en OTROS como fallback
+        if (!priceRecord && section === 'RAW') {
+            console.log(`🔄 No se encontró en RAW, intentando buscar en OTROS como fallback...`);
+
+            const fallbackQuery = {
+                ...query,
+                section: 'OTROS',
+                product: { $regex: `^${searchProduct.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } // Case-insensitive exact match
+            };
+
+            // Primero buscar en el mes actual
+            priceRecord = await collection.findOne({
+                ...fallbackQuery,
+                month: currentMonth,
+                year: currentYear
+            });
+
+            // Si no encuentra en el mes actual, buscar el más reciente
+            if (!priceRecord) {
+                priceRecord = await collection.findOne({
+                    ...fallbackQuery
+                }, {
+                    sort: {
+                        year: -1,
+                        month: -1,
+                        updatedAt: -1
+                    }
+                });
+            }
+
+            if (priceRecord) {
+                console.log(`✅ Encontrado en OTROS como fallback: $${priceRecord.price}`);
+            }
+        }
 
         if (!priceRecord) {
             console.warn(`❌ No se encontró precio en ningún período:`, {
