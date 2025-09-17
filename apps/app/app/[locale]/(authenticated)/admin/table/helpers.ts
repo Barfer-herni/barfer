@@ -37,19 +37,48 @@ export const getProductsFromDatabase = async (clientType: 'minorista' | 'mayoris
             if (clientType === 'minorista') {
                 // Excluir productos prohibidos para minorista Y productos RAW
                 // Los productos RAW solo están disponibles para mayoristas
-                const filteredProducts = result.products.filter(product =>
-                    !FORBIDDEN_PRODUCTS_FOR_RETAIL.some(f =>
+                const filteredProducts = result.products.filter(product => {
+                    // Excluir productos prohibidos para minorista
+                    const isNotForbidden = !FORBIDDEN_PRODUCTS_FOR_RETAIL.some(f =>
                         product.toLowerCase().includes(f.toLowerCase())
-                    ) &&
-                    !product.toLowerCase().includes('raw')
-                );
+                    );
 
-                const filteredDetails = result.productsWithDetails.filter(detail =>
-                    !FORBIDDEN_PRODUCTS_FOR_RETAIL.some(f =>
+                    // Excluir productos RAW
+                    const isNotRaw = !product.toLowerCase().includes('raw');
+
+                    // Para productos de la sección OTROS, solo permitir BOX DE COMPLEMENTOS y HUESOS CARNOSOS
+                    let isAllowedOtros = true;
+                    const productLower = product.toLowerCase();
+                    if (productLower.includes('garras') ||
+                        productLower.includes('cornalitos') ||
+                        productLower.includes('huesos recreativos') ||
+                        productLower.includes('caldo de huesos')) {
+                        isAllowedOtros = false;
+                    }
+
+                    return isNotForbidden && isNotRaw && isAllowedOtros;
+                });
+
+                const filteredDetails = result.productsWithDetails.filter(detail => {
+                    // Excluir productos prohibidos para minorista
+                    const isNotForbidden = !FORBIDDEN_PRODUCTS_FOR_RETAIL.some(f =>
                         detail.formattedName.toLowerCase().includes(f.toLowerCase())
-                    ) &&
-                    detail.section !== 'RAW'
-                );
+                    );
+
+                    // Excluir productos RAW
+                    const isNotRaw = detail.section !== 'RAW';
+
+                    // Para la sección OTROS, solo permitir BOX DE COMPLEMENTOS y HUESOS CARNOSOS
+                    let isAllowedOtros = true;
+                    if (detail.section === 'OTROS') {
+                        const productName = detail.product.toLowerCase();
+                        isAllowedOtros = productName.includes('box de complementos') ||
+                            productName.includes('huesos carnosos') ||
+                            productName.includes('hueso carnoso');
+                    }
+
+                    return isNotForbidden && isNotRaw && isAllowedOtros;
+                });
 
                 return {
                     products: filteredProducts,
