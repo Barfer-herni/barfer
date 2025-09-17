@@ -3,7 +3,8 @@ import { createOrder, updateOrder, deleteOrder, migrateClientType } from '@repo/
 import { revalidatePath } from 'next/cache';
 import { updateOrdersStatusBulk } from '@repo/data-services/src/services/barfer/updateOrder';
 import { validateAndNormalizePhone } from './helpers';
-import { calculateOrderTotal } from '@repo/data-services';
+import { calculateOrderTotal } from '@repo/data-services'
+    ;
 
 export async function updateOrderAction(id: string, data: any) {
     try {
@@ -243,6 +244,40 @@ export async function calculatePriceAction(
     }
 }
 
+
+// Nueva acción para obtener productos desde la colección prices
+export async function getProductsFromPricesAction() {
+    'use server';
+
+    try {
+        const { getProductsForSelect } = await import('@repo/data-services/src/services/barfer/pricesService');
+
+        const result = await getProductsForSelect();
+
+        if (result.success) {
+            return {
+                success: true,
+                products: result.products,
+                productsWithDetails: result.productsWithDetails
+            };
+        }
+
+        return {
+            success: false,
+            error: result.error || 'Error al obtener productos',
+            products: [],
+            productsWithDetails: []
+        };
+    } catch (error) {
+        console.error('Error in getProductsFromPricesAction:', error);
+        return {
+            success: false,
+            error: 'Error al obtener productos de la base de datos',
+            products: [],
+            productsWithDetails: []
+        };
+    }
+}
 
 // Nueva acción para duplicar un pedido
 export async function duplicateOrderAction(id: string) {

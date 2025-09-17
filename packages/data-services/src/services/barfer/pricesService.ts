@@ -446,6 +446,92 @@ export async function getAllUniqueProducts(): Promise<{
 }
 
 /**
+ * Obtener productos únicos formateados para select de items
+ * Combina section, product y weight para formar el nombre completo del producto
+ */
+export async function getProductsForSelect(): Promise<{
+    success: boolean;
+    products: string[];
+    productsWithDetails: Array<{
+        section: PriceSection;
+        product: string;
+        weight: string | null;
+        formattedName: string;
+    }>;
+    message?: string;
+    error?: string;
+}> {
+    try {
+        const collection = await getCollection('prices');
+
+        // Agrupar por producto único (section + product + weight) y obtener solo activos
+        const pipeline = [
+            {
+                $match: { isActive: true }
+            },
+            {
+                $group: {
+                    _id: {
+                        section: "$section",
+                        product: "$product",
+                        weight: "$weight"
+                    }
+                }
+            },
+            {
+                $project: {
+                    section: "$_id.section",
+                    product: "$_id.product",
+                    weight: "$_id.weight"
+                }
+            },
+            {
+                $sort: {
+                    section: 1,
+                    product: 1,
+                    weight: 1
+                }
+            }
+        ];
+
+        const products = await collection.aggregate(pipeline).toArray();
+
+        // Formatear productos para el select: "section - product - weight"
+        const productsWithDetails = products.map(p => {
+            const parts = [p.section, p.product];
+            if (p.weight) {
+                parts.push(p.weight);
+            }
+            const formattedName = parts.join(' - ');
+
+            return {
+                section: p.section,
+                product: p.product,
+                weight: p.weight,
+                formattedName
+            };
+        });
+
+        const formattedProducts = productsWithDetails.map(p => p.formattedName);
+
+        return {
+            success: true,
+            products: formattedProducts,
+            productsWithDetails
+        };
+    } catch (error) {
+        console.error('Error getting products for select:', error);
+        return {
+            success: false,
+            message: 'Error al obtener los productos para el select',
+            error: 'GET_PRODUCTS_FOR_SELECT_ERROR',
+            products: [],
+            productsWithDetails: []
+        };
+    }
+}
+
+/**
  * Eliminar todos los precios de un producto específico
  */
 export async function deleteProductPrices(section: PriceSection, product: string, weight: string | null): Promise<{

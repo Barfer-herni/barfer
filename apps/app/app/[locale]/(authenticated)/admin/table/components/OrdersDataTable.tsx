@@ -24,6 +24,7 @@ import type { MayoristaOrder } from '@repo/data-services/src/types/barfer';
 import { STATUS_OPTIONS, PAYMENT_METHOD_OPTIONS, ORDER_TYPE_OPTIONS } from '../constants';
 import {
     getProductsByClientType,
+    getProductsFromDatabase,
     getFilteredProducts,
     createDefaultOrderData,
     filterValidItems,
@@ -70,6 +71,14 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     const [selectedMayorista, setSelectedMayorista] = useState<MayoristaOrder | null>(null);
     const [isCalculatingPrice, setIsCalculatingPrice] = useState(false);
     const [shouldAutoCalculatePrice, setShouldAutoCalculatePrice] = useState(false);
+    const [availableProducts, setAvailableProducts] = useState<string[]>([]);
+    const [productsWithDetails, setProductsWithDetails] = useState<Array<{
+        section: string;
+        product: string;
+        weight: string | null;
+        formattedName: string;
+    }>>([]);
+    const [productsLoading, setProductsLoading] = useState(true);
 
     // useEffect para calcular precio automáticamente en el formulario de creación
     useEffect(() => {
@@ -85,30 +94,17 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
 
     // useEffect para calcular precio automáticamente en la edición inline
     useEffect(() => {
-        console.log('🔄 useEffect cálculo automático activado');
-        console.log('📊 editingRowId:', editingRowId);
-        console.log('📊 shouldAutoCalculatePrice:', shouldAutoCalculatePrice);
-        console.log('📊 isCalculatingPrice:', isCalculatingPrice);
-
         if (editingRowId && shouldAutoCalculatePrice) {
             const validItems = filterValidItems(editValues.items || []);
-            console.log('📊 validItems en useEffect:', validItems);
-            console.log('📊 editValues.orderType:', editValues.orderType);
-            console.log('📊 editValues.paymentMethod:', editValues.paymentMethod);
 
             if (validItems.length > 0 && editValues.orderType && editValues.paymentMethod && !isCalculatingPrice) {
-                console.log('✅ Condiciones cumplidas, programando cálculo en 300ms...');
                 const timeoutId = setTimeout(() => {
-                    console.log('⏰ Ejecutando cálculo automático...');
                     calculateInlinePrice();
                 }, 300); // Debounce de 300ms para evitar cálculos excesivos
 
                 return () => {
-                    console.log('🧹 Limpiando timeout del cálculo automático');
                     clearTimeout(timeoutId);
                 };
-            } else {
-                console.log('❌ Condiciones no cumplidas para cálculo automático');
             }
         }
     }, [editValues.items, editValues.orderType, editValues.paymentMethod, editingRowId, shouldAutoCalculatePrice]);
@@ -184,15 +180,38 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
         }
     }, [searchInput, handleSearchSubmit]);
 
-    const handleEditClick = (row: any) => {
+    const handleEditClick = async (row: any) => {
         setEditingRowId(row.id);
         setProductSearchFilter('');
         setShouldAutoCalculatePrice(false); // No calcular automáticamente al inicio
+
+        const orderType = row.original.orderType || 'minorista';
+
+        // Cargar productos inmediatamente para este tipo de orden
+        setProductsLoading(true);
+        try {
+            const result = await getProductsFromDatabase(orderType);
+            setAvailableProducts(result.products);
+            setProductsWithDetails(result.productsWithDetails);
+        } catch (error) {
+            console.error('Error cargando productos:', error);
+            const fallbackProducts = getProductsByClientType(orderType);
+            setAvailableProducts(fallbackProducts);
+            setProductsWithDetails(fallbackProducts.map(product => ({
+                section: '',
+                product: product,
+                weight: null,
+                formattedName: product
+            })));
+        } finally {
+            setProductsLoading(false);
+        }
+
         const editValuesData = {
             notes: row.original.notes !== undefined && row.original.notes !== null ? row.original.notes : '',
             notesOwn: row.original.notesOwn !== undefined && row.original.notesOwn !== null ? row.original.notesOwn : '',
             status: row.original.status || '',
-            orderType: row.original.orderType || 'minorista',
+            orderType: orderType,
             address: {
                 reference: row.original.address?.reference || '',
                 floorNumber: row.original.address?.floorNumber || '',
@@ -240,21 +259,8 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     };
 
     const handleChange = (field: string, value: any) => {
-        console.log('🔄 handleChange llamado:', { field, value });
-
-        // Log específico para el campo total
-        if (field === 'total') {
-            console.log('💰 Cambio en campo total:', {
-                valorAnterior: editValues.total,
-                valorNuevo: value,
-                tipoValorAnterior: typeof editValues.total,
-                tipoValorNuevo: typeof value
-            });
-        }
-
         // Activar cálculo automático si se modifican campos relevantes
         if (field === 'items' || field === 'orderType' || field === 'paymentMethod') {
-            console.log('✅ Activando cálculo automático para campo:', field);
             setShouldAutoCalculatePrice(true);
         }
 
@@ -271,39 +277,23 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             }
 
             // Para otros campos, usar el comportamiento normal
-            const newValues = { ...prev, [field]: value };
-            console.log('📊 Nuevos editValues:', newValues);
-            return newValues;
+            return { ...prev, [field]: value };
         });
     };
 
     // Función para calcular precio automáticamente en edición inline
     const calculateInlinePrice = async () => {
-        console.log('🔄 calculateInlinePrice iniciado');
-        console.log('📊 editValues.items:', editValues.items);
-        console.log('📊 editValues.orderType:', editValues.orderType);
-        console.log('📊 editValues.paymentMethod:', editValues.paymentMethod);
-
         const validItems = filterValidItems(editValues.items || []);
-        console.log('✅ validItems filtrados:', validItems);
 
         if (validItems.length === 0 || !editValues.orderType || !editValues.paymentMethod) {
-            console.log('❌ Condiciones no cumplidas para cálculo automático');
             return;
         }
 
         // Procesar items para convertir fullName de vuelta al formato de la DB
         const processedItems = validItems.map(item => {
-            console.log('🔄 Procesando item para cálculo:', {
-                name: item.name,
-                fullName: item.fullName,
-                options: item.options,
-                pesoOriginal: item.options?.[0]?.name
-            });
             // Si el item tiene fullName (opción del select), convertirlo al formato de la DB
             if (item.fullName && item.fullName !== item.name) {
                 const dbFormat = mapSelectOptionToDBFormat(item.fullName);
-                console.log('🔄 Mapeando fullName a formato DB:', { fullName: item.fullName, dbFormat });
                 return {
                     ...item,
                     id: dbFormat.name,
@@ -314,31 +304,22 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                     }]
                 };
             }
-            console.log('✅ Item sin cambios:', item);
             return item;
         });
 
-        console.log('📦 processedItems para cálculo:', processedItems);
-
         setIsCalculatingPrice(true);
         try {
-            console.log('💰 Llamando a calculatePriceAction...');
             const result = await calculatePriceAction(
                 processedItems,
                 editValues.orderType,
                 editValues.paymentMethod
             );
 
-            console.log('💰 Resultado del cálculo:', result);
-
             if (result.success && result.total !== undefined) {
-                console.log('✅ Actualizando total a:', result.total);
                 setEditValues((prev: any) => ({ ...prev, total: result.total! }));
-            } else {
-                console.log('❌ Error en el cálculo:', result.error);
             }
         } catch (error) {
-            console.error('❌ Error calculando precio automático en edición inline:', error);
+            console.error('Error calculando precio automático en edición inline:', error);
         } finally {
             setIsCalculatingPrice(false);
         }
@@ -772,6 +753,89 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
         }
     };
 
+    // Cargar productos desde la base de datos al inicializar
+    useEffect(() => {
+        const loadProducts = async () => {
+            setProductsLoading(true);
+            try {
+                const result = await getProductsFromDatabase('minorista'); // Cargar productos minoristas por defecto
+                setAvailableProducts(result.products);
+                setProductsWithDetails(result.productsWithDetails);
+            } catch (error) {
+                console.error('Error cargando productos:', error);
+                // Fallback a productos hardcodeados
+                const fallbackProducts = getProductsByClientType('minorista');
+                setAvailableProducts(fallbackProducts);
+                setProductsWithDetails(fallbackProducts.map(product => ({
+                    section: '',
+                    product: product,
+                    weight: null,
+                    formattedName: product
+                })));
+            } finally {
+                setProductsLoading(false);
+            }
+        };
+
+        loadProducts();
+    }, []);
+
+    // Actualizar productos cuando cambie el tipo de cliente en el formulario de creación
+    useEffect(() => {
+        const updateProducts = async () => {
+            if (createFormData.orderType) {
+                setProductsLoading(true);
+                try {
+                    const result = await getProductsFromDatabase(createFormData.orderType);
+                    setAvailableProducts(result.products);
+                    setProductsWithDetails(result.productsWithDetails);
+                } catch (error) {
+                    console.error('Error actualizando productos:', error);
+                    const fallbackProducts = getProductsByClientType(createFormData.orderType);
+                    setAvailableProducts(fallbackProducts);
+                    setProductsWithDetails(fallbackProducts.map(product => ({
+                        section: '',
+                        product: product,
+                        weight: null,
+                        formattedName: product
+                    })));
+                } finally {
+                    setProductsLoading(false);
+                }
+            }
+        };
+
+        updateProducts();
+    }, [createFormData.orderType]);
+
+    // Actualizar productos cuando cambie el tipo de cliente durante la edición
+    useEffect(() => {
+        const updateProductsForEdit = async () => {
+            if (editValues.orderType) {
+                setProductsLoading(true);
+                try {
+                    const result = await getProductsFromDatabase(editValues.orderType);
+                    setAvailableProducts(result.products);
+                    setProductsWithDetails(result.productsWithDetails);
+                } catch (error) {
+                    console.error('Error actualizando productos para edición:', error);
+                    const fallbackProducts = getProductsByClientType(editValues.orderType);
+                    setAvailableProducts(fallbackProducts);
+                    setProductsWithDetails(fallbackProducts.map(product => ({
+                        section: '',
+                        product: product,
+                        weight: null,
+                        formattedName: product
+                    })));
+                } finally {
+                    setProductsLoading(false);
+                }
+            }
+        };
+
+        updateProductsForEdit();
+    }, [editValues.orderType]);
+
     // Actualizar contador de backups al cargar
     useEffect(() => {
         updateBackupsCount();
@@ -1069,9 +1133,12 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                                             handleCreateFormChange('items', newItems);
                                                         }}
                                                         className="flex-1 p-2 border border-gray-300 rounded-md"
+                                                        disabled={productsLoading}
                                                     >
-                                                        <option value="">Seleccionar producto</option>
-                                                        {getProductsByClientType(createFormData.orderType).map(product => (
+                                                        <option value="">
+                                                            {productsLoading ? 'Cargando productos...' : 'Seleccionar producto'}
+                                                        </option>
+                                                        {availableProducts.map(product => (
                                                             <option key={product} value={product}>
                                                                 {product}
                                                             </option>
@@ -1226,6 +1293,9 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 productSearchFilter={productSearchFilter}
                 canEdit={canEdit}
                 canDelete={canDelete}
+                availableProducts={availableProducts}
+                productsWithDetails={productsWithDetails}
+                productsLoading={productsLoading}
                 onEditClick={handleEditClick}
                 onCancel={handleCancel}
                 onSave={handleSave}

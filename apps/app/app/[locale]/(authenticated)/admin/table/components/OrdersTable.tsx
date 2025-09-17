@@ -49,6 +49,14 @@ interface OrdersTableProps<TData extends { _id: string }, TValue> extends DataTa
     productSearchFilter: string;
     canEdit?: boolean;
     canDelete?: boolean;
+    availableProducts: string[];
+    productsWithDetails: Array<{
+        section: string;
+        product: string;
+        weight: string | null;
+        formattedName: string;
+    }>;
+    productsLoading: boolean;
     onEditClick: (row: any) => void;
     onCancel: () => void;
     onSave: (row: any) => void;
@@ -77,6 +85,9 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
     productSearchFilter,
     canEdit = false,
     canDelete = false,
+    availableProducts,
+    productsWithDetails,
+    productsLoading,
     onEditClick,
     onCancel,
     onSave,
@@ -211,7 +222,7 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                 {row.getVisibleCells().map((cell, index) => {
                                     // Edición inline para campos editables
                                     if (editingRowId === row.id) {
-                                        return renderEditableCell(cell, index, editValues, onEditValueChange, productSearchFilter, onProductSearchChange, isCalculatingPrice, onForceRecalculatePrice);
+                                        return renderEditableCell(cell, index, editValues, onEditValueChange, productSearchFilter, onProductSearchChange, availableProducts, productsLoading, isCalculatingPrice, onForceRecalculatePrice);
                                     }
 
                                     // Aplicar color de fondo para celdas específicas
@@ -415,7 +426,7 @@ function findMatchingProduct(itemName: string, availableProducts: string[], item
     return itemName;
 }
 
-function renderEditableCell(cell: any, index: number, editValues: any, onEditValueChange: (field: string, value: any) => void, productSearchFilter: string, onProductSearchChange: (value: string) => void, isCalculatingPrice?: boolean, onForceRecalculatePrice?: () => void) {
+function renderEditableCell(cell: any, index: number, editValues: any, onEditValueChange: (field: string, value: any) => void, productSearchFilter: string, onProductSearchChange: (value: string) => void, availableProducts: string[], productsLoading: boolean, isCalculatingPrice?: boolean, onForceRecalculatePrice?: () => void) {
     if (cell.column.id === 'notesOwn') {
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
@@ -608,7 +619,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                         <div key={itemIndex} className="space-y-1">
                             <div className="flex gap-1">
                                 <select
-                                    value={item.fullName || findMatchingProduct(item.name || item.id || '', getFilteredProducts(editValues.orderType, productSearchFilter), item.options?.[0]?.name)}
+                                    value={item.fullName || item.name || ''}
                                     onChange={e => {
                                         const newItems = [...editValues.items];
                                         const selectedProductName = e.target.value;
@@ -628,14 +639,31 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
 
                                         onEditValueChange('items', newItems);
                                     }}
-                                    className="flex-1 p-1 text-xs border border-gray-300 rounded-md text-center"
+                                    className="flex-1 p-1 text-xs border border-gray-300 rounded-md text-left bg-white cursor-pointer"
+                                    disabled={productsLoading}
+                                    style={{
+                                        minHeight: '32px',
+                                        appearance: 'auto',
+                                        WebkitAppearance: 'menulist',
+                                        MozAppearance: 'menulist'
+                                    }}
                                 >
-                                    <option value="">Seleccionar producto</option>
-                                    {getFilteredProducts(editValues.orderType, productSearchFilter).map(product => (
-                                        <option key={product} value={product}>
-                                            {product}
+                                    <option value="">
+                                        {productsLoading ? 'Cargando productos...' : `Seleccionar producto (${availableProducts.length} disponibles)`}
+                                    </option>
+                                    {/* Mostrar el producto actual como primera opción si no está en la lista */}
+                                    {(item.fullName || item.name) && !availableProducts.includes(item.fullName || item.name) && (
+                                        <option key="current-product" value={item.fullName || item.name}>
+                                            {item.fullName || item.name} (Actual)
                                         </option>
-                                    ))}
+                                    )}
+                                    {availableProducts
+                                        .filter(product => product.toLowerCase().includes(productSearchFilter.toLowerCase()))
+                                        .map(product => (
+                                            <option key={product} value={product}>
+                                                {product}
+                                            </option>
+                                        ))}
                                 </select>
                                 <Input
                                     type="number"
@@ -690,7 +718,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                         + Agregar Item
                     </Button>
                 </div>
-            </TableCell>
+            </TableCell >
         );
     }
 

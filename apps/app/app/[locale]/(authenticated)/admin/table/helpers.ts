@@ -1,6 +1,7 @@
 import { AVAILABLE_PRODUCTS, RAW_PRODUCTS, COMPLEMENT_PRODUCTS, FORBIDDEN_PRODUCTS_FOR_RETAIL, DAY_COLORS } from './constants';
 
 // Función para obtener productos según el tipo de cliente
+// NOTA: Esta función ahora es un fallback. Los productos reales se obtienen desde la base de datos
 export const getProductsByClientType = (clientType: 'minorista' | 'mayorista') => {
     if (clientType === 'mayorista') {
         // Combinar todas las listas y eliminar duplicados
@@ -15,6 +16,79 @@ export const getProductsByClientType = (clientType: 'minorista' | 'mayorista') =
     );
     // Eliminar duplicados
     return [...new Set(filtered)];
+};
+
+// Función para obtener productos desde la base de datos (colección prices)
+export const getProductsFromDatabase = async (clientType: 'minorista' | 'mayorista'): Promise<{
+    products: string[];
+    productsWithDetails: Array<{
+        section: string;
+        product: string;
+        weight: string | null;
+        formattedName: string;
+    }>;
+}> => {
+    try {
+        const { getProductsFromPricesAction } = await import('./actions');
+        const result = await getProductsFromPricesAction();
+
+        if (result.success && result.products && result.productsWithDetails) {
+            // Filtrar productos según el tipo de cliente
+            if (clientType === 'minorista') {
+                // Excluir productos prohibidos para minorista Y productos RAW
+                // Los productos RAW solo están disponibles para mayoristas
+                const filteredProducts = result.products.filter(product =>
+                    !FORBIDDEN_PRODUCTS_FOR_RETAIL.some(f =>
+                        product.toLowerCase().includes(f.toLowerCase())
+                    ) &&
+                    !product.toLowerCase().includes('raw')
+                );
+
+                const filteredDetails = result.productsWithDetails.filter(detail =>
+                    !FORBIDDEN_PRODUCTS_FOR_RETAIL.some(f =>
+                        detail.formattedName.toLowerCase().includes(f.toLowerCase())
+                    ) &&
+                    detail.section !== 'RAW'
+                );
+
+                return {
+                    products: filteredProducts,
+                    productsWithDetails: filteredDetails
+                };
+            }
+            // Para mayoristas, devolver todos los productos (incluyendo RAW)
+            return {
+                products: result.products,
+                productsWithDetails: result.productsWithDetails
+            };
+        }
+
+        // Fallback a productos hardcodeados si hay error
+        console.warn('Error obteniendo productos de la base de datos, usando fallback');
+        const fallbackProducts = getProductsByClientType(clientType);
+        return {
+            products: fallbackProducts,
+            productsWithDetails: fallbackProducts.map(product => ({
+                section: '',
+                product: product,
+                weight: null,
+                formattedName: product
+            }))
+        };
+    } catch (error) {
+        console.error('Error en getProductsFromDatabase:', error);
+        // Fallback a productos hardcodeados
+        const fallbackProducts = getProductsByClientType(clientType);
+        return {
+            products: fallbackProducts,
+            productsWithDetails: fallbackProducts.map(product => ({
+                section: '',
+                product: product,
+                weight: null,
+                formattedName: product
+            }))
+        };
+    }
 };
 
 // Función para filtrar productos por búsqueda
@@ -510,7 +584,16 @@ export const testItemProcessing = () => {
     });
 };
 
-// Función para mapear productos de la DB hacia las opciones del select
+// Función para mapear productos desde la colección prices hacia el formato del select
+export const mapPriceProductToSelectOption = (section: string, product: string, weight: string | null): string => {
+    const parts = [section, product];
+    if (weight) {
+        parts.push(weight);
+    }
+    return parts.join(' - ');
+};
+
+// Función para mapear productos de la DB hacia las opciones del select (LEGACY - para compatibilidad)
 export const mapDBProductToSelectOption = (dbProductName: string, dbOptionName: string): string => {
     // Normalizar nombres para comparación
     const normalizedDBName = dbProductName.toLowerCase().trim();
@@ -674,6 +757,30 @@ export const mapDBProductToSelectOption = (dbProductName: string, dbOptionName: 
 // Función para mapear desde la opción del select hacia el formato de la DB
 export const mapSelectOptionToDBFormat = (selectOption: string): { name: string, option: string } => {
     const normalizedSelect = selectOption.toLowerCase().trim();
+
+    // NUEVO: Manejar formato de productos desde la base de datos (ej: "PERRO - VACA - 10KG")
+    if (selectOption.includes(' - ')) {
+        const parts = selectOption.split(' - ');
+        if (parts.length >= 2) {
+            const section = parts[0]; // PERRO, GATO, OTROS
+            const product = parts[1]; // VACA, POLLO, etc.
+            const weight = parts[2] || null; // 10KG, 5KG, etc.
+
+            console.log(`🔄 Mapeando producto desde BD:`, {
+                original: selectOption,
+                section,
+                product,
+                weight,
+                mappedName: product,
+                mappedOption: weight || ''
+            });
+
+            return {
+                name: product, // Solo el nombre del producto (VACA, POLLO, etc.)
+                option: weight || '' // El peso como opción
+            };
+        }
+    }
 
     // Debug específico para CORNALITOS
     if (normalizedSelect.includes('cornalitos')) {
