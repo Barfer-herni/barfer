@@ -320,6 +320,16 @@ export async function duplicateOrderAction(id: string) {
                 sheetName: originalOrder.deliveryArea?.sheetName || '',
                 whatsappNumber: originalOrder.deliveryArea?.whatsappNumber || ''
             },
+            // Normalizar campos de address que pueden ser null pero el schema espera string
+            address: {
+                ...originalOrder.address,
+                betweenStreets: originalOrder.address?.betweenStreets || '',
+                floorNumber: originalOrder.address?.floorNumber || '',
+                departmentNumber: originalOrder.address?.departmentNumber || '',
+                // Manejar campos que pueden ser null en el esquema de la orden
+                zipCode: originalOrder.address?.zipCode || undefined,
+                reference: originalOrder.address?.reference || ''
+            },
             // Manejar coupon que puede ser null
             coupon: originalOrder.coupon || undefined
         };
