@@ -11,7 +11,8 @@ export async function getProductPrice(
     product: string,
     weight: string | null,
     orderType: 'minorista' | 'mayorista',
-    paymentMethod: string
+    paymentMethod: string,
+    sectionParam?: string
 ): Promise<{ success: boolean; price?: number; error?: string }> {
     try {
         // Determinar la sección y producto primero para verificar si es solo mayorista
@@ -142,6 +143,11 @@ export async function getProductPrice(
             isActive: true
         };
 
+        // Solo agregar sectionParam si está definido
+        if (sectionParam) {
+            productQuery.section = sectionParam;
+        }
+
         // Solo agregar weight al query si no es null
         if (searchWeight !== null) {
             productQuery.weight = searchWeight;
@@ -169,21 +175,33 @@ export async function getProductPrice(
             };
         }
 
-        // Si hay múltiples registros, priorizar por precio (excluir precios $0)
+        // Si hay múltiples registros, priorizar por sección
         let productRecord = productRecords[0]; // Por defecto, el primero
 
         if (productRecords.length > 1) {
             console.log(`🔍 Encontrados ${productRecords.length} registros para ${searchProduct}:`,
                 productRecords.map(r => ({ section: r.section, price: r.price })));
 
-            // Priorizar registros con precio > 0
-            const recordsWithPrice = productRecords.filter(r => r.price > 0);
-            if (recordsWithPrice.length > 0) {
-                productRecord = recordsWithPrice[0];
-                console.log(`✅ Seleccionado registro con precio válido: sección ${productRecord.section}, precio $${productRecord.price}`);
-            } else {
-                console.log(`⚠️ Todos los registros tienen precio $0, usando el primero`);
-            }
+            // Definir prioridad de secciones (mayor prioridad = menor número)
+            const sectionPriority: Record<string, number> = {
+                'GATO': 1,
+                'OTROS': 2,
+                'PERRO': 3,
+                'RAW': 4
+            };
+
+            // Seleccionar el registro con mayor prioridad de sección
+            productRecord = productRecords.reduce((best, current) => {
+                const bestPriority = sectionPriority[best.section as string] || 999;
+                const currentPriority = sectionPriority[current.section as string] || 999;
+
+                if (currentPriority < bestPriority) {
+                    return current;
+                }
+                return best;
+            });
+
+            console.log(`✅ Seleccionado registro por prioridad de sección: sección ${productRecord.section}, precio $${productRecord.price}`);
         }
 
         // Usar la sección real de la base de datos
