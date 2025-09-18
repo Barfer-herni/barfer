@@ -25,6 +25,61 @@ export function mapSelectOptionToDBFormat(selectOption: string): ProductMapping 
         });
     }
 
+    // Mapear productos GATO directamente (sin BOX)
+    if (normalizedSelect.includes('gato') && !normalizedSelect.includes('barfer box')) {
+        if (normalizedSelect.includes('vaca')) {
+            if (normalizedSelect.includes('5kg')) {
+                return { name: 'BOX GATO VACA', option: '5KG' };
+            }
+        }
+        if (normalizedSelect.includes('pollo')) {
+            if (normalizedSelect.includes('5kg')) {
+                return { name: 'BOX GATO POLLO', option: '5KG' };
+            }
+        }
+        if (normalizedSelect.includes('cordero')) {
+            if (normalizedSelect.includes('5kg')) {
+                return { name: 'BOX GATO CORDERO', option: '5KG' };
+            }
+        }
+    }
+
+    // Mapear productos PERRO directamente (sin BOX)
+    if (normalizedSelect.includes('perro') && !normalizedSelect.includes('barfer box') && !normalizedSelect.includes('gato')) {
+        if (normalizedSelect.includes('vaca')) {
+            if (normalizedSelect.includes('5kg')) {
+                return { name: 'BOX PERRO VACA', option: '5KG' };
+            }
+            if (normalizedSelect.includes('10kg')) {
+                return { name: 'BOX PERRO VACA', option: '10KG' };
+            }
+        }
+        if (normalizedSelect.includes('pollo')) {
+            if (normalizedSelect.includes('5kg')) {
+                return { name: 'BOX PERRO POLLO', option: '5KG' };
+            }
+            if (normalizedSelect.includes('10kg')) {
+                return { name: 'BOX PERRO POLLO', option: '10KG' };
+            }
+        }
+        if (normalizedSelect.includes('cerdo')) {
+            if (normalizedSelect.includes('5kg')) {
+                return { name: 'BOX PERRO CERDO', option: '5KG' };
+            }
+            if (normalizedSelect.includes('10kg')) {
+                return { name: 'BOX PERRO CERDO', option: '10KG' };
+            }
+        }
+        if (normalizedSelect.includes('cordero')) {
+            if (normalizedSelect.includes('5kg')) {
+                return { name: 'BOX PERRO CORDERO', option: '5KG' };
+            }
+            if (normalizedSelect.includes('10kg')) {
+                return { name: 'BOX PERRO CORDERO', option: '10KG' };
+            }
+        }
+    }
+
     // Mapear Barfer Box
     if (normalizedSelect.includes('barfer box')) {
         if (normalizedSelect.includes('perro')) {

@@ -174,9 +174,14 @@ export const columns: ColumnDef<Order>[] = [
                             displayOption = '';
                         }
 
+                        // Si el item.name ya contiene el peso (como "GATO VACA 5KG"), no mostrar displayOption
+                        // para evitar duplicación
+                        const itemName = item.name || '';
+                        const hasWeightInName = /\d+KG|\d+GRS|\d+G/.test(itemName);
+
                         return (
                             <div key={`${item.id}-${index}`}>
-                                {item.name}{displayOption ? ` - ${displayOption}` : ''} - x{quantity}
+                                {itemName}{!hasWeightInName && displayOption ? ` - ${displayOption}` : ''} - x{quantity}
                             </div>
                         );
                     })}
