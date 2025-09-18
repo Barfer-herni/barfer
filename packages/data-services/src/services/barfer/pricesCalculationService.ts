@@ -44,6 +44,7 @@ export async function getProductPrice(
 
         // Normalizar el nombre del producto para la búsqueda
         let searchProduct = product.toUpperCase();
+        let searchWeight = weight;
 
         // Mapear nombres de productos comunes
         if (searchProduct.includes('GATO') && searchProduct.includes('VACA')) {
@@ -89,12 +90,32 @@ export async function getProductPrice(
         } else if (searchProduct.includes('CALDO')) {
             searchProduct = 'CALDO DE HUESOS';
         } else if (searchProduct.includes('CORNALITOS')) {
-            // CORNALITOS siempre mapea a 'CORNALITOS', el peso se maneja en searchWeight
-            searchProduct = 'CORNALITOS';
+            if (searchProduct.includes('30GRS')) {
+                searchProduct = 'CORNALITOS 30GRS';
+                searchWeight = null; // porque en la DB está todo en el campo product
+            } else if (searchProduct.includes('200GRS')) {
+                searchProduct = 'CORNALITOS 200GRS';
+                searchWeight = null;
+            } else {
+                searchProduct = 'CORNALITOS';
+                searchWeight = null;
+            }
         }
+        // } else if (searchProduct.includes('CORNALITOS')) {
+        //     if (searchProduct.includes('30GRS')) {
+        //         searchProduct = 'CORNALITOS';
+        //         searchWeight = '30GRS';
+        //     } else if (searchProduct.includes('200GRS')) {
+        //         searchProduct = 'CORNALITOS';
+        //         searchWeight = '200GRS';
+        //     } else {
+        //         // fallback: sin peso => null
+        //         searchProduct = 'CORNALITOS';
+        //         searchWeight = null;
+        //     }
+        // }
 
         // Mapear pesos comunes
-        let searchWeight = weight;
 
         // Mapear pesos de gramos a kilogramos para productos principales
         if (weight) {
