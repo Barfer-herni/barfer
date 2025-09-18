@@ -557,7 +557,7 @@ export async function calculateOrderTotal(
 
             const priceResult = await getProductPrice(productName, weight, orderType, paymentMethod);
 
-            if (!priceResult.success || !priceResult.price) {
+            if (!priceResult.success || priceResult.price === undefined || priceResult.price === null) {
                 console.warn(`No se pudo obtener precio para ${item.name} (${weight}):`, priceResult.error);
                 // Continuar con los otros items, no fallar toda la orden
                 continue;

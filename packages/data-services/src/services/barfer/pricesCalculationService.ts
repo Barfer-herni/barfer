@@ -39,38 +39,21 @@ export async function getProductPrice(
             }
         }
 
-        // Determinar la sección basada en el producto y peso
-        let section: PriceSection;
-
-        if (productUpper.includes('GATO')) {
-            section = 'GATO';
-        } else if (productUpper.includes('HUESOS') || productUpper.includes('HUESO') ||
-            productUpper.includes('COMPLEMENTOS') || productUpper.includes('COMPLEMENTO') ||
-            productUpper.includes('GARRAS') || productUpper.includes('CALDO') ||
-            productUpper.includes('CORNALITOS') || productUpper.includes('RECREATIVO') ||
-            productUpper.includes('BOX DE COMPLEMENTOS')) {
-            section = 'OTROS';
-        } else if (productUpper.includes('PERRO') || productUpper.includes('BOX') || productUpper.includes('BIG DOG') ||
-            productUpper.includes('VACA') || productUpper.includes('CERDO') || productUpper.includes('CORDERO')) {
-            section = 'PERRO';
-        } else if (productUpper.includes('POLLO')) {
-            // POLLO puede ser PERRO o OTROS dependiendo del peso
-            if (weight && (weight.includes('100GRS') || weight.includes('200GRS') || weight.includes('30GRS'))) {
-                section = 'OTROS'; // POLLO con peso en gramos es complemento
-            } else {
-                section = 'PERRO'; // POLLO con peso en KG es producto principal
-            }
-        } else {
-            // Para productos que no encajan en las categorías anteriores, 
-            // intentar buscar primero en RAW antes de asignar OTROS
-            section = 'RAW';
-        }
+        // No calcular la sección inicialmente, se determinará desde la base de datos
 
         // Normalizar el nombre del producto para la búsqueda
         let searchProduct = product.toUpperCase();
 
         // Mapear nombres de productos comunes
-        if (searchProduct.includes('BOX') && searchProduct.includes('POLLO')) {
+        if (searchProduct.includes('GATO') && searchProduct.includes('VACA')) {
+            searchProduct = 'GATO VACA';
+        } else if (searchProduct.includes('GATO') && searchProduct.includes('POLLO')) {
+            searchProduct = 'GATO POLLO';
+        } else if (searchProduct.includes('GATO') && searchProduct.includes('CERDO')) {
+            searchProduct = 'GATO CERDO';
+        } else if (searchProduct.includes('GATO') && searchProduct.includes('CORDERO')) {
+            searchProduct = 'GATO CORDERO';
+        } else if (searchProduct.includes('BOX') && searchProduct.includes('POLLO')) {
             searchProduct = 'POLLO';
         } else if (searchProduct.includes('BOX') && searchProduct.includes('VACA')) {
             searchProduct = 'VACA';
@@ -139,7 +122,6 @@ export async function getProductPrice(
         console.log(`🔍 MAPEO DE PRODUCTO:`, {
             original: product,
             mapped: searchProduct,
-            calculatedSection: section,
             originalWeight: weight,
             mappedWeight: searchWeight,
             priceType,
@@ -147,7 +129,7 @@ export async function getProductPrice(
             paymentMethod,
             isOnlyMayoristaProduct,
             forcedMayorista: isOnlyMayoristaProduct && orderType !== 'mayorista',
-            note: 'Sección calculada inicialmente, se verificará contra la base de datos'
+            note: 'Sección se determinará desde la base de datos'
         });
 
         // Buscar el precio en MongoDB
@@ -156,6 +138,7 @@ export async function getProductPrice(
         // Primero buscar el producto en la base de datos para obtener su sección real
         const productQuery: any = {
             product: { $regex: `^${searchProduct.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' },
+            priceType,
             isActive: true
         };
 
@@ -170,10 +153,10 @@ export async function getProductPrice(
             ];
         }
 
-        // Buscar el producto para obtener su sección real
-        const productRecord = await collection.findOne(productQuery);
+        // Buscar TODOS los productos que coincidan para seleccionar el correcto
+        const productRecords = await collection.find(productQuery).toArray();
 
-        if (!productRecord) {
+        if (!productRecords || productRecords.length === 0) {
             console.warn(`❌ No se encontró producto en la base de datos:`, {
                 product: searchProduct,
                 weight: searchWeight,
@@ -186,9 +169,26 @@ export async function getProductPrice(
             };
         }
 
+        // Si hay múltiples registros, priorizar por precio (excluir precios $0)
+        let productRecord = productRecords[0]; // Por defecto, el primero
+
+        if (productRecords.length > 1) {
+            console.log(`🔍 Encontrados ${productRecords.length} registros para ${searchProduct}:`,
+                productRecords.map(r => ({ section: r.section, price: r.price })));
+
+            // Priorizar registros con precio > 0
+            const recordsWithPrice = productRecords.filter(r => r.price > 0);
+            if (recordsWithPrice.length > 0) {
+                productRecord = recordsWithPrice[0];
+                console.log(`✅ Seleccionado registro con precio válido: sección ${productRecord.section}, precio $${productRecord.price}`);
+            } else {
+                console.log(`⚠️ Todos los registros tienen precio $0, usando el primero`);
+            }
+        }
+
         // Usar la sección real de la base de datos
         const realSection = productRecord.section;
-        console.log(`✅ Producto encontrado en sección real: ${realSection} (calculada: ${section})`);
+        console.log(`✅ Producto encontrado en sección real: ${realSection}`);
 
         // Construir query final para obtener el precio
         const query: any = {
@@ -285,7 +285,7 @@ export async function getProductPrice(
 
         if (!priceRecord) {
             console.warn(`❌ No se encontró precio en ningún período:`, {
-                section,
+                section: realSection,
                 product: searchProduct,
                 weight: searchWeight,
                 priceType,
@@ -544,7 +544,7 @@ export async function calculateOrderTotal(
 
             const priceResult = await getProductPrice(productName, weight, orderType, paymentMethod);
 
-            if (!priceResult.success || !priceResult.price) {
+            if (!priceResult.success || priceResult.price === undefined || priceResult.price === null) {
                 console.warn(`No se pudo obtener precio para ${item.name} (${weight}):`, priceResult.error);
                 // Continuar con los otros items, no fallar toda la orden
                 continue;
