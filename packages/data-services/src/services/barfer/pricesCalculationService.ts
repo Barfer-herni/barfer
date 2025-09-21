@@ -90,7 +90,9 @@ export async function getProductPrice(
         } else if (searchProduct.includes('CALDO')) {
             searchProduct = 'CALDO DE HUESOS';
         } else if (searchProduct.includes('CORNALITOS')) {
+            console.log("ingrese 1")
             if (searchProduct.includes('30GRS')) {
+                console.log("ingrese 2")
                 searchProduct = 'CORNALITOS 30GRS';
                 searchWeight = null; // porque en la DB está todo en el campo product
             } else if (searchProduct.includes('200GRS')) {

@@ -3,8 +3,7 @@ import { createOrder, updateOrder, deleteOrder, migrateClientType } from '@repo/
 import { revalidatePath } from 'next/cache';
 import { updateOrdersStatusBulk } from '@repo/data-services/src/services/barfer/updateOrder';
 import { validateAndNormalizePhone } from './helpers';
-import { calculateOrderTotal } from '@repo/data-services'
-    ;
+import { calculateOrderTotal, getPriceFromFormattedProduct, calculateOrderTotalExact, debugRawProducts } from '@repo/data-services';
 
 export async function updateOrderAction(id: string, data: any) {
     try {
@@ -221,7 +220,8 @@ export async function calculatePriceAction(
     'use server';
 
     try {
-        const result = await calculateOrderTotal(items, orderType, paymentMethod);
+        // NUEVO: Usar la función exacta que maneja el formato de la BD
+        const result = await calculateOrderTotalExact(items, orderType, paymentMethod);
 
         if (result.success) {
             return {
@@ -275,6 +275,41 @@ export async function getProductsFromPricesAction() {
             error: 'Error al obtener productos de la base de datos',
             products: [],
             productsWithDetails: []
+        };
+    }
+}
+
+// Nueva acción para calcular precio usando valores exactos de la DB
+export async function calculateExactPriceAction(
+    formattedProduct: string,
+    orderType: 'minorista' | 'mayorista',
+    paymentMethod: string
+) {
+    'use server';
+
+    try {
+        const result = await getPriceFromFormattedProduct(
+            formattedProduct,
+            orderType,
+            paymentMethod
+        );
+
+        if (result.success) {
+            return {
+                success: true,
+                price: result.price
+            };
+        }
+
+        return {
+            success: false,
+            error: result.error || 'Error al calcular el precio'
+        };
+    } catch (error) {
+        console.error('Error in calculateExactPriceAction:', error);
+        return {
+            success: false,
+            error: 'Error al calcular el precio automático'
         };
     }
 }
@@ -345,5 +380,21 @@ export async function duplicateOrderAction(id: string) {
     } catch (error) {
         console.error('Error in duplicateOrderAction:', error);
         return { success: false, error: 'Error al duplicar la orden' };
+    }
+}
+
+// Acción para debug de productos RAW
+export async function debugRawProductsAction() {
+    'use server';
+
+    try {
+        const result = await debugRawProducts();
+        return result;
+    } catch (error) {
+        console.error('Error in debugRawProductsAction:', error);
+        return {
+            success: false,
+            error: 'Error al obtener información de productos RAW'
+        };
     }
 } 

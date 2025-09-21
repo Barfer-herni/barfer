@@ -622,171 +622,23 @@ export const mapPriceProductToSelectOption = (section: string, product: string, 
     return parts.join(' - ');
 };
 
-// Función para mapear productos de la DB hacia las opciones del select (LEGACY - para compatibilidad)
+// Función para mapear productos de la DB hacia las opciones del select
+// NUEVA IMPLEMENTACIÓN: Usa directamente los valores de la base de datos
 export const mapDBProductToSelectOption = (dbProductName: string, dbOptionName: string): string => {
-    // Normalizar nombres para comparación
-    const normalizedDBName = dbProductName.toLowerCase().trim();
-    const normalizedDBOption = dbOptionName.toLowerCase().trim();
-
-    // Caso especial para BIG DOG
-    if (normalizedDBName.includes('big dog')) {
-        // El sabor está en dbOptionName (ej: "VACA", "POLLO")
-        const flavor = dbOptionName.toUpperCase();
-        return `BIG DOG (15kg) - ${flavor}`;
+    // Si ya tenemos un formato "section - product - weight", devolverlo tal como está
+    if (dbProductName.includes(' - ')) {
+        return dbProductName;
     }
 
-    // Buscar en AVAILABLE_PRODUCTS primero
-    for (const product of AVAILABLE_PRODUCTS) {
-        const normalizedProduct = product.toLowerCase();
-
-        // Verificar si el producto base coincide
-        if (normalizedProduct.includes('barfer box') &&
-            (normalizedDBName.includes('box') || normalizedDBName.includes('perro') || normalizedDBName.includes('gato'))) {
-
-            // Extraer el tipo de animal y proteína
-            if (normalizedDBName.includes('perro') && normalizedProduct.includes('perro')) {
-                if (normalizedDBName.includes('pollo') && normalizedProduct.includes('pollo')) {
-                    // Buscar por peso
-                    if (normalizedDBOption.includes('5kg') && normalizedProduct.includes('5kg')) {
-                        return product;
-                    }
-                    if (normalizedDBOption.includes('10kg') && normalizedProduct.includes('10kg')) {
-                        return product;
-                    }
-                }
-                if (normalizedDBName.includes('cerdo') && normalizedProduct.includes('cerdo')) {
-                    if (normalizedDBOption.includes('5kg') && normalizedProduct.includes('5kg')) {
-                        return product;
-                    }
-                    if (normalizedDBOption.includes('10kg') && normalizedProduct.includes('10kg')) {
-                        return product;
-                    }
-                }
-                if (normalizedDBName.includes('vaca') && normalizedProduct.includes('vaca')) {
-                    if (normalizedDBOption.includes('5kg') && normalizedProduct.includes('5kg')) {
-                        return product;
-                    }
-                    if (normalizedDBOption.includes('10kg') && normalizedProduct.includes('10kg')) {
-                        return product;
-                    }
-                }
-                if (normalizedDBName.includes('cordero') && normalizedProduct.includes('cordero')) {
-                    if (normalizedDBOption.includes('5kg') && normalizedProduct.includes('5kg')) {
-                        return product;
-                    }
-                    if (normalizedDBOption.includes('10kg') && normalizedProduct.includes('10kg')) {
-                        return product;
-                    }
-                }
-            }
-
-            if (normalizedDBName.includes('gato') && normalizedProduct.includes('gato')) {
-                if (normalizedDBName.includes('pollo') && normalizedProduct.includes('pollo')) {
-                    if (normalizedDBOption.includes('5kg') && normalizedProduct.includes('5kg')) {
-                        return product;
-                    }
-                }
-                if (normalizedDBName.includes('vaca') && normalizedProduct.includes('vaca')) {
-                    if (normalizedDBOption.includes('5kg') && normalizedProduct.includes('5kg')) {
-                        return product;
-                    }
-                }
-                if (normalizedDBName.includes('cordero') && normalizedProduct.includes('cordero')) {
-                    if (normalizedDBOption.includes('5kg') && normalizedProduct.includes('5kg')) {
-                        return product;
-                    }
-                }
-            }
-        }
-
-        // Casos especiales
-        if (normalizedDBName.includes('huesos') && normalizedProduct.includes('huesos')) {
-            if (normalizedDBOption.includes('5kg') && normalizedProduct.includes('5kg')) {
-                return product;
-            }
-        }
-
-        if (normalizedDBName.includes('complementos') && normalizedProduct.includes('complementos')) {
-            return product;
-        }
-    }
-
-    // Buscar en RAW_PRODUCTS
-    for (const product of RAW_PRODUCTS) {
-        const normalizedProduct = product.toLowerCase();
-
-        if (normalizedDBName.includes('traquea') && normalizedProduct.includes('traquea')) {
-            if (normalizedDBOption.includes('x1') && normalizedProduct.includes('x1')) {
-                return product;
-            }
-            if (normalizedDBOption.includes('x2') && normalizedProduct.includes('x2')) {
-                return product;
-            }
-        }
-
-        if (normalizedDBName.includes('orejas') && normalizedProduct.includes('orejas')) {
-            return product;
-        }
-
-        if (normalizedDBName.includes('pollo') && normalizedProduct.includes('pollo')) {
-            if (normalizedDBOption.includes('40grs') && normalizedProduct.includes('40grs')) {
-                return product;
-            }
-            if (normalizedDBOption.includes('100grs') && normalizedProduct.includes('100grs')) {
-                return product;
-            }
-        }
-
-        if (normalizedDBName.includes('higado') && normalizedProduct.includes('higado')) {
-            if (normalizedDBOption.includes('40grs') && normalizedProduct.includes('40grs')) {
-                return product;
-            }
-            if (normalizedDBOption.includes('100grs') && normalizedProduct.includes('100grs')) {
-                return product;
-            }
-        }
-
-        if (normalizedDBName.includes('cornalitos') && normalizedProduct.includes('cornalitos')) {
-            if (normalizedDBOption.includes('30grs') && normalizedProduct.includes('30grs')) {
-                return product;
-            }
-        }
-    }
-
-    // Buscar en COMPLEMENT_PRODUCTS
-    for (const product of COMPLEMENT_PRODUCTS) {
-        const normalizedProduct = product.toLowerCase();
-
-        if (normalizedDBName.includes('cornalitos') && normalizedProduct.includes('cornalitos')) {
-            if (normalizedDBOption.includes('200grs') && normalizedProduct.includes('200grs')) {
-                return product;
-            }
-        }
-
-        if (normalizedDBName.includes('caldo') && normalizedProduct.includes('caldo')) {
-            return product;
-        }
-
-        if (normalizedDBName.includes('hueso') && normalizedProduct.includes('hueso')) {
-            return product;
-        }
-
-        if (normalizedDBName.includes('garras') && normalizedProduct.includes('garras')) {
-            if (normalizedDBOption.includes('300grs') && normalizedProduct.includes('300grs')) {
-                return product;
-            }
-        }
-    }
-
-    // Si no se encuentra coincidencia, devolver el nombre original de la DB
-    console.warn(`No se encontró mapeo para: ${dbProductName} - ${dbOptionName}`);
+    // Si no, intentar reconstruir el formato desde los datos de la DB
+    // Este es un caso de compatibilidad para datos antiguos
+    console.warn(`Producto sin formato de BD: ${dbProductName} - ${dbOptionName}`);
     return dbProductName;
 };
 
 // Función para mapear desde la opción del select hacia el formato de la DB
+// NUEVA IMPLEMENTACIÓN: Usa directamente los valores de la base de datos
 export const mapSelectOptionToDBFormat = (selectOption: string): { name: string, option: string } => {
-    const normalizedSelect = selectOption.toLowerCase().trim();
-
     // NUEVO: Manejar formato de productos desde la base de datos (ej: "PERRO - VACA - 10KG")
     if (selectOption.includes(' - ')) {
         const parts = selectOption.split(' - ');
@@ -800,171 +652,44 @@ export const mapSelectOptionToDBFormat = (selectOption: string): { name: string,
                 section,
                 product,
                 weight,
-                mappedName: product,
+                mappedName: selectOption,
+                mappedOption: weight || ''
+            });
+
+            let cleanName = '';
+            console.log(`🔄 section: ${section}`);
+            console.log(`🔄 product: ${product}`);
+
+            if (section === 'PERRO') {
+                cleanName = `BOX PERRO ${product.replace('BOX ', '')}`;
+            } else if (section === 'GATO') {
+                cleanName = `BOX GATO ${product.replace('BOX ', '')}`;
+            } else if (section === 'RAW') {
+                cleanName = product;
+            } else if (section === 'OTROS') {
+                cleanName = product;
+            } else {
+                cleanName = `${section} ${product}`;
+            }
+
+            console.log(`🔄 Mapeando producto desde BD:`, {
+                original: selectOption,
+                section,
+                product,
+                weight,
+                cleanName,
                 mappedOption: weight || ''
             });
 
             return {
-                name: product, // Solo el nombre del producto (VACA, POLLO, etc.)
+                name: cleanName, // Nombre limpio sin guiones
                 option: weight || '' // El peso como opción
             };
         }
     }
 
-    // Debug específico para CORNALITOS
-    if (normalizedSelect.includes('cornalitos')) {
-        console.log(`🌽 DEBUG MAPEO CORNALITOS:`, {
-            original: selectOption,
-            normalized: normalizedSelect,
-            contains30grs: normalizedSelect.includes('30grs'),
-            contains200grs: normalizedSelect.includes('200grs')
-        });
-    }
-
-    // Mapear Barfer Box
-    if (normalizedSelect.includes('barfer box')) {
-        if (normalizedSelect.includes('perro')) {
-            if (normalizedSelect.includes('pollo')) {
-                if (normalizedSelect.includes('5kg')) {
-                    return { name: 'BOX PERRO POLLO', option: '5KG' };
-                }
-                if (normalizedSelect.includes('10kg')) {
-                    return { name: 'BOX PERRO POLLO', option: '10KG' };
-                }
-            }
-            if (normalizedSelect.includes('cerdo')) {
-                if (normalizedSelect.includes('5kg')) {
-                    return { name: 'BOX PERRO CERDO', option: '5KG' };
-                }
-                if (normalizedSelect.includes('10kg')) {
-                    return { name: 'BOX PERRO CERDO', option: '10KG' };
-                }
-            }
-            if (normalizedSelect.includes('vaca')) {
-                if (normalizedSelect.includes('5kg')) {
-                    return { name: 'BOX PERRO VACA', option: '5KG' };
-                }
-                if (normalizedSelect.includes('10kg')) {
-                    return { name: 'BOX PERRO VACA', option: '10KG' };
-                }
-            }
-            if (normalizedSelect.includes('cordero')) {
-                if (normalizedSelect.includes('5kg')) {
-                    return { name: 'BOX PERRO CORDERO', option: '5KG' };
-                }
-                if (normalizedSelect.includes('10kg')) {
-                    return { name: 'BOX PERRO CORDERO', option: '10KG' };
-                }
-            }
-        }
-
-        if (normalizedSelect.includes('gato')) {
-            if (normalizedSelect.includes('pollo')) {
-                if (normalizedSelect.includes('5kg')) {
-                    return { name: 'BOX GATO POLLO', option: '5KG' };
-                }
-            }
-            if (normalizedSelect.includes('vaca')) {
-                if (normalizedSelect.includes('5kg')) {
-                    return { name: 'BOX GATO VACA', option: '5KG' };
-                }
-            }
-            if (normalizedSelect.includes('cordero')) {
-                if (normalizedSelect.includes('5kg')) {
-                    return { name: 'BOX GATO CORDERO', option: '5KG' };
-                }
-            }
-        }
-    }
-
-    // Mapear Big Dog
-    if (normalizedSelect.includes('big dog')) {
-        console.log(`🐕 BIG DOG detectado en mapeo: "${normalizedSelect}"`);
-        if (normalizedSelect.includes('pollo')) {
-            console.log(`🐕 BIG DOG POLLO mapeado a: name: 'BIG DOG POLLO', option: '15KG'`);
-            return { name: 'BIG DOG POLLO', option: '15KG' };
-        }
-        if (normalizedSelect.includes('vaca')) {
-            console.log(`🐕 BIG DOG VACA mapeado a: name: 'BIG DOG VACA', option: '15KG'`);
-            return { name: 'BIG DOG VACA', option: '15KG' };
-        }
-        if (normalizedSelect.includes('cordero')) {
-            console.log(`🐕 BIG DOG CORDERO mapeado a: name: 'BIG DOG CORDERO', option: '15KG'`);
-            return { name: 'BIG DOG CORDERO', option: '15KG' };
-        }
-    }
-
-    // Mapear complementos - IMPORTANTE: debe ir ANTES que huesos para evitar conflictos
-    if (normalizedSelect.includes('caldo')) {
-        return { name: 'CALDO DE HUESOS', option: '' };
-    }
-
-    // Mapear Huesos (pero no si es caldo de huesos)
-    if (normalizedSelect.includes('huesos') && !normalizedSelect.includes('caldo')) {
-        return { name: 'HUESOS CARNOSOS', option: '5KG' };
-    }
-
-    // Mapear Complementos
-    if (normalizedSelect.includes('complementos')) {
-        return { name: 'BOX DE COMPLEMENTOS', option: '1 U' };
-    }
-
-    // Mapear productos raw
-    if (normalizedSelect.includes('traquea')) {
-        if (normalizedSelect.includes('x1')) {
-            return { name: 'TRAQUEA', option: 'X1' };
-        }
-        if (normalizedSelect.includes('x2')) {
-            return { name: 'TRAQUEA', option: 'X2' };
-        }
-    }
-
-    if (normalizedSelect.includes('orejas')) {
-        return { name: 'OREJAS', option: '' };
-    }
-
-    if (normalizedSelect.includes('pollo')) {
-        if (normalizedSelect.includes('40grs')) {
-            return { name: 'POLLO', option: '40GRS' };
-        }
-        if (normalizedSelect.includes('100grs')) {
-            return { name: 'POLLO', option: '100GRS' };
-        }
-    }
-
-    if (normalizedSelect.includes('higado')) {
-        if (normalizedSelect.includes('40grs')) {
-            return { name: 'HIGADO', option: '40GRS' };
-        }
-        if (normalizedSelect.includes('100grs')) {
-            return { name: 'HIGADO', option: '100GRS' };
-        }
-    }
-
-    if (normalizedSelect.includes('cornalitos')) {
-        if (normalizedSelect.includes('30grs') || normalizedSelect.includes('30 grs') || normalizedSelect.includes('30gr')) {
-            return { name: 'CORNALITOS', option: '30GRS' };
-        }
-        if (normalizedSelect.includes('200grs') || normalizedSelect.includes('200 grs') || normalizedSelect.includes('200gr')) {
-            return { name: 'CORNALITOS', option: '200GRS' };
-        }
-        // Si no se encuentra peso específico, devolver sin opción para debug
-        console.warn(`⚠️ CORNALITOS sin peso específico detectado: "${selectOption}"`);
-        return { name: 'CORNALITOS', option: '' };
-    }
-
-    if (normalizedSelect.includes('hueso recreativo')) {
-        return { name: 'HUESO RECREATIVO', option: '' };
-    }
-
-    if (normalizedSelect.includes('garras')) {
-        if (normalizedSelect.includes('300grs')) {
-            return { name: 'GARRAS', option: '300GRS' };
-        }
-    }
-
-    // Si no se encuentra mapeo, devolver el nombre original
-    console.warn(`No se encontró mapeo inverso para: ${selectOption}`);
+    // Si no es el formato de la base de datos, es un caso de compatibilidad para datos antiguos
+    console.warn(`Producto sin formato de BD: ${selectOption}`);
     return { name: selectOption.toUpperCase(), option: '' };
 };
 
@@ -1166,4 +891,23 @@ export const validateAndNormalizePhone = (phone: string): string | null => {
 
     // Si no coincide con ningún patrón conocido, devolver null
     return null;
+};
+
+// Nueva función para calcular precio usando valores exactos de la DB
+export const calculateExactPrice = async (
+    formattedProduct: string,
+    orderType: 'minorista' | 'mayorista',
+    paymentMethod: string
+): Promise<{ success: boolean; price?: number; error?: string }> => {
+    try {
+        const { calculateExactPriceAction } = await import('./actions');
+        const result = await calculateExactPriceAction(formattedProduct, orderType, paymentMethod);
+        return result;
+    } catch (error) {
+        console.error('Error in calculateExactPrice:', error);
+        return {
+            success: false,
+            error: 'Error al calcular el precio'
+        };
+    }
 }; 
