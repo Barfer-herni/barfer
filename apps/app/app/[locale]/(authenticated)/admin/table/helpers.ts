@@ -661,15 +661,15 @@ export const mapSelectOptionToDBFormat = (selectOption: string): { name: string,
             console.log(`🔄 product: ${product}`);
 
             if (section === 'PERRO') {
-                cleanName = `BOX PERRO ${product.replace('BOX ', '')}`;
+                cleanName = product.replace('BOX ', ''); // Solo usar el nombre del producto sin BOX
             } else if (section === 'GATO') {
-                cleanName = `BOX GATO ${product.replace('BOX ', '')}`;
+                cleanName = product.replace('BOX ', ''); // Solo usar el nombre del producto sin BOX
             } else if (section === 'RAW') {
                 cleanName = product;
             } else if (section === 'OTROS') {
                 cleanName = product;
             } else {
-                cleanName = `${section} ${product}`;
+                cleanName = product; // Solo usar el nombre del producto
             }
 
             console.log(`🔄 Mapeando producto desde BD:`, {

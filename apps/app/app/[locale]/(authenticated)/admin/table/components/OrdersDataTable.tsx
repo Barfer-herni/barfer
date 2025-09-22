@@ -291,19 +291,26 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
 
         // Procesar items para convertir fullName de vuelta al formato de la DB
         const processedItems = validItems.map(item => {
-            // Si el item tiene fullName (opción del select), convertirlo al formato de la DB
-            if (item.fullName && item.fullName !== item.name) {
-                const dbFormat = mapSelectOptionToDBFormat(item.fullName);
+            // Procesar TODOS los items, no solo los que tienen fullName diferente a name
+            // Esto asegura que items no modificados también pasen por el procesamiento
+            const itemToProcess = item.fullName || item.name;
+
+            // Si el item parece ser una opción del select (contiene " - "), procesarlo
+            if (itemToProcess && itemToProcess.includes(' - ')) {
+                const dbFormat = mapSelectOptionToDBFormat(itemToProcess);
                 return {
                     ...item,
                     id: dbFormat.name,
                     name: dbFormat.name,
+                    fullName: itemToProcess, // PRESERVAR el fullName original para búsqueda en DB
                     options: [{
                         ...item.options?.[0],
                         name: dbFormat.option
                     }]
                 };
             }
+
+            // Si no es una opción del select, mantener el item tal como está
             return item;
         });
 
@@ -341,9 +348,13 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
 
             // Procesar items para convertir fullName de vuelta al formato de la DB
             const processedItems = filteredItems.map(item => {
-                // Si el item tiene fullName (opción del select), convertirlo al formato de la DB
-                if (item.fullName && item.fullName !== item.name) {
-                    const dbFormat = mapSelectOptionToDBFormat(item.fullName);
+                // Procesar TODOS los items, no solo los que tienen fullName diferente a name
+                // Esto asegura que items no modificados también pasen por el procesamiento
+                const itemToProcess = item.fullName || item.name;
+
+                // Si el item parece ser una opción del select (contiene " - "), procesarlo
+                if (itemToProcess && itemToProcess.includes(' - ')) {
+                    const dbFormat = mapSelectOptionToDBFormat(itemToProcess);
                     return {
                         ...item,
                         id: dbFormat.name,
@@ -354,7 +365,8 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                         }]
                     };
                 }
-                // Si no tiene fullName o es igual al name, mantener como está
+
+                // Si no es una opción del select, mantener el item tal como está
                 return item;
             });
 
@@ -476,9 +488,13 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
 
             // Procesar items para convertir fullName de vuelta al formato de la DB
             const processedItems = filteredItems.map(item => {
-                // Si el item tiene fullName (opción del select), convertirlo al formato de la DB
-                if (item.fullName && item.fullName !== item.name) {
-                    const dbFormat = mapSelectOptionToDBFormat(item.fullName);
+                // Procesar TODOS los items, no solo los que tienen fullName diferente a name
+                // Esto asegura que items no modificados también pasen por el procesamiento
+                const itemToProcess = item.fullName || item.name;
+
+                // Si el item parece ser una opción del select (contiene " - "), procesarlo
+                if (itemToProcess && itemToProcess.includes(' - ')) {
+                    const dbFormat = mapSelectOptionToDBFormat(itemToProcess);
                     return {
                         ...item,
                         id: dbFormat.name,
@@ -489,7 +505,8 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                         }]
                     };
                 }
-                // Si no tiene fullName o es igual al name, mantener como está
+
+                // Si no es una opción del select, mantener el item tal como está
                 return item;
             });
 
@@ -527,19 +544,26 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
 
         // Procesar items para convertir fullName de vuelta al formato de la DB
         const processedItems = validItems.map(item => {
-            // Si el item tiene fullName (opción del select), convertirlo al formato de la DB
-            if (item.fullName && item.fullName !== item.name) {
-                const dbFormat = mapSelectOptionToDBFormat(item.fullName);
+            // Procesar TODOS los items, no solo los que tienen fullName diferente a name
+            // Esto asegura que items no modificados también pasen por el procesamiento
+            const itemToProcess = item.fullName || item.name;
+
+            // Si el item parece ser una opción del select (contiene " - "), procesarlo
+            if (itemToProcess && itemToProcess.includes(' - ')) {
+                const dbFormat = mapSelectOptionToDBFormat(itemToProcess);
                 return {
                     ...item,
                     id: dbFormat.name,
                     name: dbFormat.name,
+                    fullName: itemToProcess, // PRESERVAR el fullName original para búsqueda en DB
                     options: [{
                         ...item.options?.[0],
                         name: dbFormat.option
                     }]
                 };
             }
+
+            // Si no es una opción del select, mantener el item tal como está
             return item;
         });
 

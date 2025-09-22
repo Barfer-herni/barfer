@@ -338,9 +338,17 @@ export async function calculateOrderTotalExact(
 
             console.log(`🔍 Fallback con sección deducida: ${deducedSection} para ${item.name}`);
 
+            // CORRECCIÓN: Eliminar "BOX" del nombre del producto para la búsqueda en DB
+            let cleanProductName = item.name;
+            if (deducedSection === 'PERRO' || deducedSection === 'GATO') {
+                // Para productos PERRO y GATO, eliminar "BOX PERRO " o "BOX GATO " del nombre
+                cleanProductName = cleanProductName.replace(/^BOX\s+(PERRO|GATO)\s+/i, '');
+                console.log(`🔧 Nombre limpio para búsqueda: "${cleanProductName}" (original: "${item.name}")`);
+            }
+
             const result = await getExactProductPrice({
                 section: deducedSection,
-                product: item.name,
+                product: cleanProductName, // Usar el nombre limpio sin BOX
                 weight,
                 orderType,
                 paymentMethod

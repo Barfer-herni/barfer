@@ -654,7 +654,28 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                                     {/* Mostrar el producto actual como primera opción si no está en la lista */}
                                     {(item.fullName || item.name) && !availableProducts.includes(item.fullName || item.name) && (
                                         <option key="current-product" value={item.fullName || item.name}>
-                                            {item.fullName || item.name} (Actual)
+                                            {(() => {
+                                                console.log('🔍 Item actual para mostrar:', {
+                                                    itemName: item.name,
+                                                    itemFullName: item.fullName,
+                                                    itemOptions: item.options,
+                                                    itemWeight: item.options?.[0]?.name,
+                                                    itemQuantity: item.options?.[0]?.quantity,
+                                                    itemPrice: item.options?.[0]?.price,
+                                                    availableProducts: availableProducts.slice(0, 3) // Solo primeros 3 para no saturar
+                                                });
+
+                                                // Construir el nombre completo con el peso
+                                                const baseName = item.fullName || item.name;
+                                                const weight = item.options?.[0]?.name;
+
+                                                // Si el peso existe y no está ya incluido en el nombre, agregarlo
+                                                if (weight && weight !== 'Default' && !baseName.includes(weight)) {
+                                                    return `${baseName} - ${weight}`;
+                                                }
+
+                                                return baseName;
+                                            })()}
                                         </option>
                                     )}
                                     {availableProducts
