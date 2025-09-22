@@ -631,8 +631,18 @@ export const mapDBProductToSelectOption = (dbProductName: string, dbOptionName: 
     }
 
     // Si no, intentar reconstruir el formato desde los datos de la DB
-    // Este es un caso de compatibilidad para datos antiguos
-    console.warn(`Producto sin formato de BD: ${dbProductName} - ${dbOptionName}`);
+    // Construir el nombre completo incluyendo el peso de la opción
+    if (dbOptionName && dbOptionName.trim() !== '') {
+        // Si la opción contiene peso (ej: "10KG"), agregarlo al nombre del producto
+        const weightMatch = dbOptionName.match(/(\d+(?:\.\d+)?)\s*KG/i);
+        if (weightMatch) {
+            return `${dbProductName} - ${weightMatch[0]}`;
+        }
+        // Si no tiene formato de peso pero tiene contenido, agregarlo
+        return `${dbProductName} - ${dbOptionName}`;
+    }
+
+    // Si no hay opción, devolver solo el nombre del producto
     return dbProductName;
 };
 
