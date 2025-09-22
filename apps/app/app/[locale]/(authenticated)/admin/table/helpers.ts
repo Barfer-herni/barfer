@@ -661,9 +661,9 @@ export const mapSelectOptionToDBFormat = (selectOption: string): { name: string,
             console.log(`🔄 product: ${product}`);
 
             if (section === 'PERRO') {
-                cleanName = product.replace('BOX ', ''); // Solo usar el nombre del producto sin BOX
+                cleanName = `BOX PERRO ${product.replace('BOX ', '')}`; // Mantener el nombre completo original
             } else if (section === 'GATO') {
-                cleanName = product.replace('BOX ', ''); // Solo usar el nombre del producto sin BOX
+                cleanName = `BOX GATO ${product.replace('BOX ', '')}`; // Mantener el nombre completo original
             } else if (section === 'RAW') {
                 cleanName = product;
             } else if (section === 'OTROS') {
