@@ -187,9 +187,32 @@ export function parseFormattedProduct(formattedProduct: string): {
         throw new Error(`Formato de producto inválido: ${formattedProduct}`);
     }
 
-    const section = parts[0].trim();
+    let section = parts[0].trim();
     let product = parts[1].trim();
     let weight = parts.length > 2 ? parts[2].trim() : null;
+
+    // Manejo especial para productos con formato "BOX PERRO POLLO - 5KG"
+    // En este caso, la sección viene como "BOX PERRO POLLO" y el producto como "5KG"
+    // Necesitamos extraer la sección real y el producto real
+    if (section.toUpperCase().includes('BOX') && section.toUpperCase().includes('PERRO')) {
+        // Formato: "BOX PERRO POLLO - 5KG"
+        // Extraer: section = "PERRO", product = "POLLO", weight = "5KG"
+        const sectionParts = section.split(' ');
+        if (sectionParts.length >= 3) {
+            section = sectionParts[1]; // "PERRO"
+            product = sectionParts[2]; // "POLLO"
+            weight = parts[1].trim(); // "5KG"
+        }
+    } else if (section.toUpperCase().includes('BOX') && section.toUpperCase().includes('GATO')) {
+        // Formato: "BOX GATO POLLO - 5KG"
+        // Extraer: section = "GATO", product = "POLLO", weight = "5KG"
+        const sectionParts = section.split(' ');
+        if (sectionParts.length >= 3) {
+            section = sectionParts[1]; // "GATO"
+            product = sectionParts[2]; // "POLLO"
+            weight = parts[1].trim(); // "5KG"
+        }
+    }
 
     // Manejo especial para CORNALITOS - el peso está en el nombre del producto
     if (product.toUpperCase().includes('CORNALITOS')) {
@@ -199,6 +222,8 @@ export function parseFormattedProduct(formattedProduct: string): {
         // No extraer el peso como campo separado
         weight = null;
     }
+
+    console.log(`🔧 Parseo de producto: "${formattedProduct}" -> section: "${section}", product: "${product}", weight: "${weight}"`);
 
     return { section, product, weight };
 }
