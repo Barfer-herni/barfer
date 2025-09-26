@@ -58,7 +58,18 @@ export async function getAllOrders({
 
         // Filtro por tipo de orden si se proporciona
         if (orderType && orderType.trim() !== '' && orderType !== 'all') {
-            baseFilter.orderType = orderType;
+            if (orderType === 'minorista') {
+                // Para minorista: incluir órdenes con orderType = 'minorista' O sin el campo orderType
+                baseFilter.$or = [
+                    { orderType: 'minorista' },
+                    { orderType: { $exists: false } },
+                    { orderType: null },
+                    { orderType: '' }
+                ];
+            } else {
+                // Para mayorista: solo incluir órdenes con orderType = 'mayorista'
+                baseFilter.orderType = orderType;
+            }
         } else {
             // Por defecto, incluir TODAS las órdenes (minoristas y mayoristas)
             // No aplicar filtro de orderType para permitir búsquedas globales

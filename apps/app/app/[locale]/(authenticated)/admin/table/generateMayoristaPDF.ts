@@ -105,12 +105,12 @@ export function generateMayoristaPDF(orderData: MayoristaOrderData): void {
 
         // Precio unitario (usar el precio real del producto)
         const unitPrice = item.options[0]?.price || item.price || 0;
-        doc.text(`$${unitPrice.toFixed(2)}`, 150, yPosition);
+        doc.text(`$${Math.round(unitPrice)}`, 150, yPosition);
 
         // Subtotal
         const subtotal = unitPrice * quantity;
         totalCalculated += subtotal;
-        doc.text(`$${subtotal.toFixed(2)}`, 170, yPosition);
+        doc.text(`$${Math.round(subtotal)}`, 170, yPosition);
 
         yPosition += Math.max(8, lines.length * 4);
     });
@@ -128,7 +128,7 @@ export function generateMayoristaPDF(orderData: MayoristaOrderData): void {
 
     doc.setFontSize(16);
     doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-    doc.text(`$${orderData.total.toFixed(2)}`, 170, yPosition);
+    doc.text(`$${Math.round(orderData.total)}`, 170, yPosition);
 
     // Notas si existen
     if (orderData.notes && orderData.notes.trim() !== '') {

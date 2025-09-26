@@ -551,11 +551,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             return;
         }
 
-        // Validar que haya datos básicos
-        if (!createFormData.user.name.trim() || !createFormData.user.lastName.trim()) {
-            alert('Debe completar al menos el nombre y apellido del cliente para generar el PDF.');
-            return;
-        }
+        // No es necesario validar nombre y apellido para generar el PDF
 
         // Validar que haya productos
         const validItems = filterValidItems(createFormData.items);
