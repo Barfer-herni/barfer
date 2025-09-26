@@ -17,8 +17,9 @@ import { Calendar } from '@repo/design-system/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@repo/design-system/components/ui/popover';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { RotateCcw, Trash2, Search } from 'lucide-react';
+import { RotateCcw, Trash2, Search, Download } from 'lucide-react';
 import type { MayoristaOrder } from '@repo/data-services/src/types/barfer';
+import { generateMayoristaPDF } from '../generateMayoristaPDF';
 
 // Imports de constantes y helpers
 import { STATUS_OPTIONS, PAYMENT_METHOD_OPTIONS, ORDER_TYPE_OPTIONS } from '../constants';
@@ -89,6 +90,12 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             }, 300); // Debounce de 300ms para evitar cálculos excesivos
 
             return () => clearTimeout(timeoutId);
+        } else if (validItems.length === 0 && createFormData.total !== '') {
+            // Si no hay items válidos, resetear el total a 0
+            setCreateFormData(prev => ({
+                ...prev,
+                total: ''
+            }));
         }
     }, [createFormData.items, createFormData.orderType, createFormData.paymentMethod]);
 
@@ -105,6 +112,9 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 return () => {
                     clearTimeout(timeoutId);
                 };
+            } else if (validItems.length === 0 && editValues.total !== 0) {
+                // Si no hay items válidos, resetear el total a 0
+                handleChange('total', 0);
             }
         }
     }, [editValues.items, editValues.orderType, editValues.paymentMethod, editingRowId, shouldAutoCalculatePrice]);
@@ -530,6 +540,77 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             alert(e instanceof Error ? e.message : 'Error al crear la orden');
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Función para descargar PDF de orden mayorista
+    const handleDownloadPDF = async () => {
+        // Validar que sea una orden mayorista
+        if (createFormData.orderType !== 'mayorista') {
+            alert('La descarga de PDF solo está disponible para órdenes mayoristas.');
+            return;
+        }
+
+        // Validar que haya datos básicos
+        if (!createFormData.user.name.trim() || !createFormData.user.lastName.trim()) {
+            alert('Debe completar al menos el nombre y apellido del cliente para generar el PDF.');
+            return;
+        }
+
+        // Validar que haya productos
+        const validItems = filterValidItems(createFormData.items);
+        if (validItems.length === 0) {
+            alert('Debe agregar al menos un producto para generar el PDF.');
+            return;
+        }
+
+        // Validar que haya un total
+        if (!createFormData.total || createFormData.total === '') {
+            alert('Debe especificar un total para generar el PDF.');
+            return;
+        }
+
+        try {
+            // Calcular precios para obtener los precios unitarios reales
+            const priceResult = await calculatePriceAction(
+                validItems,
+                createFormData.orderType,
+                createFormData.paymentMethod
+            );
+
+            if (!priceResult.success || !priceResult.itemPrices) {
+                alert('Error al calcular los precios de los productos. Por favor, intente nuevamente.');
+                return;
+            }
+
+            // Mapear los items con sus precios calculados
+            const itemsWithPrices = validItems.map(item => {
+                const itemPrice = priceResult.itemPrices!.find(ip =>
+                    ip.name === item.name || ip.name === item.fullName
+                );
+
+                return {
+                    ...item,
+                    price: itemPrice?.unitPrice || 0,
+                    options: item.options.map((option: any) => ({
+                        ...option,
+                        price: itemPrice?.unitPrice || 0
+                    }))
+                };
+            });
+
+            generateMayoristaPDF({
+                user: createFormData.user,
+                address: createFormData.address,
+                items: itemsWithPrices,
+                total: Number(createFormData.total),
+                deliveryDay: createFormData.deliveryDay,
+                paymentMethod: createFormData.paymentMethod,
+                notes: createFormData.notes
+            });
+        } catch (error) {
+            console.error('Error al generar PDF:', error);
+            alert('Error al generar el PDF. Por favor, intente nuevamente.');
         }
     };
 
@@ -1243,6 +1324,17 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                     >
                                         Cancelar
                                     </Button>
+                                    {/* Botón de descargar PDF - solo para órdenes mayoristas */}
+                                    {createFormData.orderType === 'mayorista' && (
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleDownloadPDF}
+                                            className="flex items-center gap-2"
+                                        >
+                                            <Download className="h-4 w-4" />
+                                            Descargar PDF
+                                        </Button>
+                                    )}
                                     <Button onClick={handleCreateOrder} disabled={loading}>
                                         {loading ? 'Creando...' : 'Crear Orden'}
                                     </Button>
