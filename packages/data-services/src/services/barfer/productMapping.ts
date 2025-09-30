@@ -154,8 +154,13 @@ export function mapSelectOptionToDBFormat(selectOption: string): ProductMapping 
         return { name: 'CALDO DE HUESOS', option: '' };
     }
 
-    // Mapear Huesos (pero no si es caldo de huesos)
-    if (normalizedSelect.includes('huesos') && !normalizedSelect.includes('caldo')) {
+    // Mapear HUESO RECREATIVO - IMPORTANTE: debe ir ANTES que la verificación genérica de huesos
+    if (normalizedSelect.includes('hueso recreativo') || normalizedSelect.includes('huesos recreativos')) {
+        return { name: 'HUESOS RECREATIVOS', option: '' };
+    }
+
+    // Mapear Huesos Carnosos (pero no si es caldo de huesos o hueso recreativo)
+    if (normalizedSelect.includes('huesos') && !normalizedSelect.includes('caldo') && !normalizedSelect.includes('recreativo')) {
         return { name: 'HUESOS CARNOSOS', option: '5KG' };
     }
 
@@ -206,10 +211,6 @@ export function mapSelectOptionToDBFormat(selectOption: string): ProductMapping 
         // Si no se encuentra peso específico, devolver sin opción para debug
         console.warn(`⚠️ CORNALITOS sin peso específico detectado: "${selectOption}"`);
         return { name: 'CORNALITOS', option: '' };
-    }
-
-    if (normalizedSelect.includes('hueso recreativo')) {
-        return { name: 'HUESO RECREATIVO', option: '' };
     }
 
     if (normalizedSelect.includes('garras')) {
