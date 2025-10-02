@@ -59,6 +59,7 @@ export {
     initializePricesForPeriod
 } from './pricesService';
 export { getPricesByMonth, getPriceEvolution, comparePricesPeriods, getMostVolatilePrices, getPriceChangesSummary } from './priceHistoryService';
+export { normalizePricesCapitalization, removeDuplicatePrices } from './normalizePricesCapitalization';
 
 // ===== CÁLCULO DE PRECIOS PARA ÓRDENES =====
 export { getProductPrice, calculateOrderTotal, debugPriceCalculation } from './pricesCalculationService';

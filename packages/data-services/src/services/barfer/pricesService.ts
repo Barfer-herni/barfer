@@ -464,25 +464,62 @@ export async function getProductsForSelect(): Promise<{
     try {
         const collection = await getCollection('prices');
 
-        // Agrupar por producto único (section + product + weight) y obtener solo activos
+        // Obtener fecha actual en formato correcto
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+        console.log('🔍 getProductsForSelect - Filtrando con fecha:', todayStr);
+
+        // Agrupar por producto único (section + product + weight) y obtener solo activos vigentes
         const pipeline = [
             {
-                $match: { isActive: true }
+                $match: {
+                    isActive: true,
+                    // Solo tomar precios cuya fecha efectiva sea menor o igual a hoy
+                    effectiveDate: { $lte: todayStr }
+                }
             },
             {
-                $group: {
-                    _id: {
-                        section: "$section",
-                        product: "$product",
-                        weight: "$weight"
+                $sort: { effectiveDate: -1, createdAt: -1 }
+            },
+            {
+                // Normalizar a mayúsculas para agrupar correctamente
+                $addFields: {
+                    sectionUpper: { $toUpper: "$section" },
+                    productUpper: { $toUpper: "$product" },
+                    weightUpper: {
+                        $cond: [
+                            { $eq: ["$weight", null] },
+                            null,
+                            { $toUpper: "$weight" }
+                        ]
                     }
                 }
             },
             {
+                $group: {
+                    _id: {
+                        section: "$sectionUpper",
+                        product: "$productUpper",
+                        weight: "$weightUpper"
+                    },
+                    latestPrice: { $first: "$$ROOT" }
+                }
+            },
+            {
+                $replaceRoot: { newRoot: "$latestPrice" }
+            },
+            {
                 $project: {
-                    section: "$_id.section",
-                    product: "$_id.product",
-                    weight: "$_id.weight"
+                    section: { $toUpper: "$section" },
+                    product: { $toUpper: "$product" },
+                    weight: {
+                        $cond: [
+                            { $eq: ["$weight", null] },
+                            null,
+                            { $toUpper: "$weight" }
+                        ]
+                    }
                 }
             },
             {
@@ -790,7 +827,11 @@ export async function getCurrentPrices(): Promise<{
         // Agregación para obtener el precio más reciente por producto
         const pipeline = [
             {
-                $match: { isActive: true }
+                $match: {
+                    isActive: true,
+                    // Solo tomar precios cuya fecha efectiva sea menor o igual a hoy
+                    effectiveDate: { $lte: new Date().toISOString().split('T')[0] }
+                }
             },
             {
                 $sort: { effectiveDate: -1, createdAt: -1 }
@@ -1018,9 +1059,20 @@ export async function initializePricesForPeriod(month: number, year: number): Pr
             // Productos que solo tienen MAYORISTA
             { section: 'OTROS' as PriceSection, product: 'GARRAS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
             { section: 'OTROS' as PriceSection, product: 'CORNALITOS', weight: '200GRS', priceType: 'MAYORISTA' as PriceType, price: 0 },
-            { section: 'OTROS' as PriceSection, product: 'CORNALITOS', weight: '30GRS', priceType: 'MAYORISTA' as PriceType, price: 0 },
             { section: 'OTROS' as PriceSection, product: 'HUESOS RECREATIVOS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
             { section: 'OTROS' as PriceSection, product: 'CALDO DE HUESOS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
+
+            // RAW - Productos solo para mayorista
+            { section: 'RAW' as PriceSection, product: 'HIGADO 100GRS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
+            { section: 'RAW' as PriceSection, product: 'HIGADO 40GRS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
+            { section: 'RAW' as PriceSection, product: 'POLLO 100GRS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
+            { section: 'RAW' as PriceSection, product: 'POLLO 40GRS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
+            { section: 'RAW' as PriceSection, product: 'CORNALITOS 30GRS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
+            { section: 'RAW' as PriceSection, product: 'TRAQUEA X1', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
+            { section: 'RAW' as PriceSection, product: 'TRAQUEA X2', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
+            { section: 'RAW' as PriceSection, product: 'OREJA X1', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
+            { section: 'RAW' as PriceSection, product: 'OREJA X50', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
+            { section: 'RAW' as PriceSection, product: 'OREJAS X100', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
         ];
 
         const now = new Date().toISOString();
@@ -1131,10 +1183,21 @@ export async function initializeBarferPrices(): Promise<{
             { section: 'OTROS' as PriceSection, product: 'BOX DE COMPLEMENTOS', weight: undefined, priceType: 'TRANSFERENCIA' as PriceType, price: 0 },
             { section: 'OTROS' as PriceSection, product: 'BOX DE COMPLEMENTOS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
             { section: 'OTROS' as PriceSection, product: 'CORNALITOS', weight: '200GRS', priceType: 'MAYORISTA' as PriceType, price: 0 },
-            { section: 'OTROS' as PriceSection, product: 'CORNALITOS', weight: '30GRS', priceType: 'MAYORISTA' as PriceType, price: 0 },
             { section: 'OTROS' as PriceSection, product: 'GARRAS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
             { section: 'OTROS' as PriceSection, product: 'CALDO DE HUESOS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
             { section: 'OTROS' as PriceSection, product: 'HUESOS RECREATIVOS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
+
+            // RAW - Productos solo para mayorista
+            { section: 'RAW' as PriceSection, product: 'HIGADO 100GRS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
+            { section: 'RAW' as PriceSection, product: 'HIGADO 40GRS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
+            { section: 'RAW' as PriceSection, product: 'POLLO 100GRS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
+            { section: 'RAW' as PriceSection, product: 'POLLO 40GRS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
+            { section: 'RAW' as PriceSection, product: 'CORNALITOS 30GRS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
+            { section: 'RAW' as PriceSection, product: 'TRAQUEA X1', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
+            { section: 'RAW' as PriceSection, product: 'TRAQUEA X2', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
+            { section: 'RAW' as PriceSection, product: 'OREJA X1', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
+            { section: 'RAW' as PriceSection, product: 'OREJA X50', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
+            { section: 'RAW' as PriceSection, product: 'OREJAS X100', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
         ];
 
         let created = 0;

@@ -51,7 +51,9 @@ export async function getExactProductPrice(params: ExactPriceParams): Promise<{
             section: section.toUpperCase(),
             product: { $regex: `^${product.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' }, // Insensible a mayúsculas/minúsculas
             priceType,
-            isActive: true
+            isActive: true,
+            // Solo tomar precios cuya fecha efectiva sea menor o igual a hoy
+            effectiveDate: { $lte: new Date().toISOString().split('T')[0] }
         };
 
         // Manejo especial para CORNALITOS - el peso está en el nombre del producto
@@ -113,7 +115,9 @@ export async function getExactProductPrice(params: ExactPriceParams): Promise<{
                 section: section.toUpperCase(),
                 product: { $regex: `^${product.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' }, // Insensible a mayúsculas/minúsculas
                 priceType,
-                isActive: true
+                isActive: true,
+                // Solo tomar precios cuya fecha efectiva sea menor o igual a hoy
+                effectiveDate: { $lte: new Date().toISOString().split('T')[0] }
             };
 
             console.log(`🔍 Query flexible:`, flexibleQuery);

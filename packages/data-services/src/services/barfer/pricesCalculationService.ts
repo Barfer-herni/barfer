@@ -163,7 +163,9 @@ export async function getProductPrice(
         const productQuery: any = {
             product: { $regex: `^${searchProduct.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' },
             priceType,
-            isActive: true
+            isActive: true,
+            // Solo tomar precios cuya fecha efectiva sea menor o igual a hoy
+            effectiveDate: { $lte: new Date().toISOString().split('T')[0] }
         };
 
         // Solo agregar sectionParam si está definido
@@ -236,7 +238,9 @@ export async function getProductPrice(
             section: realSection,
             product: { $regex: `^${searchProduct.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' }, // Case-insensitive exact match
             priceType,
-            isActive: true
+            isActive: true,
+            // Solo tomar precios cuya fecha efectiva sea menor o igual a hoy
+            effectiveDate: { $lte: new Date().toISOString().split('T')[0] }
         };
 
         // Solo agregar weight al query si no es null

@@ -16,7 +16,9 @@ import {
     createProductoGestor,
     updateProductoGestor,
     deleteProductoGestor,
-    initializeProductosGestor
+    initializeProductosGestor,
+    normalizePricesCapitalization,
+    removeDuplicatePrices
 } from '@repo/data-services';
 import type { CreateProductoGestorData, UpdateProductoGestorData, CreatePriceData } from '@repo/data-services';
 import { revalidatePath } from 'next/cache';
@@ -481,6 +483,68 @@ export async function updateProductPriceTypesAction(
             error: 'UPDATE_PRODUCT_PRICE_TYPES_ACTION_ERROR',
             addedCount: 0,
             removedCount: 0
+        };
+    }
+}
+
+export async function normalizePricesCapitalizationAction() {
+    try {
+        // Verificar permisos de edición
+        const canEditPrices = await hasPermission('prices:edit');
+        if (!canEditPrices) {
+            return {
+                success: false,
+                message: 'No tienes permisos para normalizar precios',
+                error: 'INSUFFICIENT_PERMISSIONS',
+                updated: 0
+            };
+        }
+
+        const result = await normalizePricesCapitalization();
+
+        if (result.success) {
+            revalidatePath('/admin/prices');
+        }
+
+        return result;
+    } catch (error) {
+        console.error('Error normalizing prices capitalization:', error);
+        return {
+            success: false,
+            message: 'Error al normalizar capitalización de precios',
+            error: 'NORMALIZE_PRICES_ACTION_ERROR',
+            updated: 0
+        };
+    }
+}
+
+export async function removeDuplicatePricesAction() {
+    try {
+        // Verificar permisos de edición
+        const canEditPrices = await hasPermission('prices:edit');
+        if (!canEditPrices) {
+            return {
+                success: false,
+                message: 'No tienes permisos para eliminar duplicados',
+                error: 'INSUFFICIENT_PERMISSIONS',
+                removed: 0
+            };
+        }
+
+        const result = await removeDuplicatePrices();
+
+        if (result.success) {
+            revalidatePath('/admin/prices');
+        }
+
+        return result;
+    } catch (error) {
+        console.error('Error removing duplicate prices:', error);
+        return {
+            success: false,
+            message: 'Error al eliminar precios duplicados',
+            error: 'REMOVE_DUPLICATES_ACTION_ERROR',
+            removed: 0
         };
     }
 }
