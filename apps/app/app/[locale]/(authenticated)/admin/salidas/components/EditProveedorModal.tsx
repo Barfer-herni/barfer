@@ -109,23 +109,6 @@ export function EditProveedorModal({ open, onOpenChange, proveedor, onProveedorU
                 return;
             }
 
-            if (!formData.telefono.trim()) {
-                toast({
-                    title: 'Error',
-                    description: 'El teléfono es obligatorio',
-                    variant: 'destructive'
-                });
-                return;
-            }
-
-            if (!formData.personaContacto.trim()) {
-                toast({
-                    title: 'Error',
-                    description: 'La persona de contacto es obligatoria',
-                    variant: 'destructive'
-                });
-                return;
-            }
 
             // Actualizar el proveedor usando la acción del servidor
             const updatedData = {
@@ -190,24 +173,22 @@ export function EditProveedorModal({ open, onOpenChange, proveedor, onProveedorU
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="telefono">Teléfono *</Label>
+                        <Label htmlFor="telefono">Teléfono</Label>
                         <Input
                             id="telefono"
                             value={formData.telefono}
                             onChange={(e) => handleInputChange('telefono', e.target.value)}
                             placeholder="Ej: 221 123-4567"
-                            required
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="personaContacto">Persona de Contacto *</Label>
+                        <Label htmlFor="personaContacto">Persona de Contacto</Label>
                         <Input
                             id="personaContacto"
                             value={formData.personaContacto}
                             onChange={(e) => handleInputChange('personaContacto', e.target.value)}
                             placeholder="Ej: Juan Pérez"
-                            required
                         />
                     </div>
 
