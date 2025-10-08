@@ -13,6 +13,10 @@ export interface SalidaData {
     tipoRegistro: TipoRegistro;
     categoriaId: string;
     metodoPagoId: string;
+    proveedorId?: string | null; // ID del proveedor (opcional)
+    fechaLlegaFactura?: Date | string | null; // Fecha que llega la factura
+    fechaPagoFactura?: Date | string | null; // Fecha que pagan la factura
+    comprobanteNumber?: string | null; // Número de comprobante (opcional)
     // Datos relacionados
     categoria: {
         id: string;
@@ -22,6 +26,15 @@ export interface SalidaData {
         id: string;
         nombre: string;
     };
+    proveedor?: {
+        id: string;
+        nombre: string;
+        marca: string;
+        tipoProveedor: string;
+        telefono: string;
+        personaContacto: string;
+        pagoTipo: 'BLANCO' | 'NEGRO';
+    } | null;
     createdAt: Date | string; // Permitir tanto Date como string para compatibilidad con Prisma
     updatedAt: Date | string; // Permitir tanto Date como string para compatibilidad con Prisma
 }
@@ -35,6 +48,10 @@ export interface CreateSalidaInput {
     monto: number;
     metodoPagoId: string;
     tipoRegistro: TipoRegistro;
+    proveedorId?: string; // ID del proveedor (opcional)
+    fechaLlegaFactura?: Date | string; // Fecha que llega la factura
+    fechaPagoFactura?: Date | string; // Fecha que pagan la factura
+    comprobanteNumber?: string; // Número de comprobante (opcional)
 }
 
 export interface UpdateSalidaInput {
@@ -46,6 +63,10 @@ export interface UpdateSalidaInput {
     monto?: number;
     metodoPagoId?: string;
     tipoRegistro?: TipoRegistro;
+    proveedorId?: string; // ID del proveedor (opcional)
+    fechaLlegaFactura?: Date | string; // Fecha que llega la factura
+    fechaPagoFactura?: Date | string; // Fecha que pagan la factura
+    comprobanteNumber?: string; // Número de comprobante (opcional)
 }
 
 // Servicios CRUD
@@ -211,17 +232,26 @@ export async function createSalida(data: CreateSalidaInput): Promise<{
     error?: string;
 }> {
     try {
+        // Construir objeto de datos para creación
+        const createData: any = {
+            fecha: data.fecha,
+            detalle: data.detalle,
+            categoriaId: data.categoriaId,
+            tipo: data.tipo,
+            monto: data.monto,
+            metodoPagoId: data.metodoPagoId,
+            tipoRegistro: data.tipoRegistro
+        };
+
+        // Agregar campos opcionales solo si están presentes
+        if (data.marca !== undefined) createData.marca = data.marca;
+        if (data.proveedorId !== undefined) createData.proveedorId = data.proveedorId;
+        if (data.fechaLlegaFactura !== undefined) createData.fechaLlegaFactura = data.fechaLlegaFactura;
+        if (data.fechaPagoFactura !== undefined) createData.fechaPagoFactura = data.fechaPagoFactura;
+        if (data.comprobanteNumber !== undefined) createData.comprobanteNumber = data.comprobanteNumber;
+
         const salida = await database.salida.create({
-            data: {
-                fecha: data.fecha,
-                detalle: data.detalle,
-                categoriaId: data.categoriaId,
-                tipo: data.tipo,
-                marca: data.marca,
-                monto: data.monto,
-                metodoPagoId: data.metodoPagoId,
-                tipoRegistro: data.tipoRegistro
-            },
+            data: createData,
             include: {
                 categoria: {
                     select: {
@@ -263,12 +293,27 @@ export async function updateSalida(id: string, data: UpdateSalidaInput): Promise
     error?: string;
 }> {
     try {
+        // Filtrar solo los campos que queremos actualizar
+        const updateData: any = {
+            updatedAt: new Date()
+        };
+
+        // Agregar campos solo si están presentes en data
+        if (data.fecha !== undefined) updateData.fecha = data.fecha;
+        if (data.detalle !== undefined) updateData.detalle = data.detalle;
+        if (data.categoriaId !== undefined) updateData.categoriaId = data.categoriaId;
+        if (data.tipo !== undefined) updateData.tipo = data.tipo;
+        if (data.marca !== undefined) updateData.marca = data.marca;
+        if (data.monto !== undefined) updateData.monto = data.monto;
+        if (data.metodoPagoId !== undefined) updateData.metodoPagoId = data.metodoPagoId;
+        if (data.tipoRegistro !== undefined) updateData.tipoRegistro = data.tipoRegistro;
+        if (data.fechaLlegaFactura !== undefined) updateData.fechaLlegaFactura = data.fechaLlegaFactura;
+        if (data.fechaPagoFactura !== undefined) updateData.fechaPagoFactura = data.fechaPagoFactura;
+        if (data.comprobanteNumber !== undefined) updateData.comprobanteNumber = data.comprobanteNumber;
+
         const salida = await database.salida.update({
             where: { id },
-            data: {
-                ...data,
-                updatedAt: new Date()
-            },
+            data: updateData,
             include: {
                 categoria: {
                     select: {

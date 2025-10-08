@@ -16,6 +16,15 @@ export * from './categoriasService';
 export * from './metodosPagoService';
 
 // ==========================================
+// SERVICIOS MIGRADOS A MONGODB
+// ==========================================
+export * from './salidasMongoService';
+export * from './categoriasMongoService';
+export * from './metodosPagoMongoService';
+export * from './categoriasProveedoresMongoService';
+export * from './proveedoresMongoService';
+
+// ==========================================
 // SERVICIOS DE BARFER E-COMMERCE (MongoDB)
 // ==========================================
 export * from './mongoService';

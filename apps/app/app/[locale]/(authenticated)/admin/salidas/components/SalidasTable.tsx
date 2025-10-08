@@ -16,11 +16,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@repo/design-system/co
 import { Input } from '@repo/design-system/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@repo/design-system/components/ui/select';
 import { toast } from '@repo/design-system/hooks/use-toast';
-import { Plus, Edit, Trash2, Filter, Search, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Filter, Search, X, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { AddSalidaModal } from './AddSalidaModal';
 import { EditSalidaModal } from './EditSalidaModal';
 import { DeleteSalidaDialog } from './DeleteSalidaDialog';
-import { SalidaData } from '@repo/data-services';
+import { SalidaMongoData } from '@repo/data-services';
 
 // Funciones de permisos del cliente (definidas localmente)
 function hasAllCategoriesPermission(permissions: string[]): boolean {
@@ -32,17 +32,20 @@ function getCategoryPermissions(permissions: string[]): string[] {
 }
 
 interface SalidasTableProps {
-    salidas?: SalidaData[];
+    salidas?: SalidaMongoData[];
     onRefreshSalidas?: () => void;
     userPermissions?: string[];
 }
+
+type SortField = 'fechaFactura' | 'categoria' | 'proveedor' | 'detalle' | 'tipo' | 'marca' | 'monto' | 'metodoPago' | 'tipoRegistro' | 'fechaPago' | 'comprobanteNumber';
+type SortDirection = 'asc' | 'desc';
 
 export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions = [] }: SalidasTableProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    const [selectedSalida, setSelectedSalida] = useState<SalidaData | null>(null);
+    const [selectedSalida, setSelectedSalida] = useState<SalidaMongoData | null>(null);
 
     // Estados para los filtros
     const [searchTerm, setSearchTerm] = useState('');
@@ -52,6 +55,10 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
     const [selectedTipo, setSelectedTipo] = useState<string>('');
     const [selectedTipoRegistro, setSelectedTipoRegistro] = useState<string>('');
     const [selectedFecha, setSelectedFecha] = useState<string>('');
+
+    // Estados para el ordenamiento
+    const [sortField, setSortField] = useState<SortField>('fechaFactura');
+    const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
     const formatDate = (date: Date | string) => {
         // Asegurar que tenemos un objeto Date válido
@@ -143,9 +150,32 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
         return metodos.sort();
     }, [salidas]);
 
-    // Filtrar las salidas
-    const filteredSalidas = useMemo(() => {
-        return salidas.filter(salida => {
+    // Función para manejar el ordenamiento
+    const handleSort = (field: SortField) => {
+        if (sortField === field) {
+            // Si es el mismo campo, alternar dirección
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            // Si es un campo diferente, establecer como ascendente por defecto
+            setSortField(field);
+            setSortDirection('asc');
+        }
+    };
+
+    // Función para obtener el ícono de ordenamiento
+    const getSortIcon = (field: SortField) => {
+        if (sortField !== field) {
+            return <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />;
+        }
+        return sortDirection === 'asc'
+            ? <ChevronUp className="h-4 w-4 text-blue-600" />
+            : <ChevronDown className="h-4 w-4 text-blue-600" />;
+    };
+
+    // Filtrar y ordenar las salidas
+    const filteredAndSortedSalidas = useMemo(() => {
+        // Primero filtrar
+        const filtered = salidas.filter(salida => {
             // Filtro por texto de búsqueda
             if (searchTerm) {
                 const searchLower = searchTerm.toLowerCase();
@@ -190,11 +220,11 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                 let fechaSalida: Date;
 
                 // Asegurar que tenemos un objeto Date válido
-                if (salida.fecha instanceof Date) {
-                    fechaSalida = salida.fecha;
-                } else if (typeof salida.fecha === 'string') {
+                if (salida.fechaFactura instanceof Date) {
+                    fechaSalida = salida.fechaFactura;
+                } else if (typeof salida.fechaFactura === 'string') {
                     // Extraer solo la parte de la fecha para evitar problemas de zona horaria
-                    const fechaString = salida.fecha as string;
+                    const fechaString = salida.fechaFactura as string;
                     const dateOnly = fechaString.split(' ')[0];
                     const [year, month, day] = dateOnly.split('-').map(Number);
 
@@ -207,7 +237,7 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                     const localDay = fechaSalida.getDate();
                     fechaSalida = new Date(localYear, localMonth, localDay);
                 } else {
-                    fechaSalida = new Date(salida.fecha);
+                    fechaSalida = new Date(salida.fechaFactura);
                 }
 
                 const fechaFilter = new Date(selectedFecha);
@@ -223,7 +253,66 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
 
             return true;
         });
-    }, [salidas, searchTerm, selectedCategoria, selectedMarca, selectedMetodoPago, selectedTipo, selectedTipoRegistro, selectedFecha]);
+
+        // Luego ordenar
+        return filtered.sort((a, b) => {
+            let aValue: any;
+            let bValue: any;
+
+            switch (sortField) {
+                case 'fechaFactura':
+                    aValue = new Date(a.fechaFactura);
+                    bValue = new Date(b.fechaFactura);
+                    break;
+                case 'categoria':
+                    aValue = (a.categoria?.nombre || '').toLowerCase();
+                    bValue = (b.categoria?.nombre || '').toLowerCase();
+                    break;
+                case 'proveedor':
+                    aValue = (a.proveedor?.nombre || '').toLowerCase();
+                    bValue = (b.proveedor?.nombre || '').toLowerCase();
+                    break;
+                case 'detalle':
+                    aValue = a.detalle.toLowerCase();
+                    bValue = b.detalle.toLowerCase();
+                    break;
+                case 'tipo':
+                    aValue = a.tipo;
+                    bValue = b.tipo;
+                    break;
+                case 'marca':
+                    aValue = (a.marca || '').toLowerCase();
+                    bValue = (b.marca || '').toLowerCase();
+                    break;
+                case 'monto':
+                    aValue = a.monto;
+                    bValue = b.monto;
+                    break;
+                case 'metodoPago':
+                    aValue = (a.metodoPago?.nombre || '').toLowerCase();
+                    bValue = (b.metodoPago?.nombre || '').toLowerCase();
+                    break;
+                case 'tipoRegistro':
+                    aValue = a.tipoRegistro;
+                    bValue = b.tipoRegistro;
+                    break;
+                case 'comprobanteNumber':
+                    aValue = (a as any).comprobanteNumber ? String((a as any).comprobanteNumber).toLowerCase() : '';
+                    bValue = (b as any).comprobanteNumber ? String((b as any).comprobanteNumber).toLowerCase() : '';
+                    break;
+                default:
+                    return 0;
+            }
+
+            if (aValue < bValue) {
+                return sortDirection === 'asc' ? -1 : 1;
+            }
+            if (aValue > bValue) {
+                return sortDirection === 'asc' ? 1 : -1;
+            }
+            return 0;
+        });
+    }, [salidas, searchTerm, selectedCategoria, selectedMarca, selectedMetodoPago, selectedTipo, selectedTipoRegistro, selectedFecha, sortField, sortDirection]);
 
     const clearFilters = () => {
         setSearchTerm('');
@@ -245,12 +334,12 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
         }
     };
 
-    const handleEditSalida = (salida: SalidaData) => {
+    const handleEditSalida = (salida: SalidaMongoData) => {
         setSelectedSalida(salida);
         setIsEditModalOpen(true);
     };
 
-    const handleDeleteSalida = (salida: SalidaData) => {
+    const handleDeleteSalida = (salida: SalidaMongoData) => {
         setSelectedSalida(salida);
         setIsDeleteDialogOpen(true);
     };
@@ -270,7 +359,7 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                     <p className="text-sm text-muted-foreground">
                         {salidas.length === 0
                             ? 'No hay salidas registradas'
-                            : `${filteredSalidas.length} de ${salidas.length} salida${salidas.length !== 1 ? 's' : ''} mostrada${salidas.length !== 1 ? 's' : ''}${filteredSalidas.length !== salidas.length ? ' (filtradas)' : ''}`
+                            : `${filteredAndSortedSalidas.length} de ${salidas.length} salida${salidas.length !== 1 ? 's' : ''} mostrada${salidas.length !== 1 ? 's' : ''}${filteredAndSortedSalidas.length !== salidas.length ? ' (filtradas)' : ''}`
                         }
                     </p>
                 </div>
@@ -403,24 +492,115 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
             {/* Tabla */}
             <div className="rounded-lg border overflow-hidden">
                 <div className="overflow-x-auto">
-                    <Table className="min-w-[1000px]">
+                    <Table className="min-w-[1200px]">
                         <TableHeader>
                             <TableRow className="bg-muted/50">
-                                <TableHead className="font-semibold w-[100px]">Fecha</TableHead>
-                                <TableHead className="font-semibold min-w-[200px]">Detalle</TableHead>
-                                <TableHead className="font-semibold w-[120px]">Categoría</TableHead>
-                                <TableHead className="font-semibold w-[110px] text-center">Tipo</TableHead>
-                                <TableHead className="font-semibold w-[100px]">Marca</TableHead>
-                                <TableHead className="font-semibold w-[120px] text-right">Monto</TableHead>
-                                <TableHead className="font-semibold w-[140px]">Forma de Pago</TableHead>
-                                <TableHead className="font-semibold w-[100px] text-center">Registro</TableHead>
+                                <TableHead
+                                    className="font-semibold w-[100px] cursor-pointer hover:bg-muted/70 select-none"
+                                    onClick={() => handleSort('fechaFactura')}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        Fecha Factura
+                                        {getSortIcon('fechaFactura')}
+                                    </div>
+                                </TableHead>
+                                <TableHead
+                                    className="font-semibold w-[120px] cursor-pointer hover:bg-muted/70 select-none"
+                                    onClick={() => handleSort('fechaPago')}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        Fecha Pago
+                                        {getSortIcon('fechaPago')}
+                                    </div>
+                                </TableHead>
+                                <TableHead
+                                    className="font-semibold w-[120px] cursor-pointer hover:bg-muted/70 select-none"
+                                    onClick={() => handleSort('categoria')}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        Categoría
+                                        {getSortIcon('categoria')}
+                                    </div>
+                                </TableHead>
+                                <TableHead
+                                    className="font-semibold w-[150px] cursor-pointer hover:bg-muted/70 select-none"
+                                    onClick={() => handleSort('proveedor')}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        Proveedor
+                                        {getSortIcon('proveedor')}
+                                    </div>
+                                </TableHead>
+                                <TableHead
+                                    className="font-semibold min-w-[200px] cursor-pointer hover:bg-muted/70 select-none"
+                                    onClick={() => handleSort('detalle')}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        Detalle
+                                        {getSortIcon('detalle')}
+                                    </div>
+                                </TableHead>
+                                <TableHead
+                                    className="font-semibold w-[110px] text-center cursor-pointer hover:bg-muted/70 select-none"
+                                    onClick={() => handleSort('tipo')}
+                                >
+                                    <div className="flex items-center justify-center gap-1">
+                                        Tipo
+                                        {getSortIcon('tipo')}
+                                    </div>
+                                </TableHead>
+                                <TableHead
+                                    className="font-semibold w-[100px] cursor-pointer hover:bg-muted/70 select-none"
+                                    onClick={() => handleSort('marca')}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        Marca
+                                        {getSortIcon('marca')}
+                                    </div>
+                                </TableHead>
+                                <TableHead
+                                    className="font-semibold w-[120px] text-right cursor-pointer hover:bg-muted/70 select-none"
+                                    onClick={() => handleSort('monto')}
+                                >
+                                    <div className="flex items-center justify-end gap-1">
+                                        Monto
+                                        {getSortIcon('monto')}
+                                    </div>
+                                </TableHead>
+                                <TableHead
+                                    className="font-semibold w-[140px] cursor-pointer hover:bg-muted/70 select-none"
+                                    onClick={() => handleSort('metodoPago')}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        Forma de Pago
+                                        {getSortIcon('metodoPago')}
+                                    </div>
+                                </TableHead>
+                                <TableHead
+                                    className="font-semibold w-[100px] text-center cursor-pointer hover:bg-muted/70 select-none"
+                                    onClick={() => handleSort('tipoRegistro')}
+                                >
+                                    <div className="flex items-center justify-center gap-1">
+                                        Registro
+                                        {getSortIcon('tipoRegistro')}
+                                    </div>
+                                </TableHead>
+                                <TableHead
+                                    className="font-semibold w-[120px] cursor-pointer hover:bg-muted/70 select-none"
+                                    onClick={() => handleSort('comprobanteNumber')}
+                                >
+                                    <div className="flex items-center gap-1">
+                                        Comprobante
+                                        {getSortIcon('comprobanteNumber')}
+                                    </div>
+                                </TableHead>
                                 <TableHead className="font-semibold w-[100px] text-center">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredSalidas.length === 0 ? (
+                            {filteredAndSortedSalidas.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
+                                    <TableCell colSpan={13} className="text-center py-12 text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">
                                             {salidas.length === 0 ? (
                                                 <>
@@ -437,20 +617,28 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                filteredSalidas.map((salida) => (
-                                    <TableRow key={salida.id} className="hover:bg-muted/30">
+                                filteredAndSortedSalidas.map((salida) => (
+                                    <TableRow key={salida._id} className="hover:bg-muted/30">
                                         <TableCell className="font-medium text-sm w-[100px]">
-                                            {formatDate(salida.fecha)}
+                                            {formatDate(salida.fechaFactura)}
                                         </TableCell>
-                                        <TableCell className="min-w-[200px] max-w-[300px]" title={salida.detalle}>
-                                            <div className="truncate">
-                                                {salida.detalle}
-                                            </div>
+                                        <TableCell className="w-[120px] text-sm">
+                                            {salida.fechaPago ? formatDate(salida.fechaPago) : '-'}
                                         </TableCell>
                                         <TableCell className="w-[120px]">
                                             <Badge variant="secondary" className="text-xs">
                                                 {salida.categoria?.nombre || 'Sin categoría'}
                                             </Badge>
+                                        </TableCell>
+                                        <TableCell className="w-[150px]">
+                                            <Badge variant="outline" className="text-xs">
+                                                {salida.proveedor?.nombre || 'Sin proveedor'}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="min-w-[200px] max-w-[300px]" title={salida.detalle}>
+                                            <div className="truncate">
+                                                {salida.detalle}
+                                            </div>
                                         </TableCell>
                                         <TableCell className="w-[110px] text-center">
                                             <Badge
@@ -480,6 +668,11 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                                             >
                                                 {salida.tipoRegistro}
                                             </Badge>
+                                        </TableCell>
+                                        <TableCell className="w-[120px] text-sm font-mono">
+                                            <div className="truncate" title={salida.comprobanteNumber || ''}>
+                                                {(salida.comprobanteNumber || '').toString().slice(0, 8) || '-'}
+                                            </div>
                                         </TableCell>
                                         <TableCell className="w-[100px]">
                                             <div className="flex items-center justify-center gap-1">
@@ -520,12 +713,13 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
 
             {/* Información adicional */}
             <div className="text-sm text-muted-foreground space-y-1">
-                <p>• Las salidas se muestran ordenadas por fecha (más recientes primero)</p>
+                <p>• Haz clic en los títulos de las columnas para ordenar por ese criterio</p>
                 <p>• Usa el buscador de texto para buscar en detalle, categoría, marca, método de pago o monto</p>
                 <p>• Los filtros desplegables permiten filtrar por criterios específicos</p>
                 <p>• Usa el filtro "Fecha" para mostrar solo salidas de una fecha específica</p>
                 <p>• El tipo "ORDINARIO" representa gastos habituales, "EXTRAORDINARIO" gastos excepcionales</p>
                 <p>• "BLANCO" son gastos declarados, "NEGRO" son gastos no declarados</p>
+                <p>• "Llega Factura" y "Pago Factura" permiten hacer seguimiento del ciclo de facturación</p>
                 {!hasAllCategoriesPermission(userPermissions) &&
                     getCategoryPermissions(userPermissions).length === 0 && (
                         <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">

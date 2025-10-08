@@ -39,12 +39,12 @@ import { CalendarIcon, Plus, X, Check } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@repo/design-system/lib/utils';
-import { SalidaData } from '@repo/data-services';
+import { SalidaMongoData } from '@repo/data-services';
 
 interface EditSalidaModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    salida: SalidaData;
+    salida: SalidaMongoData;
     onSalidaUpdated: () => void;
 }
 
@@ -55,7 +55,7 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
 
     // Estado del formulario inicializado con datos de la salida
     const [formData, setFormData] = useState({
-        fecha: salida.fecha instanceof Date ? salida.fecha : new Date(salida.fecha),
+        fechaFactura: salida.fechaFactura instanceof Date ? salida.fechaFactura : new Date(salida.fechaFactura),
         detalle: salida.detalle,
         categoriaId: salida.categoriaId,
         tipo: salida.tipo,
@@ -63,6 +63,8 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
         monto: salida.monto,
         metodoPagoId: salida.metodoPagoId,
         tipoRegistro: salida.tipoRegistro,
+        fechaPago: salida.fechaPago ? (salida.fechaPago instanceof Date ? salida.fechaPago : new Date(salida.fechaPago)) : null,
+        comprobanteNumber: salida.comprobanteNumber || '',
     });
 
     // Estados para datos de BD
@@ -83,7 +85,7 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
             loadData();
             // Actualizar datos del formulario con la salida actual
             setFormData({
-                fecha: salida.fecha instanceof Date ? salida.fecha : new Date(salida.fecha),
+                fechaFactura: salida.fechaFactura instanceof Date ? salida.fechaFactura : new Date(salida.fechaFactura),
                 detalle: salida.detalle,
                 categoriaId: salida.categoriaId,
                 tipo: salida.tipo,
@@ -91,6 +93,8 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
                 monto: salida.monto,
                 metodoPagoId: salida.metodoPagoId,
                 tipoRegistro: salida.tipoRegistro,
+                fechaPago: salida.fechaPago ? (salida.fechaPago instanceof Date ? salida.fechaPago : new Date(salida.fechaPago)) : null,
+                comprobanteNumber: salida.comprobanteNumber || '',
             });
         }
     }, [open, salida]);
@@ -103,14 +107,14 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
             ]);
 
             if (categoriasResult.success && categoriasResult.categorias) {
-                setCategorias(categoriasResult.categorias.map(c => ({ id: c.id, nombre: c.nombre })));
+                setCategorias(categoriasResult.categorias.map(c => ({ id: c._id, nombre: c.nombre })));
             }
 
             if (metodosPagoResult.success && metodosPagoResult.metodosPago) {
                 // Filtrar solo EFECTIVO y TRANSFERENCIA
                 const metodosFiltrados = metodosPagoResult.metodosPago
                     .filter(m => m.nombre === 'EFECTIVO' || m.nombre === 'TRANSFERENCIA')
-                    .map(m => ({ id: m.id, nombre: m.nombre }));
+                    .map(m => ({ id: m._id, nombre: m.nombre }));
                 setMetodosPago(metodosFiltrados);
             }
         } catch (error) {
@@ -123,7 +127,7 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
         if (customCategoria.trim()) {
             const result = await createCategoriaAction(customCategoria.trim());
             if (result.success && result.categoria) {
-                const newCategoria = { id: result.categoria.id, nombre: result.categoria.nombre };
+                const newCategoria = { id: result.categoria._id, nombre: result.categoria.nombre };
                 setCategorias([...categoriasDisponibles, newCategoria]);
                 handleInputChange('categoriaId', newCategoria.id);
                 setCustomCategoria('');
@@ -136,7 +140,7 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
         if (customMetodoPago.trim()) {
             const result = await createMetodoPagoAction(customMetodoPago.trim());
             if (result.success && result.metodoPago) {
-                const newMetodoPago = { id: result.metodoPago.id, nombre: result.metodoPago.nombre };
+                const newMetodoPago = { id: result.metodoPago._id, nombre: result.metodoPago.nombre };
                 setMetodosPago([...metodosPagoDisponibles, newMetodoPago]);
                 handleInputChange('metodoPagoId', newMetodoPago.id);
                 setCustomMetodoPago('');
@@ -164,8 +168,8 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
             newErrors.monto = 'El monto debe ser mayor a 0';
         }
 
-        if (!formData.fecha) {
-            newErrors.fecha = 'La fecha es requerida';
+        if (!formData.fechaFactura) {
+            newErrors.fechaFactura = 'La fecha de factura es requerida';
         }
 
         setErrors(newErrors);
@@ -182,8 +186,8 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
         setIsLoading(true);
 
         try {
-            const result = await updateSalidaAction(salida.id, {
-                fecha: formData.fecha,
+            const result = await updateSalidaAction(salida._id, {
+                fechaFactura: formData.fechaFactura,
                 detalle: formData.detalle,
                 categoriaId: formData.categoriaId,
                 tipo: formData.tipo,
@@ -191,6 +195,8 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
                 monto: formData.monto,
                 metodoPagoId: formData.metodoPagoId,
                 tipoRegistro: formData.tipoRegistro,
+                fechaPago: formData.fechaPago || undefined,
+                comprobanteNumber: formData.comprobanteNumber,
             });
 
             if (result.success) {
@@ -263,29 +269,29 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
                                         variant="outline"
                                         className={cn(
                                             'justify-start text-left font-normal',
-                                            !formData.fecha && 'text-muted-foreground',
-                                            errors.fecha && 'border-red-500'
+                                            !formData.fechaFactura && 'text-muted-foreground',
+                                            errors.fechaFactura && 'border-red-500'
                                         )}
                                     >
                                         <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {formData.fecha ? (
-                                            format(formData.fecha, 'PPP', { locale: es })
+                                        {formData.fechaFactura ? (
+                                            format(formData.fechaFactura, 'PPP', { locale: es })
                                         ) : (
-                                            'Seleccionar fecha'
+                                            'Seleccionar fecha de factura'
                                         )}
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0">
                                     <Calendar
                                         mode="single"
-                                        selected={formData.fecha}
-                                        onSelect={(date) => handleInputChange('fecha', date)}
+                                        selected={formData.fechaFactura}
+                                        onSelect={(date) => handleInputChange('fechaFactura', date)}
                                         initialFocus
                                     />
                                 </PopoverContent>
                             </Popover>
-                            {errors.fecha && (
-                                <span className="text-sm text-red-500">{errors.fecha}</span>
+                            {errors.fechaFactura && (
+                                <span className="text-sm text-red-500">{errors.fechaFactura}</span>
                             )}
                         </div>
 
@@ -505,6 +511,48 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
                                     </SelectContent>
                                 </Select>
                             </div>
+                        </div>
+
+                        {/* Fecha de Pago */}
+                        <div className="grid gap-2">
+                            <Label>Fecha de Pago</Label>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        className={cn(
+                                            'justify-start text-left font-normal',
+                                            !formData.fechaPago && 'text-muted-foreground'
+                                        )}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {formData.fechaPago ? (
+                                            format(formData.fechaPago, 'PPP', { locale: es })
+                                        ) : (
+                                            'Seleccionar fecha de pago'
+                                        )}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                    <Calendar
+                                        mode="single"
+                                        selected={formData.fechaPago || undefined}
+                                        onSelect={(date) => handleInputChange('fechaPago', date)}
+                                        initialFocus
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                        </div>
+
+                        {/* Número de Comprobante */}
+                        <div className="grid gap-2">
+                            <Label htmlFor="comprobanteNumber">Número de Comprobante</Label>
+                            <Input
+                                id="comprobanteNumber"
+                                placeholder="Ej: 0001-00012345"
+                                value={formData.comprobanteNumber}
+                                onChange={(e) => handleInputChange('comprobanteNumber', e.target.value)}
+                            />
                         </div>
                     </div>
 

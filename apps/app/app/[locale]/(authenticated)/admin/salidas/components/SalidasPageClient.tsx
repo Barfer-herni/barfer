@@ -5,22 +5,23 @@ import { Dictionary } from '@repo/internationalization';
 import { getAllSalidasAction } from '../actions';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/design-system/components/ui/card';
-import { Table2, BarChart3, Tag } from 'lucide-react';
+import { Table2, BarChart3, Tag, Users } from 'lucide-react';
 import { SalidasTable } from './SalidasTable';
 import { SalidasEstadisticas } from './SalidasEstadisticas';
 import { CategoriasManager } from './CategoriasManager';
-import { SalidaData } from '@repo/data-services';
+import { ProveedoresManager } from './ProveedoresManager';
+import { SalidaMongoData } from '@repo/data-services';
 
 interface SalidasPageClientProps {
-    salidas: SalidaData[];
+    salidas: SalidaMongoData[];
     dictionary: Dictionary;
     userPermissions?: string[];
     canViewStatistics?: boolean;
 }
 
 export function SalidasPageClient({ salidas: initialSalidas, dictionary, userPermissions = [], canViewStatistics = false }: SalidasPageClientProps) {
-    const [activeTab, setActiveTab] = useState<'tabla' | 'estadisticas' | 'categorias'>('tabla');
-    const [salidas, setSalidas] = useState<SalidaData[]>(initialSalidas);
+    const [activeTab, setActiveTab] = useState<'tabla' | 'estadisticas' | 'categorias' | 'proveedores'>('tabla');
+    const [salidas, setSalidas] = useState<SalidaMongoData[]>(initialSalidas);
     const [isLoading, setIsLoading] = useState(false);
 
     const refreshSalidas = async () => {
@@ -70,6 +71,14 @@ export function SalidasPageClient({ salidas: initialSalidas, dictionary, userPer
                             Categorías
                         </Button>
                     )}
+                    <Button
+                        onClick={() => setActiveTab('proveedores')}
+                        variant={activeTab === 'proveedores' ? 'default' : 'outline'}
+                        className="flex items-center gap-2"
+                    >
+                        <Users className="h-4 w-4" />
+                        Proveedores
+                    </Button>
                 </div>
             </div>
 
@@ -96,6 +105,17 @@ export function SalidasPageClient({ salidas: initialSalidas, dictionary, userPer
 
                 {activeTab === 'categorias' && canViewStatistics && (
                     <CategoriasManager />
+                )}
+
+                {activeTab === 'proveedores' && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Gestión de Proveedores</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <ProveedoresManager />
+                        </CardContent>
+                    </Card>
                 )}
             </div>
         </>

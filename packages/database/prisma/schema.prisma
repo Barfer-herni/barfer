@@ -200,6 +200,11 @@ model Salida {
   
   metodoPagoId  String
   metodoPago    MetodoPago    @relation(fields: [metodoPagoId], references: [id])
+
+  // Campos adicionales para seguimiento de facturación
+  fechaLlegaFactura  DateTime?  // Fecha que llega la factura
+  fechaPagoFactura   DateTime?  // Fecha que pagan la factura
+  comprobanteNumber  String?    // Número de comprobante
   
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt

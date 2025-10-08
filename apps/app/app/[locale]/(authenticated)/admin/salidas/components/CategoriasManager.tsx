@@ -48,7 +48,14 @@ export function CategoriasManager() {
         try {
             const result = await getAllCategoriasAction();
             if (result.success && result.categorias) {
-                setCategorias(result.categorias);
+                setCategorias(result.categorias.map(c => ({
+                    id: c._id,
+                    nombre: c.nombre,
+                    descripcion: c.descripcion,
+                    isActive: c.isActive,
+                    createdAt: c.createdAt,
+                    updatedAt: c.updatedAt
+                })));
             } else {
                 toast({
                     title: "Error",

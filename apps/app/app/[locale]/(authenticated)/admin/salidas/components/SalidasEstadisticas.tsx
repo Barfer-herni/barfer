@@ -35,7 +35,7 @@ import {
     type SalidaMonthlyStats,
     type SalidasAnalyticsSummary,
     type CategoriaData,
-    type SalidaData
+    type SalidaMongoData
 } from '@repo/data-services';
 
 interface SalidasEstadisticasProps {
@@ -68,7 +68,7 @@ export function SalidasEstadisticas({ onRefreshData }: SalidasEstadisticasProps)
 
     // Estados para desglose interactivo
     const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null);
-    const [categoryDetails, setCategoryDetails] = useState<SalidaData[]>([]);
+    const [categoryDetails, setCategoryDetails] = useState<SalidaMongoData[]>([]);
     const [loadingDetails, setLoadingDetails] = useState(false);
 
     // Funciones para calcular períodos de fecha
@@ -212,7 +212,14 @@ export function SalidasEstadisticas({ onRefreshData }: SalidasEstadisticasProps)
         try {
             const response = await getAllCategoriasAction();
             if (response.success && response.categorias) {
-                setAvailableCategories(response.categorias);
+                setAvailableCategories(response.categorias.map(c => ({
+                    id: c._id,
+                    nombre: c.nombre,
+                    descripcion: c.descripcion,
+                    isActive: c.isActive,
+                    createdAt: c.createdAt,
+                    updatedAt: c.updatedAt
+                })));
             }
         } catch (error) {
             console.error('Error loading categories:', error);
@@ -648,13 +655,13 @@ export function SalidasEstadisticas({ onRefreshData }: SalidasEstadisticasProps)
                                                                 Detalle de gastos:
                                                             </div>
                                                             {categoryDetails.map((salida, detailIndex) => (
-                                                                <div key={salida.id} className="flex items-center justify-between p-2 bg-background border rounded text-sm">
+                                                                <div key={salida._id} className="flex items-center justify-between p-2 bg-background border rounded text-sm">
                                                                     <div className="flex-1">
                                                                         <p className="font-medium text-sm">
                                                                             {salida.detalle}
                                                                         </p>
                                                                         <p className="text-xs text-muted-foreground">
-                                                                            {formatDate(salida.fecha)} • {salida.metodoPago?.nombre || 'N/A'}
+                                                                            {formatDate(salida.fechaFactura)} • {salida.metodoPago?.nombre || 'N/A'}
                                                                         </p>
                                                                     </div>
                                                                     <div className="text-right">
