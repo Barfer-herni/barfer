@@ -113,7 +113,7 @@ export function SalidasPageClient({ salidas: initialSalidas, dictionary, userPer
                             <CardTitle>Gestión de Proveedores</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <ProveedoresManager />
+                            <ProveedoresManager onProveedorChanged={refreshSalidas} />
                         </CardContent>
                     </Card>
                 )}

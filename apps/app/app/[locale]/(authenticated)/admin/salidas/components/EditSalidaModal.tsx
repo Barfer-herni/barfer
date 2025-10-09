@@ -7,7 +7,10 @@ import {
     getAllCategoriasAction,
     getAllMetodosPagoAction,
     createCategoriaAction,
-    createMetodoPagoAction
+    createMetodoPagoAction,
+    getAllProveedoresAction,
+    searchProveedoresAction,
+    testSearchProveedoresAction
 } from '../actions';
 import {
     Dialog,
@@ -35,7 +38,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@repo/design-system/components/ui/popover';
-import { CalendarIcon, Plus, X, Check } from 'lucide-react';
+import { CalendarIcon, Plus, X, Check, Search, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@repo/design-system/lib/utils';
@@ -65,17 +68,52 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
         tipoRegistro: salida.tipoRegistro,
         fechaPago: salida.fechaPago ? (salida.fechaPago instanceof Date ? salida.fechaPago : new Date(salida.fechaPago)) : null,
         comprobanteNumber: salida.comprobanteNumber || '',
+        proveedorId: salida.proveedorId || '',
     });
 
     // Estados para datos de BD
     const [categoriasDisponibles, setCategorias] = useState<Array<{ id: string, nombre: string }>>([]);
     const [metodosPagoDisponibles, setMetodosPago] = useState<Array<{ id: string, nombre: string }>>([]);
+    const [proveedoresDisponibles, setProveedores] = useState<Array<{
+        id: string,
+        nombre: string,
+        detalle: string,
+        categoriaId?: string,
+        metodoPagoId?: string,
+        registro: 'BLANCO' | 'NEGRO',
+        categoria?: { _id: string; nombre: string; };
+        metodoPago?: { _id: string; nombre: string; };
+    }>>([]);
 
     // Estados para opciones personalizadas
     const [customCategoria, setCustomCategoria] = useState('');
     const [isAddingCategoria, setIsAddingCategoria] = useState(false);
     const [customMetodoPago, setCustomMetodoPago] = useState('');
     const [isAddingMetodoPago, setIsAddingMetodoPago] = useState(false);
+
+    // Estados para búsqueda de proveedor
+    const [proveedorSearchTerm, setProveedorSearchTerm] = useState('');
+    const [proveedorSearchResults, setProveedorSearchResults] = useState<Array<{
+        id: string,
+        nombre: string,
+        detalle: string,
+        categoriaId?: string,
+        metodoPagoId?: string,
+        registro: 'BLANCO' | 'NEGRO',
+        categoria?: { _id: string; nombre: string; };
+        metodoPago?: { _id: string; nombre: string; };
+    }>>([]);
+    const [showProveedorResults, setShowProveedorResults] = useState(false);
+    const [selectedProveedor, setSelectedProveedor] = useState<{
+        id: string,
+        nombre: string,
+        detalle: string,
+        categoriaId?: string,
+        metodoPagoId?: string,
+        registro: 'BLANCO' | 'NEGRO',
+        categoria?: { _id: string; nombre: string; };
+        metodoPago?: { _id: string; nombre: string; };
+    } | null>(null);
 
     const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -95,15 +133,35 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
                 tipoRegistro: salida.tipoRegistro,
                 fechaPago: salida.fechaPago ? (salida.fechaPago instanceof Date ? salida.fechaPago : new Date(salida.fechaPago)) : null,
                 comprobanteNumber: salida.comprobanteNumber || '',
+                proveedorId: salida.proveedorId || '',
             });
+
+            // Inicializar el proveedor seleccionado si existe
+            if (salida.proveedor) {
+                setSelectedProveedor({
+                    id: salida.proveedor._id,
+                    nombre: salida.proveedor.nombre,
+                    detalle: salida.proveedor.detalle,
+                    categoriaId: undefined,
+                    metodoPagoId: undefined,
+                    registro: salida.proveedor.registro,
+                    categoria: undefined,
+                    metodoPago: undefined
+                });
+                setProveedorSearchTerm(salida.proveedor.nombre);
+            } else {
+                setSelectedProveedor(null);
+                setProveedorSearchTerm('');
+            }
         }
     }, [open, salida]);
 
     const loadData = async () => {
         try {
-            const [categoriasResult, metodosPagoResult] = await Promise.all([
+            const [categoriasResult, metodosPagoResult, proveedoresResult] = await Promise.all([
                 getAllCategoriasAction(),
-                getAllMetodosPagoAction()
+                getAllMetodosPagoAction(),
+                getAllProveedoresAction()
             ]);
 
             if (categoriasResult.success && categoriasResult.categorias) {
@@ -116,6 +174,19 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
                     .filter(m => m.nombre === 'EFECTIVO' || m.nombre === 'TRANSFERENCIA')
                     .map(m => ({ id: m._id, nombre: m.nombre }));
                 setMetodosPago(metodosFiltrados);
+            }
+
+            if (proveedoresResult.success && proveedoresResult.proveedores) {
+                setProveedores(proveedoresResult.proveedores.map(p => ({
+                    id: p._id,
+                    nombre: p.nombre,
+                    detalle: p.detalle,
+                    categoriaId: p.categoriaId || undefined,
+                    metodoPagoId: p.metodoPagoId || undefined,
+                    registro: p.registro,
+                    categoria: p.categoria,
+                    metodoPago: p.metodoPago
+                })));
             }
         } catch (error) {
             console.error('Error loading data:', error);
@@ -147,6 +218,71 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
                 setIsAddingMetodoPago(false);
             }
         }
+    };
+
+    // Funciones para búsqueda de proveedor
+    const handleProveedorSearch = async (searchTerm: string) => {
+        setProveedorSearchTerm(searchTerm);
+
+        if (searchTerm.length < 2) {
+            setProveedorSearchResults([]);
+            setShowProveedorResults(false);
+            return;
+        }
+
+        try {
+            const result = await testSearchProveedoresAction(searchTerm);
+
+            if (result.success && result.proveedores) {
+                const formattedResults = result.proveedores.map(p => ({
+                    id: p._id,
+                    nombre: p.nombre,
+                    detalle: p.detalle,
+                    categoriaId: p.categoriaId,
+                    metodoPagoId: p.metodoPagoId,
+                    registro: p.registro,
+                    categoria: p.categoria,
+                    metodoPago: p.metodoPago
+                }));
+                setProveedorSearchResults(formattedResults);
+                setShowProveedorResults(true);
+            } else {
+                setProveedorSearchResults([]);
+                setShowProveedorResults(true);
+            }
+        } catch (error) {
+            console.error('Error searching proveedores:', error);
+            setProveedorSearchResults([]);
+            setShowProveedorResults(false);
+        }
+    };
+
+    const handleProveedorSelect = (proveedor: typeof selectedProveedor) => {
+        if (!proveedor) return;
+
+        setSelectedProveedor(proveedor);
+        setProveedorSearchTerm(proveedor.nombre);
+        setShowProveedorResults(false);
+
+        // Guardar el ID del proveedor
+        handleInputChange('proveedorId', proveedor.id);
+
+        // Autocompletar campos
+        if (proveedor.categoriaId) {
+            handleInputChange('categoriaId', proveedor.categoriaId);
+        }
+        if (proveedor.metodoPagoId) {
+            handleInputChange('metodoPagoId', proveedor.metodoPagoId);
+        }
+        handleInputChange('tipoRegistro', proveedor.registro);
+    };
+
+    const clearProveedorSelection = () => {
+        setSelectedProveedor(null);
+        setProveedorSearchTerm('');
+        setProveedorSearchResults([]);
+        setShowProveedorResults(false);
+        handleInputChange('proveedorId', '');
     };
 
     const validateForm = () => {
@@ -197,6 +333,7 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
                 tipoRegistro: formData.tipoRegistro,
                 fechaPago: formData.fechaPago || undefined,
                 comprobanteNumber: formData.comprobanteNumber,
+                proveedorId: formData.proveedorId || undefined,
             });
 
             if (result.success) {
@@ -260,38 +397,139 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
 
                 <form onSubmit={handleSubmit}>
                     <div className="grid gap-4 py-4">
-                        {/* Fecha */}
+                        {/* Fila: Fecha de Factura y Fecha de Pago */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="fechaFactura">Fecha de Factura *</Label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            className={cn(
+                                                'justify-start text-left font-normal',
+                                                !formData.fechaFactura && 'text-muted-foreground',
+                                                errors.fechaFactura && 'border-red-500'
+                                            )}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {formData.fechaFactura ? (
+                                                format(formData.fechaFactura, 'PPP', { locale: es })
+                                            ) : (
+                                                'Seleccionar fecha'
+                                            )}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0">
+                                        <Calendar
+                                            mode="single"
+                                            selected={formData.fechaFactura}
+                                            onSelect={(date) => handleInputChange('fechaFactura', date)}
+                                            initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                                {errors.fechaFactura && (
+                                    <span className="text-sm text-red-500">{errors.fechaFactura}</span>
+                                )}
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="fechaPago">Fecha de Pago</Label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            className={cn(
+                                                'justify-start text-left font-normal',
+                                                !formData.fechaPago && 'text-muted-foreground'
+                                            )}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {formData.fechaPago ? (
+                                                format(formData.fechaPago, 'PPP', { locale: es })
+                                            ) : (
+                                                'Seleccionar fecha'
+                                            )}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0">
+                                        <Calendar
+                                            mode="single"
+                                            selected={formData.fechaPago || undefined}
+                                            onSelect={(date) => handleInputChange('fechaPago', date)}
+                                            initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                        </div>
+
+                        {/* Búsqueda de Proveedor */}
                         <div className="grid gap-2">
-                            <Label htmlFor="fecha">Fecha *</Label>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        className={cn(
-                                            'justify-start text-left font-normal',
-                                            !formData.fechaFactura && 'text-muted-foreground',
-                                            errors.fechaFactura && 'border-red-500'
-                                        )}
-                                    >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {formData.fechaFactura ? (
-                                            format(formData.fechaFactura, 'PPP', { locale: es })
-                                        ) : (
-                                            'Seleccionar fecha de factura'
-                                        )}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                    <Calendar
-                                        mode="single"
-                                        selected={formData.fechaFactura}
-                                        onSelect={(date) => handleInputChange('fechaFactura', date)}
-                                        initialFocus
+                            <Label htmlFor="proveedor">Proveedor (Opcional)</Label>
+                            <div className="relative">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                                    <Input
+                                        id="proveedor"
+                                        placeholder="Buscar proveedor por nombre..."
+                                        value={proveedorSearchTerm}
+                                        onChange={(e) => handleProveedorSearch(e.target.value)}
+                                        className="pl-10 pr-10"
                                     />
-                                </PopoverContent>
-                            </Popover>
-                            {errors.fechaFactura && (
-                                <span className="text-sm text-red-500">{errors.fechaFactura}</span>
+                                    {selectedProveedor && (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={clearProveedorSelection}
+                                            className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-gray-100"
+                                        >
+                                            <X className="h-3 w-3" />
+                                        </Button>
+                                    )}
+                                </div>
+
+                                {/* Resultados de búsqueda */}
+                                {showProveedorResults && proveedorSearchResults.length > 0 && (
+                                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                        {proveedorSearchResults.map((proveedor) => (
+                                            <div
+                                                key={proveedor.id}
+                                                className="px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                                onClick={() => handleProveedorSelect(proveedor)}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <User className="h-4 w-4 text-gray-400" />
+                                                    <div className="flex-1">
+                                                        <div className="font-medium text-sm">{proveedor.nombre}</div>
+                                                        <div className="text-xs text-gray-500">{proveedor.detalle}</div>
+                                                        {proveedor.categoria && (
+                                                            <div className="text-xs text-blue-600">
+                                                                {proveedor.categoria.nombre}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-xs text-gray-400">
+                                                        {proveedor.registro}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Mensaje cuando no hay resultados */}
+                                {showProveedorResults && proveedorSearchResults.length === 0 && proveedorSearchTerm.length >= 2 && (
+                                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg p-4 text-center text-gray-500 text-sm">
+                                        No se encontraron proveedores
+                                    </div>
+                                )}
+                            </div>
+                            {selectedProveedor && (
+                                <div className="text-xs text-green-600 bg-green-50 p-2 rounded">
+                                    ✓ Proveedor seleccionado: {selectedProveedor.nombre} - {selectedProveedor.detalle}
+                                </div>
                             )}
                         </div>
 
@@ -511,37 +749,6 @@ export function EditSalidaModal({ open, onOpenChange, salida, onSalidaUpdated }:
                                     </SelectContent>
                                 </Select>
                             </div>
-                        </div>
-
-                        {/* Fecha de Pago */}
-                        <div className="grid gap-2">
-                            <Label>Fecha de Pago</Label>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        className={cn(
-                                            'justify-start text-left font-normal',
-                                            !formData.fechaPago && 'text-muted-foreground'
-                                        )}
-                                    >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {formData.fechaPago ? (
-                                            format(formData.fechaPago, 'PPP', { locale: es })
-                                        ) : (
-                                            'Seleccionar fecha de pago'
-                                        )}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                    <Calendar
-                                        mode="single"
-                                        selected={formData.fechaPago || undefined}
-                                        onSelect={(date) => handleInputChange('fechaPago', date)}
-                                        initialFocus
-                                    />
-                                </PopoverContent>
-                            </Popover>
                         </div>
 
                         {/* Número de Comprobante */}

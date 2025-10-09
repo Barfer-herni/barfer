@@ -394,39 +394,71 @@ export function AddSalidaModal({ open, onOpenChange, onSalidaCreated }: AddSalid
 
                 <form onSubmit={handleSubmit}>
                     <div className="grid gap-4 py-4">
-                        {/* Fecha */}
-                        <div className="grid gap-2">
-                            <Label htmlFor="fecha">Fecha *</Label>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        className={cn(
-                                            'justify-start text-left font-normal',
-                                            !formData.fechaFactura && 'text-muted-foreground',
-                                            errors.fechaFactura && 'border-red-500'
-                                        )}
-                                    >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {formData.fechaFactura ? (
-                                            format(formData.fechaFactura, 'PPP', { locale: es })
-                                        ) : (
-                                            'Seleccionar fecha de factura'
-                                        )}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                    <Calendar
-                                        mode="single"
-                                        selected={formData.fechaFactura}
-                                        onSelect={(date) => handleInputChange('fechaFactura', date)}
-                                        initialFocus
-                                    />
-                                </PopoverContent>
-                            </Popover>
-                            {errors.fechaFactura && (
-                                <span className="text-sm text-red-500">{errors.fechaFactura}</span>
-                            )}
+                        {/* Fila: Fecha de Factura y Fecha de Pago */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="fechaFactura">Fecha de Factura *</Label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            className={cn(
+                                                'justify-start text-left font-normal',
+                                                !formData.fechaFactura && 'text-muted-foreground',
+                                                errors.fechaFactura && 'border-red-500'
+                                            )}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {formData.fechaFactura ? (
+                                                format(formData.fechaFactura, 'PPP', { locale: es })
+                                            ) : (
+                                                'Seleccionar fecha'
+                                            )}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0">
+                                        <Calendar
+                                            mode="single"
+                                            selected={formData.fechaFactura}
+                                            onSelect={(date) => handleInputChange('fechaFactura', date)}
+                                            initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                                {errors.fechaFactura && (
+                                    <span className="text-sm text-red-500">{errors.fechaFactura}</span>
+                                )}
+                            </div>
+
+                            <div className="grid gap-2">
+                                <Label htmlFor="fechaPago">Fecha de Pago</Label>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            variant="outline"
+                                            className={cn(
+                                                'justify-start text-left font-normal',
+                                                !formData.fechaPago && 'text-muted-foreground'
+                                            )}
+                                        >
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
+                                            {formData.fechaPago ? (
+                                                format(formData.fechaPago, 'PPP', { locale: es })
+                                            ) : (
+                                                'Seleccionar fecha'
+                                            )}
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0">
+                                        <Calendar
+                                            mode="single"
+                                            selected={formData.fechaPago || undefined}
+                                            onSelect={(date) => handleInputChange('fechaPago', date)}
+                                            initialFocus
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
                         </div>
 
                         {/* Búsqueda de Proveedor */}
@@ -714,37 +746,6 @@ export function AddSalidaModal({ open, onOpenChange, onSalidaCreated }: AddSalid
                                     </SelectContent>
                                 </Select>
                             </div>
-                        </div>
-
-                        {/* Fecha de Pago */}
-                        <div className="grid gap-2">
-                            <Label>Fecha de Pago</Label>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant="outline"
-                                        className={cn(
-                                            'justify-start text-left font-normal',
-                                            !formData.fechaPago && 'text-muted-foreground'
-                                        )}
-                                    >
-                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                        {formData.fechaPago ? (
-                                            format(formData.fechaPago, 'PPP', { locale: es })
-                                        ) : (
-                                            'Seleccionar fecha de pago'
-                                        )}
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                    <Calendar
-                                        mode="single"
-                                        selected={formData.fechaPago || undefined}
-                                        onSelect={(date) => handleInputChange('fechaPago', date)}
-                                        initialFocus
-                                    />
-                                </PopoverContent>
-                            </Popover>
                         </div>
 
                         {/* Número de Comprobante */}

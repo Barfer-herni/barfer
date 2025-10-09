@@ -98,7 +98,11 @@ const mockProveedores: ProveedorData[] = [
 type SortField = 'nombre' | 'detalle' | 'telefono' | 'personaContacto' | 'registro' | 'categoria' | 'metodoPago';
 type SortDirection = 'asc' | 'desc';
 
-export function ProveedoresManager() {
+interface ProveedoresManagerProps {
+    onProveedorChanged?: () => void;
+}
+
+export function ProveedoresManager({ onProveedorChanged }: ProveedoresManagerProps = {}) {
     const [proveedores, setProveedores] = useState<ProveedorData[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -260,6 +264,10 @@ export function ProveedoresManager() {
     const handleProveedorCreated = async (proveedor: any) => {
         // Recargar la lista de proveedores
         await loadProveedores();
+        // Notificar al componente padre para refrescar las salidas
+        if (onProveedorChanged) {
+            onProveedorChanged();
+        }
     };
 
     const handleEditProveedor = (proveedor: ProveedorData) => {
@@ -280,6 +288,10 @@ export function ProveedoresManager() {
                 await loadProveedores();
                 setIsEditModalOpen(false);
                 setSelectedProveedor(null);
+                // Notificar al componente padre para refrescar las salidas
+                if (onProveedorChanged) {
+                    onProveedorChanged();
+                }
             } else {
                 console.error('Error updating proveedor:', result.error);
             }
@@ -296,6 +308,10 @@ export function ProveedoresManager() {
                 await loadProveedores();
                 setIsDeleteDialogOpen(false);
                 setSelectedProveedor(null);
+                // Notificar al componente padre para refrescar las salidas
+                if (onProveedorChanged) {
+                    onProveedorChanged();
+                }
             } else {
                 console.error('Error deleting proveedor:', result.error);
             }
