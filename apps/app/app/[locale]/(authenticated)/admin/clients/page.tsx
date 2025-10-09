@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { getDictionary } from '@repo/internationalization';
+import { PermissionGate } from '@repo/auth/components/PermissionGate';
 import { ClientStatsServer } from './components/ClientStatsServer';
 import { ClientCategoriesWrapper } from './components/ClientCategoriesWrapper';
 import { ClientStatsLoading, ClientCategoriesLoading } from './components/LoadingStates';
@@ -26,15 +27,27 @@ export default async function ClientsPage({ params }: ClientsPageProps) {
                 </p>
             </div>
 
-            {/* Stats Overview - Carga independiente */}
-            <Suspense fallback={<ClientStatsLoading />}>
-                <ClientStatsServer dictionary={dictionary} />
-            </Suspense>
+            {/* Gestión de Clientes (Analytics) - Requiere permiso específico */}
+            <PermissionGate
+                permission="clients:view_analytics"
+                fallback={
+                    <div className="p-6 border rounded-lg bg-muted/50">
+                        <p className="text-sm text-muted-foreground text-center">
+                            No tienes permisos para ver la gestión de clientes.
+                        </p>
+                    </div>
+                }
+            >
+                {/* Stats Overview - Carga independiente */}
+                <Suspense fallback={<ClientStatsLoading />}>
+                    <ClientStatsServer dictionary={dictionary} />
+                </Suspense>
 
-            {/* Categories Tabs - Carga independiente */}
-            <Suspense fallback={<ClientCategoriesLoading />}>
-                <ClientCategoriesWrapper dictionary={dictionary} />
-            </Suspense>
+                {/* Categories Tabs - Carga independiente */}
+                <Suspense fallback={<ClientCategoriesLoading />}>
+                    <ClientCategoriesWrapper dictionary={dictionary} />
+                </Suspense>
+            </PermissionGate>
         </div>
     );
 } 

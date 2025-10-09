@@ -180,7 +180,18 @@ export function mapSelectOptionToDBFormat(selectOption: string): ProductMapping 
     }
 
     if (normalizedSelect.includes('orejas')) {
-        return { name: 'OREJAS', option: '' };
+        // Detectar la variante (x100, x50, x1, etc.)
+        if (normalizedSelect.includes('x100')) {
+            return { name: 'OREJAS x100', option: '' };
+        }
+        if (normalizedSelect.includes('x50')) {
+            return { name: 'OREJAS x50', option: '' };
+        }
+        if (normalizedSelect.includes('x1')) {
+            return { name: 'OREJAS x1', option: '' };
+        }
+        // Si no se especifica variante, asumir que es el nombre completo
+        return { name: selectOption.toUpperCase(), option: '' };
     }
 
     if (normalizedSelect.includes('pollo')) {

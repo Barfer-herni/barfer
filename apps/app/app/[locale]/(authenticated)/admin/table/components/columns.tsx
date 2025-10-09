@@ -179,9 +179,14 @@ export const columns: ColumnDef<Order>[] = [
                         const itemName = item.name || '';
                         const hasWeightInName = /\d+KG|\d+GRS|\d+G/.test(itemName);
 
+                        // Verificar si el nombre ya incluye una cantidad (como "x100", "x50", etc.)
+                        const hasQuantityInName = /x\d+/i.test(itemName);
+
                         return (
                             <div key={`${item.id}-${index}`}>
-                                {itemName}{!hasWeightInName && displayOption ? ` - ${displayOption}` : ''} - x{quantity}
+                                {itemName}
+                                {!hasWeightInName && displayOption ? ` - ${displayOption}` : ''}
+                                {!hasQuantityInName ? ` - x${quantity}` : ''}
                             </div>
                         );
                     })}

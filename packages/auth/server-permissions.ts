@@ -27,6 +27,7 @@ export type Permission =
     | 'clients:create'
     | 'clients:edit'
     | 'clients:delete'
+    | 'clients:view_analytics'
     // Table
     | 'table:view'
     | 'table:export'
@@ -70,6 +71,7 @@ export const ADMIN_PERMISSIONS: Permission[] = [
     'clients:create',
     'clients:edit',
     'clients:delete',
+    'clients:view_analytics',
     'table:view',
     'table:export',
     'table:delete',

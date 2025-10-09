@@ -342,6 +342,17 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
                                             />
                                             <Label className="text-sm">Ver clientes</Label>
                                         </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                checked={userForm.permissions.includes('clients:view_analytics')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) setUserForm(prev => ({ ...prev, permissions: [...prev.permissions, 'clients:view_analytics'] }));
+                                                    else setUserForm(prev => ({ ...prev, permissions: prev.permissions.filter(p => p !== 'clients:view_analytics') }));
+                                                }}
+                                                disabled={isPending}
+                                            />
+                                            <Label className="text-sm">Ver gestión de clientes (analytics)</Label>
+                                        </div>
                                     </div>
                                 </div>
 

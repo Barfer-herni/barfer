@@ -41,7 +41,8 @@ export async function getClientCategoriesStats(): Promise<ClientCategoriesStats>
                     totalOrders: { $sum: 1 },
                     totalSpent: { $sum: '$total' },
                     firstOrderDate: { $min: '$createdAt' },
-                    lastOrderDate: { $max: '$createdAt' }
+                    lastOrderDate: { $max: '$createdAt' },
+                    orderDates: { $push: '$createdAt' }
                 }
             },
             {
@@ -57,6 +58,49 @@ export async function getClientCategoriesStats(): Promise<ClientCategoriesStats>
                             { $subtract: ['$$NOW', '$lastOrderDate'] },
                             1000 * 60 * 60 * 24
                         ]
+                    },
+                    sortedOrderDates: {
+                        $sortArray: {
+                            input: '$orderDates',
+                            sortBy: -1
+                        }
+                    }
+                }
+            },
+            {
+                $addFields: {
+                    // Detectar si es cliente recuperado: gap de 120+ días entre órdenes consecutivas
+                    isRecovered: {
+                        $cond: {
+                            if: { $gt: ['$totalOrders', 1] },
+                            then: {
+                                $let: {
+                                    vars: {
+                                        lastOrder: { $arrayElemAt: ['$sortedOrderDates', 0] },
+                                        secondLastOrder: { $arrayElemAt: ['$sortedOrderDates', 1] }
+                                    },
+                                    in: {
+                                        $let: {
+                                            vars: {
+                                                daysBetween: {
+                                                    $divide: [
+                                                        { $subtract: ['$$lastOrder', '$$secondLastOrder'] },
+                                                        1000 * 60 * 60 * 24
+                                                    ]
+                                                }
+                                            },
+                                            in: {
+                                                $and: [
+                                                    { $gt: ['$$daysBetween', 120] },
+                                                    { $lte: ['$daysSinceLastOrder', 90] }
+                                                ]
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            else: false
+                        }
                     }
                 }
             }
@@ -72,6 +116,11 @@ export async function getClientCategoriesStats(): Promise<ClientCategoriesStats>
                     behaviorCategory: {
                         $switch: {
                             branches: [
+                                // Cliente recuperado: Prioridad alta. Volvió a comprar después de 120+ días de inactividad
+                                {
+                                    case: { $eq: ['$isRecovered', true] },
+                                    then: 'recovered'
+                                },
                                 // Cliente nuevo: 1 sola compra en últimos 7 días
                                 {
                                     case: {
