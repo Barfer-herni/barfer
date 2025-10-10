@@ -668,7 +668,6 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
 
                 // Guardar los precios unitarios para mostrar en la UI
                 if (result.itemPrices) {
-                    console.log('✅ Precios recibidos del cálculo:', result.itemPrices);
                     setItemPrices(result.itemPrices);
                 }
             }
@@ -1013,86 +1012,9 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                     <DialogTitle>Crear Nueva Orden</DialogTitle>
                                 </DialogHeader>
                                 <div className="grid grid-cols-2 gap-4">
-                                    {/* Información del Cliente */}
-                                    <div className="space-y-2">
-                                        <Label>Nombre</Label>
-                                        <Input
-                                            value={createFormData.user.name}
-                                            onChange={(e) => handleCreateFormChange('user.name', e.target.value)}
-                                            placeholder="Nombre del cliente"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Apellido</Label>
-                                        <Input
-                                            value={createFormData.user.lastName}
-                                            onChange={(e) => handleCreateFormChange('user.lastName', e.target.value)}
-                                            placeholder="Apellido del cliente"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Email</Label>
-                                        <Input
-                                            type="email"
-                                            value={createFormData.user.email}
-                                            onChange={(e) => handleCreateFormChange('user.email', e.target.value)}
-                                            placeholder="Email del cliente"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Teléfono</Label>
-                                        <Input
-                                            value={createFormData.address.phone}
-                                            onChange={(e) => handleCreateFormChange('address.phone', e.target.value)}
-                                            placeholder="Teléfono"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Dirección</Label>
-                                        <Input
-                                            value={createFormData.address.address}
-                                            onChange={(e) => handleCreateFormChange('address.address', e.target.value)}
-                                            placeholder="Dirección"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Ciudad</Label>
-                                        <Input
-                                            value={createFormData.address.city}
-                                            onChange={(e) => handleCreateFormChange('address.city', e.target.value)}
-                                            placeholder="Ciudad"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Medio de Pago</Label>
-                                        <select
-                                            value={createFormData.paymentMethod}
-                                            onChange={(e) => handleCreateFormChange('paymentMethod', e.target.value)}
-                                            className="w-full p-2 border border-gray-300 rounded-md"
-                                        >
-                                            {PAYMENT_METHOD_OPTIONS.map(option => (
-                                                <option key={option.value} value={option.value}>
-                                                    {option.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Estado</Label>
-                                        <select
-                                            value={createFormData.status}
-                                            onChange={(e) => handleCreateFormChange('status', e.target.value)}
-                                            className="w-full p-2 border border-gray-300 rounded-md"
-                                        >
-                                            {STATUS_OPTIONS.map(option => (
-                                                <option key={option.value} value={option.value}>
-                                                    {option.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Tipo de Cliente</Label>
+                                    {/* 1. TIPO DE PEDIDO - PRIMERO DE TODO */}
+                                    <div className="space-y-2 col-span-2">
+                                        <Label className="text-base font-semibold">Tipo de Pedido</Label>
                                         <select
                                             value={createFormData.orderType}
                                             onChange={(e) => handleCreateFormChange('orderType', e.target.value)}
@@ -1130,60 +1052,103 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                             )}
                                         </div>
                                     )}
+
+                                    {/* 2. DATOS DEL CLIENTE */}
+                                    <div className="space-y-2 col-span-2">
+                                        <Label className="text-base font-semibold">Datos del Cliente</Label>
+                                    </div>
+
                                     <div className="space-y-2">
-                                        <Label>Rango Horario</Label>
+                                        <Label>Nombre</Label>
                                         <Input
-                                            value={createFormData.deliveryArea.schedule}
-                                            onChange={(e) => {
-                                                // No normalizar en tiempo real, solo guardar el valor tal como lo escribe el usuario
-                                                handleCreateFormChange('deliveryArea.schedule', e.target.value);
-                                            }}
-                                            placeholder="Ej: De 18 a 19:30hs aprox (acepta . o :)"
+                                            value={createFormData.user.name}
+                                            onChange={(e) => handleCreateFormChange('user.name', e.target.value)}
+                                            placeholder="Nombre del cliente"
                                         />
-                                        <p className="text-xs text-gray-500">
-                                            Puedes usar . o : para minutos (ej: 18.30 o 18:30). Se normalizará automáticamente al guardar.
-                                        </p>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Total * {isCalculatingPrice && <span className="text-blue-500">(Calculando...)</span>}</Label>
+                                        <Label>Apellido</Label>
                                         <Input
-                                            type="number"
-                                            value={createFormData.total === '' ? '' : createFormData.total}
-                                            onChange={(e) => {
-                                                const value = e.target.value;
-                                                if (value === '') {
-                                                    handleCreateFormChange('total', '');
-                                                } else {
-                                                    const numValue = Number(value);
-                                                    if (!isNaN(numValue)) {
-                                                        handleCreateFormChange('total', numValue);
-                                                    }
-                                                }
-                                            }}
-                                            placeholder={isCalculatingPrice ? "Calculando precio..." : "Se calcula automáticamente"}
-                                            required
-                                            className={isCalculatingPrice ? "bg-blue-50" : ""}
+                                            value={createFormData.user.lastName}
+                                            onChange={(e) => handleCreateFormChange('user.lastName', e.target.value)}
+                                            placeholder="Apellido del cliente"
                                         />
-                                        <p className="text-xs text-gray-500">
-                                            El precio se calcula automáticamente basado en los productos, tipo de cliente y método de pago.
-                                        </p>
                                     </div>
+
                                     <div className="space-y-2">
-                                        <Label>Notas Cliente</Label>
-                                        <Textarea
-                                            value={createFormData.notes}
-                                            onChange={(e) => handleCreateFormChange('notes', e.target.value)}
-                                            placeholder="Notas del cliente"
+                                        <Label>Email</Label>
+                                        <Input
+                                            type="email"
+                                            value={createFormData.user.email}
+                                            onChange={(e) => handleCreateFormChange('user.email', e.target.value)}
+                                            placeholder="Email del cliente"
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label>Notas Propias</Label>
-                                        <Textarea
-                                            value={createFormData.notesOwn}
-                                            onChange={(e) => handleCreateFormChange('notesOwn', e.target.value)}
-                                            placeholder="Notas propias"
+                                        <Label>Teléfono</Label>
+                                        <Input
+                                            value={createFormData.address.phone}
+                                            onChange={(e) => handleCreateFormChange('address.phone', e.target.value)}
+                                            placeholder="Teléfono"
                                         />
                                     </div>
+
+                                    <div className="space-y-2">
+                                        <Label>Dirección</Label>
+                                        <Input
+                                            value={createFormData.address.address}
+                                            onChange={(e) => handleCreateFormChange('address.address', e.target.value)}
+                                            placeholder="Dirección"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Ciudad</Label>
+                                        <Input
+                                            value={createFormData.address.city}
+                                            onChange={(e) => handleCreateFormChange('address.city', e.target.value)}
+                                            placeholder="Ciudad"
+                                        />
+                                    </div>
+
+                                    {/* 3. MEDIO DE PAGO Y ESTADO */}
+                                    <div className="space-y-2 col-span-2 mt-4">
+                                        <Label className="text-base font-semibold">Pago y Estado</Label>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>Medio de Pago</Label>
+                                        <select
+                                            value={createFormData.paymentMethod}
+                                            onChange={(e) => handleCreateFormChange('paymentMethod', e.target.value)}
+                                            className="w-full p-2 border border-gray-300 rounded-md"
+                                        >
+                                            {PAYMENT_METHOD_OPTIONS.map(option => (
+                                                <option key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Estado</Label>
+                                        <select
+                                            value={createFormData.status}
+                                            onChange={(e) => handleCreateFormChange('status', e.target.value)}
+                                            className="w-full p-2 border border-gray-300 rounded-md"
+                                        >
+                                            {STATUS_OPTIONS.map(option => (
+                                                <option key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* 4. FECHA DE ENTREGA Y RANGO HORARIO */}
+                                    <div className="space-y-2 col-span-2 mt-4">
+                                        <Label className="text-base font-semibold">Entrega</Label>
+                                    </div>
+
                                     <div className="space-y-2">
                                         <Label className="flex items-center gap-1">
                                             Fecha de Entrega
@@ -1194,7 +1159,6 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                                 <Input
                                                     readOnly
                                                     value={createFormData.deliveryDay ? (() => {
-                                                        // Usar la función helper para crear una fecha local
                                                         const date = createLocalDate(createFormData.deliveryDay);
                                                         return format(date, 'PPP', { locale: es });
                                                     })() : ''}
@@ -1206,12 +1170,10 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                                 <Calendar
                                                     mode="single"
                                                     selected={createFormData.deliveryDay ? (() => {
-                                                        // Usar la función helper para crear una fecha local
                                                         return createLocalDate(createFormData.deliveryDay);
                                                     })() : undefined}
                                                     onSelect={(date) => {
                                                         if (date) {
-                                                            // Usar la función helper para crear una fecha ISO local
                                                             handleCreateFormChange('deliveryDay', createLocalDateISO(date));
                                                         }
                                                     }}
@@ -1226,31 +1188,54 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                             </p>
                                         )}
                                     </div>
-                                    <div className="space-y-2 col-span-2">
-                                        <Label>Items</Label>
+                                    <div className="space-y-2">
+                                        <Label>Rango Horario</Label>
+                                        <Input
+                                            value={createFormData.deliveryArea.schedule}
+                                            onChange={(e) => {
+                                                // No normalizar en tiempo real, solo guardar el valor tal como lo escribe el usuario
+                                                handleCreateFormChange('deliveryArea.schedule', e.target.value);
+                                            }}
+                                            placeholder="Ej: De 18 a 19:30hs aprox (acepta . o :)"
+                                        />
+                                        <p className="text-xs text-gray-500">
+                                            Puedes usar . o : para minutos (ej: 18.30 o 18:30). Se normalizará automáticamente al guardar.
+                                        </p>
+                                    </div>
+
+                                    {/* 5. NOTAS */}
+                                    <div className="space-y-2 col-span-2 mt-4">
+                                        <Label className="text-base font-semibold">Notas</Label>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>Notas del Cliente</Label>
+                                        <Textarea
+                                            value={createFormData.notes}
+                                            onChange={(e) => handleCreateFormChange('notes', e.target.value)}
+                                            placeholder="Notas del cliente"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Notas Propias</Label>
+                                        <Textarea
+                                            value={createFormData.notesOwn}
+                                            onChange={(e) => handleCreateFormChange('notesOwn', e.target.value)}
+                                            placeholder="Notas propias"
+                                        />
+                                    </div>
+
+                                    {/* 6. PRODUCTOS */}
+                                    <div className="space-y-2 col-span-2 mt-4">
+                                        <Label className="text-base font-semibold">Productos</Label>
                                         <div className="space-y-2">
                                             {createFormData.items?.map((item: any, index: number) => {
                                                 const itemName = item.fullName || item.name;
-
-                                                // Log para debugging
-                                                console.log(`🔍 Buscando precio para item ${index}:`, {
-                                                    itemName,
-                                                    itemFullName: item.fullName,
-                                                    itemNameOriginal: item.name,
-                                                    availablePrices: itemPrices.map(ip => ip.name),
-                                                    allItemPrices: itemPrices
-                                                });
 
                                                 // Buscar el precio de este item
                                                 const itemPrice = itemPrices.find(ip =>
                                                     ip.name === itemName
                                                 );
-
-                                                if (!itemPrice && itemName) {
-                                                    console.warn(`⚠️ No se encontró precio para: "${itemName}"`);
-                                                } else if (itemPrice) {
-                                                    console.log(`✅ Precio encontrado para "${itemName}":`, itemPrice);
-                                                }
 
                                                 // Validar que los valores de precio sean válidos
                                                 const hasValidPrice = itemPrice &&
@@ -1383,6 +1368,36 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                                 + Agregar Item
                                             </Button>
                                         </div>
+                                    </div>
+
+                                    {/* 7. TOTAL A PAGAR - AL FINAL */}
+                                    <div className="space-y-2 col-span-2 mt-6">
+                                        <Label className="text-base font-semibold">Total a Pagar</Label>
+                                    </div>
+
+                                    <div className="space-y-2 col-span-2">
+                                        <Label>Total * {isCalculatingPrice && <span className="text-blue-500">(Calculando...)</span>}</Label>
+                                        <Input
+                                            type="number"
+                                            value={createFormData.total === '' ? '' : createFormData.total}
+                                            onChange={(e) => {
+                                                const value = e.target.value;
+                                                if (value === '') {
+                                                    handleCreateFormChange('total', '');
+                                                } else {
+                                                    const numValue = Number(value);
+                                                    if (!isNaN(numValue)) {
+                                                        handleCreateFormChange('total', numValue);
+                                                    }
+                                                }
+                                            }}
+                                            placeholder={isCalculatingPrice ? "Calculando precio..." : "Se calcula automáticamente"}
+                                            required
+                                            className={isCalculatingPrice ? "bg-blue-50 text-lg font-semibold" : "text-lg font-semibold"}
+                                        />
+                                        <p className="text-xs text-gray-500">
+                                            El precio se calcula automáticamente basado en los productos, tipo de cliente y método de pago.
+                                        </p>
                                     </div>
                                 </div>
                                 <div className="flex justify-end gap-2 mt-4">
