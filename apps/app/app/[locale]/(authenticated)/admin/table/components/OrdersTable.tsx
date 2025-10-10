@@ -714,6 +714,18 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                                     className="w-12 p-1 text-xs text-center"
                                     placeholder="Qty"
                                 />
+                                <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => {
+                                        const newItems = editValues.items.filter((_: any, i: number) => i !== itemIndex);
+                                        onEditValueChange('items', newItems);
+                                    }}
+                                    className="h-8 w-8 p-0"
+                                    title="Eliminar producto"
+                                >
+                                    <X className="w-4 h-4" />
+                                </Button>
                             </div>
                         </div>
                     ))}

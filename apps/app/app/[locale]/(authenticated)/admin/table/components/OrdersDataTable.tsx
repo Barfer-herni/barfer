@@ -80,6 +80,13 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
         formattedName: string;
     }>>([]);
     const [productsLoading, setProductsLoading] = useState(true);
+    const [itemPrices, setItemPrices] = useState<Array<{
+        name: string;
+        weight: string;
+        unitPrice: number;
+        quantity: number;
+        subtotal: number;
+    }>>([]);
 
     // useEffect para calcular precio automáticamente en el formulario de creación
     useEffect(() => {
@@ -535,6 +542,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             setShowCreateModal(false);
             setCreateFormData(createDefaultOrderData());
             setSelectedMayorista(null); // Limpiar mayorista seleccionado
+            setItemPrices([]); // Limpiar precios
             router.refresh();
         } catch (e) {
             alert(e instanceof Error ? e.message : 'Error al crear la orden');
@@ -657,6 +665,12 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                     ...prev,
                     total: result.total!.toString()
                 }));
+
+                // Guardar los precios unitarios para mostrar en la UI
+                if (result.itemPrices) {
+                    console.log('✅ Precios recibidos del cálculo:', result.itemPrices);
+                    setItemPrices(result.itemPrices);
+                }
             }
         } catch (error) {
             console.error('Error calculando precio automático:', error);
@@ -669,6 +683,11 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
         // Si se está cambiando el tipo de orden, limpiar el mayorista seleccionado
         if (field === 'orderType' && value === 'minorista') {
             setSelectedMayorista(null);
+        }
+
+        // Si se están cambiando los items, limpiar los precios almacenados
+        if (field === 'items') {
+            setItemPrices([]);
         }
 
         if (field.includes('.')) {
@@ -1210,84 +1229,140 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                     <div className="space-y-2 col-span-2">
                                         <Label>Items</Label>
                                         <div className="space-y-2">
-                                            {createFormData.items?.map((item: any, index: number) => (
-                                                <div key={index} className="flex gap-2">
-                                                    <select
-                                                        value={item.fullName || item.name || ''}
-                                                        onChange={(e) => {
-                                                            const newItems = [...createFormData.items];
-                                                            const selectedProductName = e.target.value;
+                                            {createFormData.items?.map((item: any, index: number) => {
+                                                const itemName = item.fullName || item.name;
 
-                                                            // Crear un item temporal para procesar
-                                                            const tempItem = {
-                                                                ...newItems[index],
-                                                                name: selectedProductName,
-                                                                fullName: selectedProductName,
-                                                                // Resetear las options para que no contengan peso del item anterior
-                                                                options: [{ name: 'Default', price: 0, quantity: newItems[index].options?.[0]?.quantity || 1 }]
-                                                            };
+                                                // Log para debugging
+                                                console.log(`🔍 Buscando precio para item ${index}:`, {
+                                                    itemName,
+                                                    itemFullName: item.fullName,
+                                                    itemNameOriginal: item.name,
+                                                    availablePrices: itemPrices.map(ip => ip.name),
+                                                    allItemPrices: itemPrices
+                                                });
 
-                                                            // Procesar solo este item
-                                                            const processedItem = processSingleItem(tempItem);
-                                                            newItems[index] = processedItem;
+                                                // Buscar el precio de este item
+                                                const itemPrice = itemPrices.find(ip =>
+                                                    ip.name === itemName
+                                                );
 
-                                                            handleCreateFormChange('items', newItems);
-                                                        }}
-                                                        className="flex-1 p-2 border border-gray-300 rounded-md"
-                                                        disabled={productsLoading}
-                                                    >
-                                                        <option value="">
-                                                            {productsLoading ? 'Cargando productos...' : 'Seleccionar producto'}
-                                                        </option>
-                                                        {availableProducts.map(product => (
-                                                            <option key={product} value={product}>
-                                                                {product}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                    <Input
-                                                        type="number"
-                                                        value={item.options?.[0]?.quantity || 1}
-                                                        onChange={(e) => {
-                                                            const quantity = parseInt(e.target.value) || 0;
+                                                if (!itemPrice && itemName) {
+                                                    console.warn(`⚠️ No se encontró precio para: "${itemName}"`);
+                                                } else if (itemPrice) {
+                                                    console.log(`✅ Precio encontrado para "${itemName}":`, itemPrice);
+                                                }
 
-                                                            if (quantity <= 0) {
-                                                                // Eliminar el item si la cantidad es 0 o menor
-                                                                const newItems = createFormData.items.filter((_: any, i: number) => i !== index);
-                                                                handleCreateFormChange('items', newItems);
-                                                            } else {
-                                                                // Actualizar la cantidad
-                                                                const newItems = [...createFormData.items];
+                                                // Validar que los valores de precio sean válidos
+                                                const hasValidPrice = itemPrice &&
+                                                    typeof itemPrice.unitPrice === 'number' &&
+                                                    !isNaN(itemPrice.unitPrice) &&
+                                                    typeof itemPrice.subtotal === 'number' &&
+                                                    !isNaN(itemPrice.subtotal);
 
-                                                                // Preservar las opciones existentes del item
-                                                                const existingOptions = newItems[index].options || [];
-                                                                const firstOption = existingOptions[0] || { name: 'Default', price: 0, quantity: 1 };
+                                                return (
+                                                    <div key={index} className="flex flex-col gap-2">
+                                                        <div className="flex gap-2">
+                                                            <select
+                                                                value={item.fullName || item.name || ''}
+                                                                onChange={(e) => {
+                                                                    const newItems = [...createFormData.items];
+                                                                    const selectedProductName = e.target.value;
 
-                                                                newItems[index] = {
-                                                                    ...newItems[index],
-                                                                    options: [{
-                                                                        ...firstOption,
-                                                                        quantity: quantity
-                                                                    }]
-                                                                };
-                                                                handleCreateFormChange('items', newItems);
-                                                            }
-                                                        }}
-                                                        className="w-20 p-2"
-                                                        placeholder="Qty"
-                                                    />
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => {
-                                                            const newItems = createFormData.items.filter((_: any, i: number) => i !== index);
-                                                            handleCreateFormChange('items', newItems);
-                                                        }}
-                                                    >
-                                                        X
-                                                    </Button>
-                                                </div>
-                                            ))}
+                                                                    // Crear un item temporal para procesar
+                                                                    const tempItem = {
+                                                                        ...newItems[index],
+                                                                        name: selectedProductName,
+                                                                        fullName: selectedProductName,
+                                                                        // Resetear las options para que no contengan peso del item anterior
+                                                                        options: [{ name: 'Default', price: 0, quantity: newItems[index].options?.[0]?.quantity || 1 }]
+                                                                    };
+
+                                                                    // Procesar solo este item
+                                                                    const processedItem = processSingleItem(tempItem);
+                                                                    newItems[index] = processedItem;
+
+                                                                    handleCreateFormChange('items', newItems);
+                                                                }}
+                                                                className="flex-1 p-2 border border-gray-300 rounded-md"
+                                                                disabled={productsLoading}
+                                                            >
+                                                                <option value="">
+                                                                    {productsLoading ? 'Cargando productos...' : 'Seleccionar producto'}
+                                                                </option>
+                                                                {availableProducts.map(product => (
+                                                                    <option key={product} value={product}>
+                                                                        {product}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                            <Input
+                                                                type="number"
+                                                                value={item.options?.[0]?.quantity || 1}
+                                                                onChange={(e) => {
+                                                                    const quantity = parseInt(e.target.value) || 0;
+
+                                                                    if (quantity <= 0) {
+                                                                        // Eliminar el item si la cantidad es 0 o menor
+                                                                        const newItems = createFormData.items.filter((_: any, i: number) => i !== index);
+                                                                        handleCreateFormChange('items', newItems);
+                                                                    } else {
+                                                                        // Actualizar la cantidad
+                                                                        const newItems = [...createFormData.items];
+
+                                                                        // Preservar las opciones existentes del item
+                                                                        const existingOptions = newItems[index].options || [];
+                                                                        const firstOption = existingOptions[0] || { name: 'Default', price: 0, quantity: 1 };
+
+                                                                        newItems[index] = {
+                                                                            ...newItems[index],
+                                                                            options: [{
+                                                                                ...firstOption,
+                                                                                quantity: quantity
+                                                                            }]
+                                                                        };
+                                                                        handleCreateFormChange('items', newItems);
+                                                                    }
+                                                                }}
+                                                                className="w-20 p-2"
+                                                                placeholder="Qty"
+                                                            />
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                onClick={() => {
+                                                                    const newItems = createFormData.items.filter((_: any, i: number) => i !== index);
+                                                                    handleCreateFormChange('items', newItems);
+                                                                }}
+                                                            >
+                                                                X
+                                                            </Button>
+                                                        </div>
+                                                        {/* Mostrar precio unitario y total en inputs solo si son válidos */}
+                                                        {hasValidPrice && (
+                                                            <div className="flex gap-2 pl-2">
+                                                                <div className="flex-1">
+                                                                    <Label className="text-xs text-gray-600">Precio Unitario</Label>
+                                                                    <Input
+                                                                        type="text"
+                                                                        value={`$${itemPrice.unitPrice.toLocaleString('es-AR')}`}
+                                                                        readOnly
+                                                                        className="text-xs bg-gray-50 border-gray-300"
+                                                                    />
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <Label className="text-xs text-gray-600">Subtotal</Label>
+                                                                    <Input
+                                                                        type="text"
+                                                                        value={`$${itemPrice.subtotal.toLocaleString('es-AR')}`}
+                                                                        readOnly
+                                                                        className="text-xs bg-gray-50 border-gray-300"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
                                             <Button
                                                 variant="outline"
                                                 onClick={() => {
