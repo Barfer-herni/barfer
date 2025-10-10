@@ -578,21 +578,36 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                             />
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
-                            <Calendar
-                                mode="single"
-                                selected={editValues.deliveryDay ? (() => {
-                                    // Usar la función helper para crear una fecha local
-                                    return createLocalDate(editValues.deliveryDay);
-                                })() : undefined}
-                                onSelect={(date) => {
-                                    if (date) {
-                                        // Usar la función helper para crear una fecha ISO local
-                                        onEditValueChange('deliveryDay', createLocalDateISO(date));
-                                    }
-                                }}
-                                locale={es}
-                                initialFocus
-                            />
+                            <div className="flex flex-col">
+                                <Calendar
+                                    mode="single"
+                                    selected={editValues.deliveryDay ? (() => {
+                                        // Usar la función helper para crear una fecha local
+                                        return createLocalDate(editValues.deliveryDay);
+                                    })() : undefined}
+                                    onSelect={(date) => {
+                                        if (date) {
+                                            // Usar la función helper para crear una fecha ISO local
+                                            onEditValueChange('deliveryDay', createLocalDateISO(date));
+                                        }
+                                    }}
+                                    locale={es}
+                                    initialFocus
+                                />
+                                <div className="border-t p-3">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            const today = new Date();
+                                            onEditValueChange('deliveryDay', createLocalDateISO(today));
+                                        }}
+                                        className="w-full text-xs"
+                                    >
+                                        Hoy
+                                    </Button>
+                                </div>
+                            </div>
                         </PopoverContent>
                     </Popover>
                     {!editValues.deliveryDay && (

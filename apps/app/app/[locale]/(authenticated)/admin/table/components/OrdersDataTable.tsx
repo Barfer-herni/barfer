@@ -1167,19 +1167,34 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                                 />
                                             </PopoverTrigger>
                                             <PopoverContent className="w-auto p-0">
-                                                <Calendar
-                                                    mode="single"
-                                                    selected={createFormData.deliveryDay ? (() => {
-                                                        return createLocalDate(createFormData.deliveryDay);
-                                                    })() : undefined}
-                                                    onSelect={(date) => {
-                                                        if (date) {
-                                                            handleCreateFormChange('deliveryDay', createLocalDateISO(date));
-                                                        }
-                                                    }}
-                                                    locale={es}
-                                                    initialFocus
-                                                />
+                                                <div className="flex flex-col">
+                                                    <Calendar
+                                                        mode="single"
+                                                        selected={createFormData.deliveryDay ? (() => {
+                                                            return createLocalDate(createFormData.deliveryDay);
+                                                        })() : undefined}
+                                                        onSelect={(date) => {
+                                                            if (date) {
+                                                                handleCreateFormChange('deliveryDay', createLocalDateISO(date));
+                                                            }
+                                                        }}
+                                                        locale={es}
+                                                        initialFocus
+                                                    />
+                                                    <div className="border-t p-3">
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                const today = new Date();
+                                                                handleCreateFormChange('deliveryDay', createLocalDateISO(today));
+                                                            }}
+                                                            className="w-full"
+                                                        >
+                                                            Hoy
+                                                        </Button>
+                                                    </div>
+                                                </div>
                                             </PopoverContent>
                                         </Popover>
                                         {!createFormData.deliveryDay && (
