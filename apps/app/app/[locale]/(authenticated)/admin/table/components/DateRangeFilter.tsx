@@ -88,6 +88,12 @@ export function DateRangeFilter({
         setIsOpen(false);
     };
 
+    const handleToday = () => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        setSelectedDate({ from: today, to: today });
+    };
+
     return (
         <div className={cn('grid gap-2', className)}>
             <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -126,9 +132,14 @@ export function DateRangeFilter({
                         locale={es}
                     />
                     <div className="flex justify-between p-2 border-t">
-                        {selectedDate?.from ? (
-                            <Button variant="ghost" onClick={handleClear}>Limpiar</Button>
-                        ) : <div />}
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={handleToday}>
+                                Hoy
+                            </Button>
+                            {selectedDate?.from && (
+                                <Button variant="ghost" onClick={handleClear}>Limpiar</Button>
+                            )}
+                        </div>
                         <div className="flex gap-2">
                             <Button variant="outline" onClick={() => setIsOpen(false)}>Cancelar</Button>
                             <Button onClick={handleApply}>Aplicar</Button>

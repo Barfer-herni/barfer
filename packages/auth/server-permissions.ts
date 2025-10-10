@@ -52,6 +52,11 @@ export type Permission =
     // Permisos dinámicos por categoría (se generan automáticamente)
     | 'outputs:view_all_categories'
     | `outputs:view_category:${string}`
+    // Mayoristas
+    | 'mayoristas:view'
+    | 'mayoristas:create'
+    | 'mayoristas:edit'
+    | 'mayoristas:delete'
 
 // Permisos por defecto para admins (siempre tienen todos)
 export const ADMIN_PERMISSIONS: Permission[] = [
@@ -87,6 +92,10 @@ export const ADMIN_PERMISSIONS: Permission[] = [
     'outputs:delete',
     'outputs:view_statistics',
     'outputs:view_all_categories',
+    'mayoristas:view',
+    'mayoristas:create',
+    'mayoristas:edit',
+    'mayoristas:delete',
 ];
 
 /**
@@ -355,6 +364,13 @@ export const SIDEBAR_CONFIG: SidebarItem[] = [
         href: '/admin/repartos',
         icon: 'Truck',
         requiredPermissions: ['table:view'], // Usar el mismo permiso que table por ahora
+    },
+    {
+        label: 'mayoristas',
+        mobileLabel: 'mayoristasMobile',
+        href: '/admin/mayoristas',
+        icon: 'Store',
+        requiredPermissions: ['mayoristas:view'],
     },
 ];
 

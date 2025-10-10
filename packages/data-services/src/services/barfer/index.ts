@@ -107,3 +107,22 @@ export type {
     MayoristaOrdersPaginationOptions,
     PaginatedMayoristaOrdersResponse
 } from './getMayoristaOrdersForTable';
+
+// ===== PUNTOS DE VENTA MAYORISTAS =====
+export {
+    getMayoristas,
+    getMayoristaById,
+    createMayorista,
+    updateMayorista,
+    deleteMayorista,
+    addKilosMes,
+    getVentasPorZona
+} from './mayoristasService';
+export type {
+    Mayorista,
+    MayoristaCreateInput,
+    MayoristaUpdateInput,
+    MayoristaZona,
+    MayoristaFrecuencia,
+    MayoristaTipoNegocio
+} from './mayoristasService';

@@ -16,6 +16,7 @@
         "prices": "Precios",
         "outputs": "Salidas",
         "repartos": "Control de Repartos",
+        "mayoristas": "Puntos de Venta Mayoristas",
         "accountMobile": "Cuenta",
         "analyticsMobile": "KPIs",
         "clientsMobile": "Clientes",
@@ -23,7 +24,8 @@
         "balanceMobile": "Balance",
         "pricesMobile": "Precios",
         "outputsMobile": "Salidas",
-        "repartosMobile": "Repartos"
+        "repartosMobile": "Repartos",
+        "mayoristasMobile": "Mayoristas"
       },
       "repartos": {
         "title": "Control de Repartos",
