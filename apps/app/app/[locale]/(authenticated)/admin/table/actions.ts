@@ -171,36 +171,30 @@ export async function getBackupsCountAction() {
     }
 }
 
-// Nueva acción para buscar mayoristas
+// Nueva acción para buscar mayoristas desde puntos_venta
 export async function searchMayoristasAction(searchTerm: string) {
     'use server';
 
     try {
-        const { getMayoristaOrdersForTable } = await import('@repo/data-services/src/services/barfer');
+        const { searchPuntosVenta } = await import('@repo/data-services');
 
         if (!searchTerm || searchTerm.length < 2) {
-            return { success: true, orders: [], total: 0 };
+            return { success: true, puntosVenta: [] };
         }
 
-        const result = await getMayoristaOrdersForTable({
-            page: 1,
-            pageSize: 10,
-            search: searchTerm,
-        });
+        const result = await searchPuntosVenta(searchTerm);
 
-        // getMayoristaOrdersForTable retorna directamente el resultado o lanza una excepción
         return {
-            success: true,
-            orders: result.orders || [],
-            total: result.total || 0
+            success: result.success,
+            puntosVenta: result.puntosVenta || [],
+            error: result.error
         };
     } catch (error) {
-        console.error('Error searching mayoristas:', error);
+        console.error('Error searching puntos de venta:', error);
         return {
             success: false,
-            error: 'Error al buscar mayoristas',
-            orders: [],
-            total: 0
+            error: 'Error al buscar puntos de venta',
+            puntosVenta: []
         };
     }
 }

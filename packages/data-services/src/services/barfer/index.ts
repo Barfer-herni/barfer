@@ -116,7 +116,8 @@ export {
     updateMayorista,
     deleteMayorista,
     addKilosMes,
-    getVentasPorZona
+    getVentasPorZona,
+    searchPuntosVenta
 } from './mayoristasService';
 export type {
     Mayorista,
@@ -126,3 +127,19 @@ export type {
     MayoristaFrecuencia,
     MayoristaTipoNegocio
 } from './mayoristasService';
+
+// ===== ESTADÍSTICAS PUNTOS DE VENTA =====
+export {
+    getPuntosVentaStats
+} from './puntosVentaStatsService';
+export type {
+    PuntoVentaStats
+} from './puntosVentaStatsService';
+
+// ===== MATRIZ DE PRODUCTOS =====
+export {
+    getProductosMatrix
+} from './productosMatrixService';
+export type {
+    ProductoMatrixData
+} from './productosMatrixService';

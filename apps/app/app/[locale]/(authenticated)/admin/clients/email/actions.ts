@@ -95,7 +95,12 @@ export async function scheduleEmailCampaignAction(
             return { success: false, error: 'Usuario no autenticado' };
         }
 
-        await createScheduledEmailCampaign(user.id, {
+        const userId = user.id || (user as any)._id;
+        if (!userId) {
+            return { success: false, error: 'ID de usuario no disponible' };
+        }
+
+        await createScheduledEmailCampaign(userId, {
             name: campaignName,
             scheduleCron: scheduleCron,
             targetAudience: targetAudience,
@@ -134,7 +139,12 @@ export async function createEmailTemplateAction(
             return { success: false, error: 'Usuario no autenticado' };
         }
 
-        await createEmailTemplate(user.id, {
+        const userId = user.id || (user as any)._id;
+        if (!userId) {
+            return { success: false, error: 'ID de usuario no disponible' };
+        }
+
+        await createEmailTemplate(userId, {
             name,
             subject,
             content,
@@ -161,7 +171,12 @@ export async function deleteEmailTemplateAction(templateId: string) {
             return { success: false, error: 'Usuario no autenticado' };
         }
 
-        await deleteEmailTemplate(templateId, user.id);
+        const userId = user.id || (user as any)._id;
+        if (!userId) {
+            return { success: false, error: 'ID de usuario no disponible' };
+        }
+
+        await deleteEmailTemplate(templateId, userId);
 
         revalidatePath('/admin/clients/email');
         return { success: true };

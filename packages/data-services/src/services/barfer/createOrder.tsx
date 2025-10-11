@@ -60,6 +60,7 @@ const createOrderSchema = z.object({
     notesOwn: z.string().optional(),
     paymentMethod: z.string(),
     orderType: z.enum(['minorista', 'mayorista']).default('minorista'),
+    punto_de_venta: z.string().optional(), // ID del punto de venta (solo para mayoristas)
     address: z.object({
         address: z.string(),
         city: z.string(),
@@ -140,8 +141,20 @@ function normalizeDeliveryDay(dateInput: string | Date | { $date: string }): Dat
 
 export async function createOrder(data: z.infer<typeof createOrderSchema>): Promise<{ success: boolean; order?: Order; error?: string }> {
     try {
+        console.log('🔵 Backend - Datos recibidos en createOrder:', {
+            orderType: data.orderType,
+            punto_de_venta: (data as any).punto_de_venta,
+            hasPuntoVenta: !!(data as any).punto_de_venta
+        });
+
         // Validar los datos de entrada
         const validatedData = createOrderSchema.parse(data);
+
+        console.log('🟢 Backend - Datos validados:', {
+            orderType: validatedData.orderType,
+            punto_de_venta: validatedData.punto_de_venta,
+            hasPuntoVenta: !!validatedData.punto_de_venta
+        });
 
         const collection = await getCollection('orders');
 

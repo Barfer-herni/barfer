@@ -35,7 +35,7 @@ export default async function WhatsAppPage({ params, searchParams }: WhatsAppPag
             page,
             pageSize: 50
         }),
-        getWhatsAppTemplates(user.id)
+        getWhatsAppTemplates(user.id || (user as any)._id)
     ]);
 
     // Extraer solo los clientes para mantener compatibilidad

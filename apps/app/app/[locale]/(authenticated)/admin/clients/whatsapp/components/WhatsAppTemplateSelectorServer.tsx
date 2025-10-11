@@ -22,7 +22,12 @@ export async function WhatsAppTemplateSelectorServer(props: WhatsAppTemplateSele
                 return { success: false, error: 'Usuario no autenticado' };
             }
 
-            await createWhatsAppTemplate(user.id, {
+            const userId = user.id || (user as any)._id;
+            if (!userId) {
+                return { success: false, error: 'ID de usuario no disponible' };
+            }
+
+            await createWhatsAppTemplate(userId, {
                 name,
                 content,
                 description,
@@ -48,7 +53,7 @@ export async function WhatsAppTemplateSelectorServer(props: WhatsAppTemplateSele
                 return { success: false, error: 'Usuario no autenticado' };
             }
 
-            await deleteWhatsAppTemplate(templateId, user.id);
+            await deleteWhatsAppTemplate(templateId, user.id || (user as any)._id);
 
             revalidatePath('/admin/clients/whatsapp');
             return { success: true };

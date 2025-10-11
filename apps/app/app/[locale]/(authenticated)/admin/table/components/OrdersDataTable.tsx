@@ -18,7 +18,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@repo/design-system/com
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { RotateCcw, Trash2, Search, Download } from 'lucide-react';
-import type { MayoristaOrder } from '@repo/data-services/src/types/barfer';
 import { generateMayoristaPDF } from '../generateMayoristaPDF';
 
 // Imports de constantes y helpers
@@ -69,7 +68,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     const [searchInput, setSearchInput] = useState(searchParams.get('search') ?? '');
     const [isPending, startTransition] = useTransition();
     const [backupsCount, setBackupsCount] = useState(0);
-    const [selectedMayorista, setSelectedMayorista] = useState<MayoristaOrder | null>(null);
+    const [selectedMayorista, setSelectedMayorista] = useState<any>(null);
     const [isCalculatingPrice, setIsCalculatingPrice] = useState(false);
     const [shouldAutoCalculatePrice, setShouldAutoCalculatePrice] = useState(false);
     const [availableProducts, setAvailableProducts] = useState<string[]>([]);
@@ -527,7 +526,8 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 return item;
             });
 
-            const orderDataWithFilteredItems = {
+            // Construir el objeto de datos de la orden
+            const orderDataWithFilteredItems: any = {
                 ...createFormData,
                 total: totalValue, // Asegurar que sea un número
                 items: processedItems,
@@ -536,6 +536,20 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                     schedule: normalizeScheduleTime(createFormData.deliveryArea.schedule)
                 }
             };
+
+            // Incluir el punto_de_venta si fue seleccionado (solo para mayoristas)
+            const puntoVentaId = (createFormData as any).puntoVentaId;
+            if (puntoVentaId) {
+                orderDataWithFilteredItems.punto_de_venta = puntoVentaId;
+            }
+
+            console.log('📦 Datos de orden a enviar:', {
+                orderType: orderDataWithFilteredItems.orderType,
+                punto_de_venta: orderDataWithFilteredItems.punto_de_venta,
+                puntoVentaIdEnForm: puntoVentaId,
+                hasItems: processedItems.length > 0,
+                completeData: orderDataWithFilteredItems
+            });
 
             const result = await createOrderAction(orderDataWithFilteredItems);
             if (!result.success) throw new Error(result.error || 'Error al crear');
@@ -710,75 +724,31 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
         }
     };
 
-    // Función para autocompletar campos cuando se selecciona un mayorista
-    const handleMayoristaSelect = (mayorista: MayoristaOrder | null) => {
-        setSelectedMayorista(mayorista);
+    // Función para autocompletar campos cuando se selecciona un punto de venta
+    const handleMayoristaSelect = (puntoVenta: any | null) => {
+        setSelectedMayorista(puntoVenta);
 
-        if (mayorista) {
-            // Autocompletar todos los campos con la información del mayorista
+        if (puntoVenta) {
+            // Autocompletar campos desde punto de venta
             setCreateFormData(prev => {
                 const updatedData = { ...prev };
 
-                // Autocompletar usuario
-                updatedData.user.name = mayorista.user.name || '';
-                updatedData.user.lastName = mayorista.user.lastName || '';
-                updatedData.user.email = mayorista.user.email || '';
+                // IMPORTANTE: Guardar el _id del punto de venta
+                (updatedData as any).puntoVentaId = puntoVenta._id;
 
-                // Autocompletar dirección
-                updatedData.address.address = mayorista.address.address || '';
-                updatedData.address.city = mayorista.address.city || '';
-                updatedData.address.phone = mayorista.address.phone || '';
-                updatedData.address.betweenStreets = mayorista.address.betweenStreets || '';
-                updatedData.address.floorNumber = mayorista.address.floorNumber || '';
-                updatedData.address.departmentNumber = mayorista.address.departmentNumber || '';
+                // Autocompletar con los datos del punto de venta
+                // user.name y lastName vacíos para que el usuario los complete
+                updatedData.user.name = '';
+                updatedData.user.lastName = '';
+                updatedData.user.email = ''; // Sin email
 
-                // Autocompletar campos adicionales
-                updatedData.total = mayorista.total?.toString() || '0';
-                updatedData.subTotal = mayorista.subTotal || 0;
-                updatedData.shippingPrice = mayorista.shippingPrice || 0;
-                updatedData.paymentMethod = mayorista.paymentMethod || '';
-                updatedData.notes = mayorista.notes || '';
-                updatedData.notesOwn = mayorista.notesOwn || '';
-
-                // Autocompletar área de entrega
-                if (mayorista.deliveryArea) {
-                    updatedData.deliveryArea.schedule = normalizeScheduleTime(mayorista.deliveryArea.schedule || '');
-                    updatedData.deliveryArea.description = mayorista.deliveryArea.description || '';
-                    (updatedData.deliveryArea as any).coordinates = mayorista.deliveryArea.coordinates || [];
-                    updatedData.deliveryArea.orderCutOffHour = mayorista.deliveryArea.orderCutOffHour || 18;
-                    updatedData.deliveryArea.enabled = mayorista.deliveryArea.enabled || true;
-                    updatedData.deliveryArea.sameDayDelivery = mayorista.deliveryArea.sameDayDelivery || false;
-                    (updatedData.deliveryArea as any).sameDayDeliveryDays = mayorista.deliveryArea.sameDayDeliveryDays || [];
-                    updatedData.deliveryArea.whatsappNumber = mayorista.deliveryArea.whatsappNumber || '';
-                    updatedData.deliveryArea.sheetName = mayorista.deliveryArea.sheetName || '';
-                }
-
-                // Autocompletar items
-                if (mayorista.items && mayorista.items.length > 0) {
-                    updatedData.items = mayorista.items.map(item => {
-                        // Mapear el producto de la DB hacia la opción del select
-                        const selectOption = mapDBProductToSelectOption(
-                            item.name || '',
-                            item.options?.[0]?.name || ''
-                        );
-
-                        return {
-                            id: item.id || '',
-                            name: item.name || '',
-                            fullName: selectOption, // Usar la opción mapeada del select
-                            description: item.description || '',
-                            images: [],
-                            options: item.options?.map(option => ({
-                                name: option.name || '',
-                                price: option.price || 0,
-                                quantity: (option as any).quantity || 1,
-                            })) || [{ name: 'Default', price: 0, quantity: 1 }],
-                            price: item.price || 0,
-                            salesCount: item.salesCount || 0,
-                            discountApllied: item.discountApllied || 0,
-                        };
-                    });
-                }
+                // Autocompletar dirección desde contacto del punto de venta
+                updatedData.address.address = puntoVenta.contacto?.direccion || '';
+                updatedData.address.city = puntoVenta.zona || ''; // Usar la zona como ciudad
+                updatedData.address.phone = puntoVenta.contacto?.telefono || '';
+                updatedData.address.betweenStreets = '';
+                updatedData.address.floorNumber = '';
+                updatedData.address.departmentNumber = '';
 
                 // Mantener el orderType como 'mayorista'
                 updatedData.orderType = 'mayorista' as const;
@@ -1041,11 +1011,11 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                                 <div className="p-3 bg-green-50 border border-green-200 rounded-md">
                                                     <div className="text-sm text-green-800">
                                                         <div className="font-medium">
-                                                            ✅ Mayorista seleccionado: {selectedMayorista.user.name} {selectedMayorista.user.lastName}
+                                                            ✅ Punto de venta seleccionado: {selectedMayorista.nombre}
                                                         </div>
                                                         <div className="text-xs mt-1 text-green-600">
-                                                            Los campos de cliente y dirección se han autocompletado.
-                                                            Puedes modificar cualquier campo si es necesario.
+                                                            Los campos de dirección y contacto se han autocompletado.
+                                                            Completa los datos del cliente para esta orden.
                                                         </div>
                                                     </div>
                                                 </div>

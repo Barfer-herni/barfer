@@ -6,6 +6,7 @@ export * from './src/services/imageService';
 export * from './src/services/barfer';
 export * from './src/services/barfer/campaignsService';
 export * from './src/services/barfer/exactPricesCalculationService';
+export type { UserRole } from './src/services/usersGestorService';
 
 export * from './src/types/barfer';
 export * from './src/types/data';

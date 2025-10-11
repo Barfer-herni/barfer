@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@repo/design-system/hooks/use-toast';
 import { User, Mail, Plus, Edit, Trash2, AlertCircle } from 'lucide-react';
 import type { UserData } from '@repo/data-services/src/types/user';
-import { UserRole } from '@repo/database';
+import type { UserRole } from '@repo/data-services';
 import type { Dictionary } from '@repo/internationalization';
 import { createUser, updateUser, deleteUser } from '../actions';
 

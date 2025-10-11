@@ -4,7 +4,7 @@ import { getCollection, ObjectId } from '@repo/database';
 
 export type MayoristaZona = 'CABA' | 'LA_PLATA' | 'OESTE' | 'NOROESTE' | 'NORTE' | 'SUR';
 export type MayoristaFrecuencia = 'SEMANAL' | 'QUINCENAL' | 'MENSUAL' | 'OCASIONAL';
-export type MayoristaTipoNegocio = 'SOLO_PET_SHOP' | 'PET_SHOP_VETE' | 'PET_SHOP_PELUQUERIA' | 'COMPLETO';
+export type MayoristaTipoNegocio = 'PET_SHOP' | 'VETERINARIA' | 'PELUQUERIA';
 
 export interface Mayorista {
     _id?: string;
@@ -12,9 +12,12 @@ export interface Mayorista {
     zona: MayoristaZona;
     frecuencia: MayoristaFrecuencia;
     fechaInicioVentas: Date | string;
+    fechaPrimerPedido?: Date | string;
+    fechaUltimoPedido?: Date | string;
     tieneFreezer: boolean;
+    cantidadFreezers?: number; // Cantidad de freezers
     capacidadFreezer?: number; // en litros o unidad de medida
-    tipoNegocio: MayoristaTipoNegocio;
+    tiposNegocio: MayoristaTipoNegocio[]; // Array para múltiples opciones
     kilosPorMes: Array<{
         mes: number; // 1-12
         anio: number;
@@ -36,9 +39,12 @@ export interface MayoristaCreateInput {
     zona: MayoristaZona;
     frecuencia: MayoristaFrecuencia;
     fechaInicioVentas: Date | string;
+    fechaPrimerPedido?: Date | string;
+    fechaUltimoPedido?: Date | string;
     tieneFreezer: boolean;
+    cantidadFreezers?: number;
     capacidadFreezer?: number;
-    tipoNegocio: MayoristaTipoNegocio;
+    tiposNegocio: MayoristaTipoNegocio[];
     contacto?: {
         telefono?: string;
         email?: string;
@@ -351,6 +357,55 @@ export async function addKilosMes(
         return {
             success: false,
             error: 'Error al agregar los kilos del mes',
+        };
+    }
+}
+
+/**
+ * Buscar puntos de venta para autocompletar órdenes
+ */
+export async function searchPuntosVenta(
+    searchTerm: string
+): Promise<{
+    success: boolean;
+    puntosVenta?: Mayorista[];
+    error?: string;
+}> {
+    try {
+        const puntosVentaCollection = await getCollection('puntos_venta');
+
+        if (!searchTerm || searchTerm.trim().length < 2) {
+            return {
+                success: true,
+                puntosVenta: [],
+            };
+        }
+
+        // Buscar por nombre, teléfono o dirección
+        const puntosVenta = await puntosVentaCollection
+            .find({
+                activo: true,
+                $or: [
+                    { nombre: { $regex: searchTerm, $options: 'i' } },
+                    { 'contacto.telefono': { $regex: searchTerm, $options: 'i' } },
+                    { 'contacto.direccion': { $regex: searchTerm, $options: 'i' } },
+                ],
+            })
+            .limit(10)
+            .toArray();
+
+        return {
+            success: true,
+            puntosVenta: puntosVenta.map(pv => ({
+                ...pv,
+                _id: pv._id.toString(),
+            })) as Mayorista[],
+        };
+    } catch (error) {
+        console.error('Error al buscar puntos de venta:', error);
+        return {
+            success: false,
+            error: 'Error al buscar puntos de venta',
         };
     }
 }

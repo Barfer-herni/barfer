@@ -15,10 +15,9 @@ export const FRECUENCIA_OPTIONS = [
 ];
 
 export const TIPO_NEGOCIO_OPTIONS = [
-    { value: 'SOLO_PET_SHOP', label: 'Solo Pet Shop' },
-    { value: 'PET_SHOP_VETE', label: 'Pet Shop + Veterinaria' },
-    { value: 'PET_SHOP_PELUQUERIA', label: 'Pet Shop + Peluquería' },
-    { value: 'COMPLETO', label: 'Pet Shop + Vete + Peluquería' },
+    { value: 'PET_SHOP', label: 'Pet Shop' },
+    { value: 'VETERINARIA', label: 'Veterinaria' },
+    { value: 'PELUQUERIA', label: 'Peluquería' },
 ];
 
 export const ZONA_TRANSLATIONS: Record<string, string> = {
@@ -38,9 +37,8 @@ export const FRECUENCIA_TRANSLATIONS: Record<string, string> = {
 };
 
 export const TIPO_NEGOCIO_TRANSLATIONS: Record<string, string> = {
-    SOLO_PET_SHOP: 'Solo Pet Shop',
-    PET_SHOP_VETE: 'Pet Shop + Veterinaria',
-    PET_SHOP_PELUQUERIA: 'Pet Shop + Peluquería',
-    COMPLETO: 'Completo',
+    PET_SHOP: 'Pet Shop',
+    VETERINARIA: 'Veterinaria',
+    PELUQUERIA: 'Peluquería',
 };
 

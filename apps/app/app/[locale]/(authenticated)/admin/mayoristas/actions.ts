@@ -130,3 +130,17 @@ export async function getVentasPorZonaAction() {
     return await getVentasPorZona();
 }
 
+export async function getPuntosVentaStatsAction() {
+    'use server';
+
+    const { getPuntosVentaStats } = await import('@repo/data-services');
+    return await getPuntosVentaStats();
+}
+
+export async function getProductosMatrixAction() {
+    'use server';
+
+    const { getProductosMatrix } = await import('@repo/data-services');
+    return await getProductosMatrix();
+}
+

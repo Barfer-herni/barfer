@@ -21,6 +21,8 @@ import { Pencil, Trash2, Search } from 'lucide-react';
 import { createMayoristaAction, updateMayoristaAction, deleteMayoristaAction } from '../actions';
 import { ZONA_OPTIONS, FRECUENCIA_OPTIONS, TIPO_NEGOCIO_OPTIONS } from '../constants';
 import type { Mayorista } from '@repo/data-services';
+import { PuntosVentaStats } from './PuntosVentaStats';
+import { ProductosMatrix } from './ProductosMatrix';
 
 interface MayoristasDataTableProps {
     columns: ColumnDef<Mayorista>[];
@@ -52,9 +54,12 @@ export function MayoristasDataTable({
         zona: 'CABA',
         frecuencia: 'MENSUAL',
         fechaInicioVentas: new Date().toISOString().split('T')[0],
+        fechaPrimerPedido: '',
+        fechaUltimoPedido: '',
         tieneFreezer: false,
+        cantidadFreezers: 0,
         capacidadFreezer: 0,
-        tipoNegocio: 'SOLO_PET_SHOP',
+        tiposNegocio: [],
         contacto: {
             telefono: '',
             email: '',
@@ -116,9 +121,12 @@ export function MayoristasDataTable({
             zona: 'CABA',
             frecuencia: 'MENSUAL',
             fechaInicioVentas: new Date().toISOString().split('T')[0],
+            fechaPrimerPedido: '',
+            fechaUltimoPedido: '',
             tieneFreezer: false,
+            cantidadFreezers: 0,
             capacidadFreezer: 0,
-            tipoNegocio: 'SOLO_PET_SHOP',
+            tiposNegocio: [],
             contacto: {
                 telefono: '',
                 email: '',
@@ -186,9 +194,20 @@ export function MayoristasDataTable({
             fechaInicioVentas: typeof mayorista.fechaInicioVentas === 'string'
                 ? mayorista.fechaInicioVentas.split('T')[0]
                 : new Date(mayorista.fechaInicioVentas).toISOString().split('T')[0],
+            fechaPrimerPedido: mayorista.fechaPrimerPedido
+                ? (typeof mayorista.fechaPrimerPedido === 'string'
+                    ? mayorista.fechaPrimerPedido.split('T')[0]
+                    : new Date(mayorista.fechaPrimerPedido).toISOString().split('T')[0])
+                : '',
+            fechaUltimoPedido: mayorista.fechaUltimoPedido
+                ? (typeof mayorista.fechaUltimoPedido === 'string'
+                    ? mayorista.fechaUltimoPedido.split('T')[0]
+                    : new Date(mayorista.fechaUltimoPedido).toISOString().split('T')[0])
+                : '',
             tieneFreezer: mayorista.tieneFreezer,
+            cantidadFreezers: mayorista.cantidadFreezers || 0,
             capacidadFreezer: mayorista.capacidadFreezer || 0,
-            tipoNegocio: mayorista.tipoNegocio,
+            tiposNegocio: mayorista.tiposNegocio || [],
             contacto: mayorista.contacto || {
                 telefono: '',
                 email: '',
@@ -223,6 +242,9 @@ export function MayoristasDataTable({
                     </Button>
                 </div>
 
+                <PuntosVentaStats />
+                <ProductosMatrix />
+
                 <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
                     <DialogTrigger asChild>
                         <Button onClick={() => { resetForm(); setShowCreateModal(true); }}>
@@ -240,7 +262,7 @@ export function MayoristasDataTable({
                                 <Input
                                     value={formData.nombre}
                                     onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                                    placeholder="Ej: Pet Shop Central"
+                                    placeholder="Ej: LA PLATA M2"
                                 />
                             </div>
 
@@ -259,43 +281,46 @@ export function MayoristasDataTable({
                                 </select>
                             </div>
 
-                            <div className="space-y-2">
-                                <Label>Frecuencia de Pedidos *</Label>
-                                <select
-                                    value={formData.frecuencia}
-                                    onChange={(e) => setFormData({ ...formData, frecuencia: e.target.value })}
-                                    className="w-full p-2 border border-gray-300 rounded-md"
-                                >
-                                    {FRECUENCIA_OPTIONS.map(option => (
-                                        <option key={option.value} value={option.value}>
-                                            {option.label}
-                                        </option>
-                                    ))}
-                                </select>
+                            <div className="space-y-2 col-span-2">
+                                <Label>Dirección</Label>
+                                <Input
+                                    value={formData.contacto.direccion}
+                                    onChange={(e) => setFormData({
+                                        ...formData,
+                                        contacto: { ...formData.contacto, direccion: e.target.value }
+                                    })}
+                                    placeholder="Dirección completa"
+                                />
                             </div>
 
-                            <div className="space-y-2">
-                                <Label>Cliente Desde *</Label>
+                            <div className="space-y-2 col-span-2">
+                                <Label>Teléfono</Label>
                                 <Input
-                                    type="date"
-                                    value={formData.fechaInicioVentas}
-                                    onChange={(e) => setFormData({ ...formData, fechaInicioVentas: e.target.value })}
+                                    value={formData.contacto.telefono}
+                                    onChange={(e) => setFormData({
+                                        ...formData,
+                                        contacto: { ...formData.contacto, telefono: e.target.value }
+                                    })}
+                                    placeholder="Teléfono de contacto"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <Label>Tipo de Negocio *</Label>
-                                <select
-                                    value={formData.tipoNegocio}
-                                    onChange={(e) => setFormData({ ...formData, tipoNegocio: e.target.value })}
-                                    className="w-full p-2 border border-gray-300 rounded-md"
-                                >
-                                    {TIPO_NEGOCIO_OPTIONS.map(option => (
-                                        <option key={option.value} value={option.value}>
-                                            {option.label}
-                                        </option>
-                                    ))}
-                                </select>
+                                <Label>Primer Pedido</Label>
+                                <Input
+                                    type="date"
+                                    value={formData.fechaPrimerPedido}
+                                    onChange={(e) => setFormData({ ...formData, fechaPrimerPedido: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Último Pedido</Label>
+                                <Input
+                                    type="date"
+                                    value={formData.fechaUltimoPedido}
+                                    onChange={(e) => setFormData({ ...formData, fechaUltimoPedido: e.target.value })}
+                                />
                             </div>
 
                             <div className="space-y-2">
@@ -312,52 +337,53 @@ export function MayoristasDataTable({
                             </div>
 
                             {formData.tieneFreezer && (
-                                <div className="space-y-2">
-                                    <Label>Capacidad del Freezer (Litros)</Label>
-                                    <Input
-                                        type="number"
-                                        value={formData.capacidadFreezer}
-                                        onChange={(e) => setFormData({ ...formData, capacidadFreezer: Number(e.target.value) })}
-                                        placeholder="Ej: 300"
-                                    />
-                                </div>
+                                <>
+                                    <div className="space-y-2">
+                                        <Label>Cantidad de Freezers</Label>
+                                        <Input
+                                            type="number"
+                                            value={formData.cantidadFreezers}
+                                            onChange={(e) => setFormData({ ...formData, cantidadFreezers: Number(e.target.value) })}
+                                            placeholder="Ej: 2"
+                                            min="0"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label>Capacidad del Freezer (Litros)</Label>
+                                        <Input
+                                            type="number"
+                                            value={formData.capacidadFreezer}
+                                            onChange={(e) => setFormData({ ...formData, capacidadFreezer: Number(e.target.value) })}
+                                            placeholder="Ej: 300"
+                                        />
+                                    </div>
+                                </>
                             )}
 
-                            <div className="space-y-2">
-                                <Label>Teléfono</Label>
-                                <Input
-                                    value={formData.contacto.telefono}
-                                    onChange={(e) => setFormData({
-                                        ...formData,
-                                        contacto: { ...formData.contacto, telefono: e.target.value }
-                                    })}
-                                    placeholder="Teléfono"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label>Email</Label>
-                                <Input
-                                    type="email"
-                                    value={formData.contacto.email}
-                                    onChange={(e) => setFormData({
-                                        ...formData,
-                                        contacto: { ...formData.contacto, email: e.target.value }
-                                    })}
-                                    placeholder="Email"
-                                />
-                            </div>
-
                             <div className="space-y-2 col-span-2">
-                                <Label>Dirección</Label>
-                                <Input
-                                    value={formData.contacto.direccion}
-                                    onChange={(e) => setFormData({
-                                        ...formData,
-                                        contacto: { ...formData.contacto, direccion: e.target.value }
-                                    })}
-                                    placeholder="Dirección"
-                                />
+                                <Label>Tipo de Negocio * (Selecciona todas las que apliquen)</Label>
+                                <div className="flex flex-wrap gap-4 border border-gray-300 rounded-md p-3">
+                                    {TIPO_NEGOCIO_OPTIONS.map(option => (
+                                        <div key={option.value} className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                id={`tipo-${option.value}`}
+                                                checked={formData.tiposNegocio.includes(option.value)}
+                                                onChange={(e) => {
+                                                    const newTipos = e.target.checked
+                                                        ? [...formData.tiposNegocio, option.value]
+                                                        : formData.tiposNegocio.filter((t: string) => t !== option.value);
+                                                    setFormData({ ...formData, tiposNegocio: newTipos });
+                                                }}
+                                                className="w-4 h-4"
+                                            />
+                                            <label htmlFor={`tipo-${option.value}`} className="text-sm cursor-pointer">
+                                                {option.label}
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
 
                             <div className="space-y-2 col-span-2">
@@ -468,43 +494,44 @@ export function MayoristasDataTable({
                                                             </select>
                                                         </div>
 
-                                                        <div className="space-y-2">
-                                                            <Label>Frecuencia de Pedidos *</Label>
-                                                            <select
-                                                                value={formData.frecuencia}
-                                                                onChange={(e) => setFormData({ ...formData, frecuencia: e.target.value })}
-                                                                className="w-full p-2 border border-gray-300 rounded-md"
-                                                            >
-                                                                {FRECUENCIA_OPTIONS.map(option => (
-                                                                    <option key={option.value} value={option.value}>
-                                                                        {option.label}
-                                                                    </option>
-                                                                ))}
-                                                            </select>
+                                                        <div className="space-y-2 col-span-2">
+                                                            <Label>Dirección</Label>
+                                                            <Input
+                                                                value={formData.contacto.direccion}
+                                                                onChange={(e) => setFormData({
+                                                                    ...formData,
+                                                                    contacto: { ...formData.contacto, direccion: e.target.value }
+                                                                })}
+                                                            />
                                                         </div>
 
-                                                        <div className="space-y-2">
-                                                            <Label>Cliente Desde *</Label>
+                                                        <div className="space-y-2 col-span-2">
+                                                            <Label>Teléfono</Label>
                                                             <Input
-                                                                type="date"
-                                                                value={formData.fechaInicioVentas}
-                                                                onChange={(e) => setFormData({ ...formData, fechaInicioVentas: e.target.value })}
+                                                                value={formData.contacto.telefono}
+                                                                onChange={(e) => setFormData({
+                                                                    ...formData,
+                                                                    contacto: { ...formData.contacto, telefono: e.target.value }
+                                                                })}
                                                             />
                                                         </div>
 
                                                         <div className="space-y-2">
-                                                            <Label>Tipo de Negocio *</Label>
-                                                            <select
-                                                                value={formData.tipoNegocio}
-                                                                onChange={(e) => setFormData({ ...formData, tipoNegocio: e.target.value })}
-                                                                className="w-full p-2 border border-gray-300 rounded-md"
-                                                            >
-                                                                {TIPO_NEGOCIO_OPTIONS.map(option => (
-                                                                    <option key={option.value} value={option.value}>
-                                                                        {option.label}
-                                                                    </option>
-                                                                ))}
-                                                            </select>
+                                                            <Label>Primer Pedido</Label>
+                                                            <Input
+                                                                type="date"
+                                                                value={formData.fechaPrimerPedido}
+                                                                onChange={(e) => setFormData({ ...formData, fechaPrimerPedido: e.target.value })}
+                                                            />
+                                                        </div>
+
+                                                        <div className="space-y-2">
+                                                            <Label>Último Pedido</Label>
+                                                            <Input
+                                                                type="date"
+                                                                value={formData.fechaUltimoPedido}
+                                                                onChange={(e) => setFormData({ ...formData, fechaUltimoPedido: e.target.value })}
+                                                            />
                                                         </div>
 
                                                         <div className="space-y-2">
@@ -521,48 +548,51 @@ export function MayoristasDataTable({
                                                         </div>
 
                                                         {formData.tieneFreezer && (
-                                                            <div className="space-y-2">
-                                                                <Label>Capacidad del Freezer (Litros)</Label>
-                                                                <Input
-                                                                    type="number"
-                                                                    value={formData.capacidadFreezer}
-                                                                    onChange={(e) => setFormData({ ...formData, capacidadFreezer: Number(e.target.value) })}
-                                                                />
-                                                            </div>
+                                                            <>
+                                                                <div className="space-y-2">
+                                                                    <Label>Cantidad de Freezers</Label>
+                                                                    <Input
+                                                                        type="number"
+                                                                        value={formData.cantidadFreezers}
+                                                                        onChange={(e) => setFormData({ ...formData, cantidadFreezers: Number(e.target.value) })}
+                                                                        min="0"
+                                                                    />
+                                                                </div>
+
+                                                                <div className="space-y-2">
+                                                                    <Label>Capacidad del Freezer (Litros)</Label>
+                                                                    <Input
+                                                                        type="number"
+                                                                        value={formData.capacidadFreezer}
+                                                                        onChange={(e) => setFormData({ ...formData, capacidadFreezer: Number(e.target.value) })}
+                                                                    />
+                                                                </div>
+                                                            </>
                                                         )}
 
-                                                        <div className="space-y-2">
-                                                            <Label>Teléfono</Label>
-                                                            <Input
-                                                                value={formData.contacto.telefono}
-                                                                onChange={(e) => setFormData({
-                                                                    ...formData,
-                                                                    contacto: { ...formData.contacto, telefono: e.target.value }
-                                                                })}
-                                                            />
-                                                        </div>
-
-                                                        <div className="space-y-2">
-                                                            <Label>Email</Label>
-                                                            <Input
-                                                                type="email"
-                                                                value={formData.contacto.email}
-                                                                onChange={(e) => setFormData({
-                                                                    ...formData,
-                                                                    contacto: { ...formData.contacto, email: e.target.value }
-                                                                })}
-                                                            />
-                                                        </div>
-
                                                         <div className="space-y-2 col-span-2">
-                                                            <Label>Dirección</Label>
-                                                            <Input
-                                                                value={formData.contacto.direccion}
-                                                                onChange={(e) => setFormData({
-                                                                    ...formData,
-                                                                    contacto: { ...formData.contacto, direccion: e.target.value }
-                                                                })}
-                                                            />
+                                                            <Label>Tipo de Negocio * (Selecciona todas las que apliquen)</Label>
+                                                            <div className="flex flex-wrap gap-4 border border-gray-300 rounded-md p-3">
+                                                                {TIPO_NEGOCIO_OPTIONS.map(option => (
+                                                                    <div key={option.value} className="flex items-center gap-2">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            id={`edit-tipo-${option.value}`}
+                                                                            checked={formData.tiposNegocio.includes(option.value)}
+                                                                            onChange={(e) => {
+                                                                                const newTipos = e.target.checked
+                                                                                    ? [...formData.tiposNegocio, option.value]
+                                                                                    : formData.tiposNegocio.filter((t: string) => t !== option.value);
+                                                                                setFormData({ ...formData, tiposNegocio: newTipos });
+                                                                            }}
+                                                                            className="w-4 h-4"
+                                                                        />
+                                                                        <label htmlFor={`edit-tipo-${option.value}`} className="text-sm cursor-pointer">
+                                                                            {option.label}
+                                                                        </label>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
                                                         </div>
 
                                                         <div className="space-y-2 col-span-2">

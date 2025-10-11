@@ -7,12 +7,10 @@ import {
     deleteUser as deleteUserService,
     updateUser as updateUserService,
 } from '@repo/data-services/src/services/userService';
-import { getAllCategorias } from '@repo/data-services';
+import { getAllCategorias, type UserRole } from '@repo/data-services';
 import { z } from 'zod';
-import type { UserRole } from '@repo/database';
 import { hasPermission } from '@repo/auth/server-permissions';
 import { getCurrentUser } from '@repo/data-services/src/services/authService';
-import { database } from '@repo/database';
 
 // Esquema para la actualización del perfil
 const profileSchema = z.object({
@@ -178,13 +176,24 @@ export async function updateUserCategoryPermissions(userId: string, permissions:
             return { success: false, message: 'No puedes modificar tus propios permisos de categorías.' };
         }
 
+        // Primero obtener el usuario actual
+        const user = await import('@repo/data-services/src/services/userService').then(m => m.getUserById(userId));
+        if (!user) {
+            return { success: false, message: 'Usuario no encontrado' };
+        }
+
         // Actualizar SOLO los permisos del usuario sin tocar otros campos
-        await database.user.update({
-            where: { id: userId },
-            data: {
-                permissions: permissions
-            }
+        const result = await updateUserService(userId, {
+            name: user.name,
+            lastName: user.lastName,
+            email: user.email,
+            password: '', // No cambiar contraseña
+            permissions: permissions
         });
+
+        if (!result) {
+            return { success: false, message: 'Error al actualizar los permisos' };
+        }
 
         revalidatePath('/admin/account');
         return { success: true, message: 'Permisos de categorías actualizados exitosamente' };

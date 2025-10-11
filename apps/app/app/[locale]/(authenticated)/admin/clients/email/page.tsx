@@ -26,6 +26,8 @@ export default async function EmailPage({ params, searchParams }: EmailPageProps
 
     const page = parseInt(pageParam || '1', 10);
 
+    const userId = user.id || (user as any)._id;
+
     const [dictionary, clientsResult, emailTemplates] = await Promise.all([
         getDictionary(locale),
         getClientsPaginatedWithStatus({
@@ -34,7 +36,7 @@ export default async function EmailPage({ params, searchParams }: EmailPageProps
             page,
             pageSize: 50
         }),
-        getEmailTemplates(user.id)
+        getEmailTemplates(userId)
     ]);
 
     // Extraer solo los clientes para mantener compatibilidad
