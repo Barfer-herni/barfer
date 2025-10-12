@@ -16,13 +16,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@repo/design-system/components/ui/label';
 import { Textarea } from '@repo/design-system/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@repo/design-system/components/ui/table';
-import { Pencil, Trash2, Search } from 'lucide-react';
+import { Pencil, Trash2, Search, BarChart3, Table2 } from 'lucide-react';
+import Link from 'next/link';
 
 import { createMayoristaAction, updateMayoristaAction, deleteMayoristaAction } from '../actions';
 import { ZONA_OPTIONS, FRECUENCIA_OPTIONS, TIPO_NEGOCIO_OPTIONS } from '../constants';
 import type { Mayorista } from '@repo/data-services';
-import { PuntosVentaStats } from './PuntosVentaStats';
-import { ProductosMatrix } from './ProductosMatrix';
 
 interface MayoristasDataTableProps {
     columns: ColumnDef<Mayorista>[];
@@ -242,8 +241,25 @@ export function MayoristasDataTable({
                     </Button>
                 </div>
 
-                <PuntosVentaStats />
-                <ProductosMatrix />
+                <Link href="/admin/mayoristas/estadisticas">
+                    <Button
+                        variant="outline"
+                        className="border-purple-500 text-purple-600 hover:bg-purple-50"
+                    >
+                        <BarChart3 className="w-4 h-4 mr-2" />
+                        Ver Estadísticas
+                    </Button>
+                </Link>
+
+                <Link href="/admin/mayoristas/matriz">
+                    <Button
+                        variant="outline"
+                        className="border-blue-500 text-blue-600 hover:bg-blue-50"
+                    >
+                        <Table2 className="w-4 h-4 mr-2" />
+                        Matriz de Productos
+                    </Button>
+                </Link>
 
                 <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
                     <DialogTrigger asChild>

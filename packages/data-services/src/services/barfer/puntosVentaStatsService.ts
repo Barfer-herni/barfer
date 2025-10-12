@@ -111,20 +111,20 @@ function calculateItemKilos(item: any, productosMayoristas: ProductoMayorista[])
  * Calcula la frecuencia de compra desde las fechas de órdenes
  */
 function calculateFrecuencia(orders: any[]): string {
-    if (orders.length < 2) return 'OCASIONAL';
+    if (orders.length === 0) return 'Sin pedidos';
+    if (orders.length === 1) return '1 pedido (sin frecuencia)';
 
     const dates = orders.map(o => new Date(o.createdAt)).sort((a, b) => a.getTime() - b.getTime());
     const firstDate = dates[0];
     const lastDate = dates[dates.length - 1];
 
     const daysDiff = (lastDate.getTime() - firstDate.getTime()) / (1000 * 60 * 60 * 24);
-    const avgDaysBetweenOrders = daysDiff / (orders.length - 1);
+    const avgDaysBetweenOrders = Math.round(daysDiff / (orders.length - 1));
 
-    if (avgDaysBetweenOrders <= 10) return 'Semanal';
-    if (avgDaysBetweenOrders <= 20) return 'Quincenal';
-    if (avgDaysBetweenOrders <= 35) return 'Mensual';
+    if (avgDaysBetweenOrders === 0) return 'Pedidos el mismo día';
+    if (avgDaysBetweenOrders === 1) return 'Cada 1 día';
 
-    return 'Ocasional';
+    return `Cada ${avgDaysBetweenOrders} días`;
 }
 
 /**

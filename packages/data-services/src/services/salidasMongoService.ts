@@ -1,5 +1,5 @@
 import { ObjectId, getCollection } from '@repo/database';
-import { canViewSalidaCategory } from '@repo/auth/server-permissions';
+import { canViewSalidaCategory, getViewableCategories } from '@repo/auth/server-permissions';
 
 // Tipos para el servicio MongoDB
 export interface SalidaMongoData {
@@ -207,6 +207,176 @@ export async function getAllSalidasWithPermissionFilterMongo(): Promise<{
             success: false,
             message: 'Error al obtener las salidas',
             error: 'GET_ALL_SALIDAS_WITH_PERMISSION_FILTER_MONGO_ERROR'
+        };
+    }
+}
+
+/**
+ * Obtener salidas paginadas con filtros de permisos (OPTIMIZADO)
+ */
+export async function getSalidasPaginatedMongo({
+    pageIndex = 0,
+    pageSize = 50,
+}: {
+    pageIndex?: number;
+    pageSize?: number;
+}): Promise<{
+    success: boolean;
+    salidas?: SalidaMongoData[];
+    total?: number;
+    pageCount?: number;
+    message?: string;
+    error?: string;
+}> {
+    try {
+        console.time('⏱️ getSalidasPaginatedMongo');
+        const salidasCollection = await getCollection('salidas');
+
+        // 1. Obtener categorías visibles UNA SOLA VEZ
+        console.time('⏱️ getViewableCategories');
+        const viewableCategories = await getViewableCategories();
+        console.timeEnd('⏱️ getViewableCategories');
+        console.log(`✅ Categorías visibles: ${JSON.stringify(viewableCategories)}`);
+
+        // 2. Construir pipeline de agregación
+        const pipeline: any[] = [
+            // Lookup de categoría primero para poder filtrar
+            {
+                $lookup: {
+                    from: 'categorias',
+                    localField: 'categoriaId',
+                    foreignField: '_id',
+                    as: 'categoria'
+                }
+            },
+            {
+                $addFields: {
+                    categoria: { $arrayElemAt: ['$categoria', 0] }
+                }
+            }
+        ];
+
+        // 3. Si NO es admin (viewableCategories !== ['*']), filtrar por categorías permitidas
+        if (!viewableCategories.includes('*')) {
+            if (viewableCategories.length === 0) {
+                // Usuario sin permisos - retornar vacío
+                return {
+                    success: true,
+                    salidas: [],
+                    total: 0,
+                    pageCount: 0
+                };
+            }
+
+            // Filtrar solo las categorías permitidas
+            pipeline.push({
+                $match: {
+                    'categoria.nombre': { $in: viewableCategories }
+                }
+            });
+            console.log(`🔒 Filtrando por categorías: ${viewableCategories.join(', ')}`);
+        } else {
+            console.log(`🔓 Admin - sin filtro de categorías`);
+        }
+
+        // 4. Agregar resto de lookups y ordenamiento
+        pipeline.push(
+            {
+                $lookup: {
+                    from: 'metodos_pago',
+                    localField: 'metodoPagoId',
+                    foreignField: '_id',
+                    as: 'metodoPago'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'proveedores',
+                    localField: 'proveedorId',
+                    foreignField: '_id',
+                    as: 'proveedor'
+                }
+            },
+            {
+                $addFields: {
+                    metodoPago: { $arrayElemAt: ['$metodoPago', 0] },
+                    proveedor: { $arrayElemAt: ['$proveedor', 0] }
+                }
+            },
+            {
+                $sort: { fechaFactura: -1 }
+            }
+        );
+
+        // 5. Contar total ANTES de paginar (más eficiente)
+        console.time('⏱️ count');
+        const countPipeline = [...pipeline, { $count: 'total' }];
+        const countResult = await salidasCollection.aggregate(countPipeline).toArray();
+        const total = countResult.length > 0 ? countResult[0].total : 0;
+        const pageCount = Math.ceil(total / pageSize);
+        console.timeEnd('⏱️ count');
+        console.log(`📊 Total: ${total}, Páginas: ${pageCount}`);
+
+        // 6. Aplicar paginación en MongoDB
+        pipeline.push(
+            { $skip: pageIndex * pageSize },
+            { $limit: pageSize }
+        );
+
+        // 7. Ejecutar query paginada
+        console.time('⏱️ query');
+        const salidas = await salidasCollection.aggregate(pipeline).toArray();
+        console.timeEnd('⏱️ query');
+        console.log(`📄 Salidas obtenidas: ${salidas.length}`);
+
+        // 8. Formatear salidas
+        const formattedSalidas = salidas.map(salida => ({
+            _id: salida._id.toString(),
+            fechaFactura: salida.fechaFactura,
+            detalle: salida.detalle,
+            tipo: salida.tipo,
+            marca: salida.marca,
+            monto: salida.monto,
+            tipoRegistro: salida.tipoRegistro,
+            categoriaId: salida.categoriaId.toString(),
+            metodoPagoId: salida.metodoPagoId.toString(),
+            proveedorId: salida.proveedorId ? salida.proveedorId.toString() : null,
+            fechaPago: salida.fechaPago,
+            comprobanteNumber: salida.comprobanteNumber,
+            categoria: salida.categoria ? {
+                _id: salida.categoria._id.toString(),
+                nombre: salida.categoria.nombre
+            } : undefined,
+            metodoPago: salida.metodoPago ? {
+                _id: salida.metodoPago._id.toString(),
+                nombre: salida.metodoPago.nombre
+            } : undefined,
+            proveedor: salida.proveedor ? {
+                _id: salida.proveedor._id.toString(),
+                nombre: salida.proveedor.nombre,
+                detalle: salida.proveedor.detalle,
+                telefono: salida.proveedor.telefono,
+                personaContacto: salida.proveedor.personaContacto,
+                registro: salida.proveedor.registro
+            } : null,
+            createdAt: salida.createdAt,
+            updatedAt: salida.updatedAt
+        }));
+
+        console.timeEnd('⏱️ getSalidasPaginatedMongo');
+
+        return {
+            success: true,
+            salidas: formattedSalidas,
+            total,
+            pageCount
+        };
+    } catch (error) {
+        console.error('❌ Error in getSalidasPaginatedMongo:', error);
+        return {
+            success: false,
+            message: 'Error al obtener las salidas paginadas',
+            error: 'GET_SALIDAS_PAGINATED_MONGO_ERROR'
         };
     }
 }

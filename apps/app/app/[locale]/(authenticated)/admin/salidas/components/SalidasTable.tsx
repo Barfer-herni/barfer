@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useTransition } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { TipoSalida, TipoRegistro } from '@repo/database';
 import {
     Table,
@@ -21,6 +22,7 @@ import { AddSalidaModal } from './AddSalidaModal';
 import { EditSalidaModal } from './EditSalidaModal';
 import { DeleteSalidaDialog } from './DeleteSalidaDialog';
 import { SalidaMongoData } from '@repo/data-services';
+import type { PaginationState } from '@tanstack/react-table';
 
 // Funciones de permisos del cliente (definidas localmente)
 function hasAllCategoriesPermission(permissions: string[]): boolean {
@@ -35,17 +37,33 @@ interface SalidasTableProps {
     salidas?: SalidaMongoData[];
     onRefreshSalidas?: () => void;
     userPermissions?: string[];
+    pagination: PaginationState;
+    pageCount: number;
+    total: number;
 }
 
 type SortField = 'fechaFactura' | 'categoria' | 'proveedor' | 'detalle' | 'tipo' | 'marca' | 'monto' | 'metodoPago' | 'tipoRegistro' | 'fechaPago' | 'comprobanteNumber';
 type SortDirection = 'asc' | 'desc';
 
-export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions = [] }: SalidasTableProps) {
+export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions = [], pagination, pageCount, total }: SalidasTableProps) {
+    const router = useRouter();
+    const pathname = usePathname();
+    const [isPending, startTransition] = useTransition();
     const [isLoading, setIsLoading] = useState(false);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedSalida, setSelectedSalida] = useState<SalidaMongoData | null>(null);
+
+    // Función para navegar entre páginas
+    const navigateToPagination = useCallback((pageIndex: number, pageSize: number) => {
+        startTransition(() => {
+            const params = new URLSearchParams(window.location.search);
+            params.set('page', (pageIndex + 1).toString());
+            params.set('pageSize', pageSize.toString());
+            router.push(`${pathname}?${params.toString()}`);
+        });
+    }, [pathname, router]);
 
     // Estados para los filtros
     const [searchTerm, setSearchTerm] = useState('');
@@ -358,9 +376,9 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                 <div className="space-y-1">
                     <h3 className="text-lg font-semibold text-gray-900">Registro de Salidas</h3>
                     <p className="text-sm text-muted-foreground">
-                        {salidas.length === 0
+                        {total === 0
                             ? 'No hay salidas registradas'
-                            : `${filteredAndSortedSalidas.length} de ${salidas.length} salida${salidas.length !== 1 ? 's' : ''} mostrada${salidas.length !== 1 ? 's' : ''}${filteredAndSortedSalidas.length !== salidas.length ? ' (filtradas)' : ''}`
+                            : `${filteredAndSortedSalidas.length} de ${total} salida${total !== 1 ? 's' : ''} totales${filteredAndSortedSalidas.length !== salidas.length ? ' (filtradas en esta página)' : ''}`
                         }
                     </p>
                 </div>
@@ -765,6 +783,34 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                     onSalidaDeleted={handleSalidaCreated}
                 />
             )}
+
+            {/* Paginación */}
+            <div className="flex items-center justify-between border-t pt-4">
+                <div className="text-sm text-muted-foreground">
+                    Mostrando {salidas.length} de {total} salidas totales.
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigateToPagination(pagination.pageIndex - 1, pagination.pageSize)}
+                        disabled={pagination.pageIndex === 0 || isPending}
+                    >
+                        Anterior
+                    </Button>
+                    <div className="text-sm">
+                        Página {pagination.pageIndex + 1} de {pageCount || 1}
+                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigateToPagination(pagination.pageIndex + 1, pagination.pageSize)}
+                        disabled={pagination.pageIndex >= pageCount - 1 || isPending}
+                    >
+                        Siguiente
+                    </Button>
+                </div>
+            </div>
         </div>
     );
 } 

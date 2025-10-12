@@ -1,16 +1,26 @@
 import { getDictionary } from '@repo/internationalization';
 import type { Locale } from '@repo/internationalization';
-import { getAllSalidasAction } from './actions';
+import { getSalidasPaginatedAction } from './actions';
 import { SalidasPageClient } from './components/SalidasPageClient';
 import { getCurrentUserWithPermissions, canViewSalidaStatistics } from '@repo/auth/server-permissions';
 
 interface SalidasPageProps {
     params: Promise<{ locale: Locale }>;
+    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function SalidasPage({ params }: SalidasPageProps) {
+export default async function SalidasPage({ params, searchParams }: SalidasPageProps) {
     const { locale } = await params;
     const dictionary = await getDictionary(locale);
+
+    // Obtener parámetros de paginación
+    const { page, pageSize } = await searchParams || {
+        page: '1',
+        pageSize: '50',
+    };
+
+    const currentPage = Number(page) || 1;
+    const currentPageSize = Number(pageSize) || 50;
 
     // Obtener usuario actual con permisos
     const userWithPermissions = await getCurrentUserWithPermissions();
@@ -21,9 +31,15 @@ export default async function SalidasPage({ params }: SalidasPageProps) {
     // Verificar si puede ver estadísticas
     const canViewStats = await canViewSalidaStatistics();
 
-    // Obtener todas las salidas
-    const result = await getAllSalidasAction();
+    // Obtener salidas paginadas
+    const result = await getSalidasPaginatedAction({
+        pageIndex: currentPage - 1,
+        pageSize: currentPageSize,
+    });
+
     const salidas = result.success ? (result.salidas || []) : [];
+    const total = result.total || 0;
+    const pageCount = result.pageCount || 0;
 
     return (
         <div className="h-full w-full">
@@ -41,6 +57,12 @@ export default async function SalidasPage({ params }: SalidasPageProps) {
                 dictionary={dictionary}
                 userPermissions={userPermissions}
                 canViewStatistics={canViewStats}
+                pagination={{
+                    pageIndex: currentPage - 1,
+                    pageSize: currentPageSize,
+                }}
+                pageCount={pageCount}
+                total={total}
             />
         </div>
     );

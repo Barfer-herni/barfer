@@ -4,6 +4,7 @@ import {
     // Servicios MongoDB
     getAllSalidasMongo,
     getAllSalidasWithPermissionFilterMongo,
+    getSalidasPaginatedMongo,
     createSalidaMongo,
     updateSalidaMongo,
     deleteSalidaMongo,
@@ -58,6 +59,20 @@ export type { CreateSalidaMongoInput as CreateSalidaData, UpdateSalidaMongoInput
 // Obtener todas las salidas
 export async function getAllSalidasAction() {
     const result = await getAllSalidasWithPermissionFilterMongo();
+    return result;
+}
+
+// Obtener salidas paginadas
+export async function getSalidasPaginatedAction({
+    pageIndex = 0,
+    pageSize = 50,
+}: {
+    pageIndex?: number;
+    pageSize?: number;
+}) {
+    'use server';
+
+    const result = await getSalidasPaginatedMongo({ pageIndex, pageSize });
     return result;
 }
 

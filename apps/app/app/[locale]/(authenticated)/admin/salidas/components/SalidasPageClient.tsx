@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Dictionary } from '@repo/internationalization';
-import { getAllSalidasAction } from '../actions';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@repo/design-system/components/ui/card';
 import { Table2, BarChart3, Tag, Users } from 'lucide-react';
@@ -11,31 +11,32 @@ import { SalidasEstadisticas } from './SalidasEstadisticas';
 import { CategoriasManager } from './CategoriasManager';
 import { ProveedoresManager } from './ProveedoresManager';
 import { SalidaMongoData } from '@repo/data-services';
+import type { PaginationState } from '@tanstack/react-table';
 
 interface SalidasPageClientProps {
     salidas: SalidaMongoData[];
     dictionary: Dictionary;
     userPermissions?: string[];
     canViewStatistics?: boolean;
+    pagination: PaginationState;
+    pageCount: number;
+    total: number;
 }
 
-export function SalidasPageClient({ salidas: initialSalidas, dictionary, userPermissions = [], canViewStatistics = false }: SalidasPageClientProps) {
+export function SalidasPageClient({
+    salidas,
+    dictionary,
+    userPermissions = [],
+    canViewStatistics = false,
+    pagination,
+    pageCount,
+    total
+}: SalidasPageClientProps) {
+    const router = useRouter();
     const [activeTab, setActiveTab] = useState<'tabla' | 'estadisticas' | 'categorias' | 'proveedores'>('tabla');
-    const [salidas, setSalidas] = useState<SalidaMongoData[]>(initialSalidas);
-    const [isLoading, setIsLoading] = useState(false);
 
-    const refreshSalidas = async () => {
-        setIsLoading(true);
-        try {
-            const result = await getAllSalidasAction();
-            if (result.success) {
-                setSalidas(result.salidas || []);
-            }
-        } catch (error) {
-            console.error('Error refreshing salidas:', error);
-        } finally {
-            setIsLoading(false);
-        }
+    const refreshSalidas = () => {
+        router.refresh();
     };
 
     return (
@@ -94,6 +95,9 @@ export function SalidasPageClient({ salidas: initialSalidas, dictionary, userPer
                                 salidas={salidas}
                                 onRefreshSalidas={refreshSalidas}
                                 userPermissions={userPermissions}
+                                pagination={pagination}
+                                pageCount={pageCount}
+                                total={total}
                             />
                         </CardContent>
                     </Card>
