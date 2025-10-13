@@ -19,12 +19,16 @@ export async function getMayoristasAction({
     search = '',
     zona,
     activo = true,
+    sortBy = 'nombre',
+    sortDesc = false,
 }: {
     pageIndex?: number;
     pageSize?: number;
     search?: string;
     zona?: string;
     activo?: boolean;
+    sortBy?: string;
+    sortDesc?: boolean;
 }) {
     'use server';
 
@@ -34,6 +38,8 @@ export async function getMayoristasAction({
         search,
         zona: zona as any,
         activo,
+        sortBy,
+        sortDesc,
     });
 }
 
@@ -130,11 +136,11 @@ export async function getVentasPorZonaAction() {
     return await getVentasPorZona();
 }
 
-export async function getPuntosVentaStatsAction() {
+export async function getPuntosVentaStatsAction(from?: string, to?: string) {
     'use server';
 
     const { getPuntosVentaStats } = await import('@repo/data-services');
-    return await getPuntosVentaStats();
+    return await getPuntosVentaStats(from, to);
 }
 
 export async function getProductosMatrixAction() {

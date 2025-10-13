@@ -4,12 +4,30 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@repo/design-system/components/ui/badge';
 import { ZONA_TRANSLATIONS, TIPO_NEGOCIO_TRANSLATIONS } from '../constants';
 import type { Mayorista } from '@repo/data-services';
-import { Check, X } from 'lucide-react';
+import { Check, X, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 
 export const columns: ColumnDef<Mayorista>[] = [
     {
         accessorKey: 'nombre',
-        header: 'Nombre del Punto de Venta',
+        header: ({ column }) => {
+            const isSorted = column.getIsSorted();
+            return (
+                <button
+                    type="button"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                    className="flex items-center gap-2 hover:text-gray-900 font-medium"
+                >
+                    Nombre del Punto de Venta
+                    {isSorted === 'asc' ? (
+                        <ArrowUp className="w-4 h-4" />
+                    ) : isSorted === 'desc' ? (
+                        <ArrowDown className="w-4 h-4" />
+                    ) : (
+                        <ArrowUpDown className="w-4 h-4 opacity-50" />
+                    )}
+                </button>
+            );
+        },
         cell: ({ row }) => {
             return (
                 <div className="min-w-[180px] font-medium text-sm">
@@ -17,10 +35,29 @@ export const columns: ColumnDef<Mayorista>[] = [
                 </div>
             );
         },
+        enableSorting: true,
     },
     {
         accessorKey: 'zona',
-        header: 'Zona',
+        header: ({ column }) => {
+            const isSorted = column.getIsSorted();
+            return (
+                <button
+                    type="button"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                    className="flex items-center gap-2 hover:text-gray-900 font-medium"
+                >
+                    Zona
+                    {isSorted === 'asc' ? (
+                        <ArrowUp className="w-4 h-4" />
+                    ) : isSorted === 'desc' ? (
+                        <ArrowDown className="w-4 h-4" />
+                    ) : (
+                        <ArrowUpDown className="w-4 h-4 opacity-50" />
+                    )}
+                </button>
+            );
+        },
         cell: ({ row }) => {
             const zona = row.getValue('zona') as string;
             const zonaLabel = ZONA_TRANSLATIONS[zona] || zona;
@@ -32,10 +69,29 @@ export const columns: ColumnDef<Mayorista>[] = [
                 </div>
             );
         },
+        enableSorting: true,
     },
     {
         accessorKey: 'contacto.direccion',
-        header: 'Dirección',
+        header: ({ column }) => {
+            const isSorted = column.getIsSorted();
+            return (
+                <button
+                    type="button"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                    className="flex items-center gap-2 hover:text-gray-900 font-medium"
+                >
+                    Dirección
+                    {isSorted === 'asc' ? (
+                        <ArrowUp className="w-4 h-4" />
+                    ) : isSorted === 'desc' ? (
+                        <ArrowDown className="w-4 h-4" />
+                    ) : (
+                        <ArrowUpDown className="w-4 h-4 opacity-50" />
+                    )}
+                </button>
+            );
+        },
         cell: ({ row }) => {
             const direccion = row.original.contacto?.direccion || '';
             return (
@@ -44,10 +100,29 @@ export const columns: ColumnDef<Mayorista>[] = [
                 </div>
             );
         },
+        enableSorting: true,
     },
     {
         accessorKey: 'contacto.telefono',
-        header: 'Teléfono',
+        header: ({ column }) => {
+            const isSorted = column.getIsSorted();
+            return (
+                <button
+                    type="button"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                    className="flex items-center gap-2 hover:text-gray-900 font-medium"
+                >
+                    Teléfono
+                    {isSorted === 'asc' ? (
+                        <ArrowUp className="w-4 h-4" />
+                    ) : isSorted === 'desc' ? (
+                        <ArrowDown className="w-4 h-4" />
+                    ) : (
+                        <ArrowUpDown className="w-4 h-4 opacity-50" />
+                    )}
+                </button>
+            );
+        },
         cell: ({ row }) => {
             const telefono = row.original.contacto?.telefono || '';
             return (
@@ -56,10 +131,29 @@ export const columns: ColumnDef<Mayorista>[] = [
                 </div>
             );
         },
+        enableSorting: true,
     },
     {
         accessorKey: 'fechaPrimerPedido',
-        header: 'Primer Pedido',
+        header: ({ column }) => {
+            const isSorted = column.getIsSorted();
+            return (
+                <button
+                    type="button"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                    className="flex items-center gap-2 hover:text-gray-900 font-medium"
+                >
+                    Primer Pedido
+                    {isSorted === 'asc' ? (
+                        <ArrowUp className="w-4 h-4" />
+                    ) : isSorted === 'desc' ? (
+                        <ArrowDown className="w-4 h-4" />
+                    ) : (
+                        <ArrowUpDown className="w-4 h-4 opacity-50" />
+                    )}
+                </button>
+            );
+        },
         cell: ({ row }) => {
             const fecha = row.getValue('fechaPrimerPedido') as string | Date | undefined;
             if (!fecha) return <span className="text-gray-400">--</span>;
@@ -77,10 +171,29 @@ export const columns: ColumnDef<Mayorista>[] = [
                 </div>
             );
         },
+        enableSorting: true,
     },
     {
         accessorKey: 'fechaUltimoPedido',
-        header: 'Último Pedido',
+        header: ({ column }) => {
+            const isSorted = column.getIsSorted();
+            return (
+                <button
+                    type="button"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                    className="flex items-center gap-2 hover:text-gray-900 font-medium"
+                >
+                    Último Pedido
+                    {isSorted === 'asc' ? (
+                        <ArrowUp className="w-4 h-4" />
+                    ) : isSorted === 'desc' ? (
+                        <ArrowDown className="w-4 h-4" />
+                    ) : (
+                        <ArrowUpDown className="w-4 h-4 opacity-50" />
+                    )}
+                </button>
+            );
+        },
         cell: ({ row }) => {
             const fecha = row.getValue('fechaUltimoPedido') as string | Date | undefined;
             if (!fecha) return <span className="text-gray-400">--</span>;
@@ -98,10 +211,29 @@ export const columns: ColumnDef<Mayorista>[] = [
                 </div>
             );
         },
+        enableSorting: true,
     },
     {
         accessorKey: 'tieneFreezer',
-        header: 'Freezer Nuestro',
+        header: ({ column }) => {
+            const isSorted = column.getIsSorted();
+            return (
+                <button
+                    type="button"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                    className="flex items-center gap-2 hover:text-gray-900 font-medium"
+                >
+                    Freezer Nuestro
+                    {isSorted === 'asc' ? (
+                        <ArrowUp className="w-4 h-4" />
+                    ) : isSorted === 'desc' ? (
+                        <ArrowDown className="w-4 h-4" />
+                    ) : (
+                        <ArrowUpDown className="w-4 h-4 opacity-50" />
+                    )}
+                </button>
+            );
+        },
         cell: ({ row }) => {
             const tieneFreezer = row.getValue('tieneFreezer') as boolean;
 
@@ -121,10 +253,29 @@ export const columns: ColumnDef<Mayorista>[] = [
                 </div>
             );
         },
+        enableSorting: true,
     },
     {
         accessorKey: 'cantidadFreezers',
-        header: 'Cant',
+        header: ({ column }) => {
+            const isSorted = column.getIsSorted();
+            return (
+                <button
+                    type="button"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                    className="flex items-center gap-2 hover:text-gray-900 font-medium"
+                >
+                    Cant
+                    {isSorted === 'asc' ? (
+                        <ArrowUp className="w-4 h-4" />
+                    ) : isSorted === 'desc' ? (
+                        <ArrowDown className="w-4 h-4" />
+                    ) : (
+                        <ArrowUpDown className="w-4 h-4 opacity-50" />
+                    )}
+                </button>
+            );
+        },
         cell: ({ row }) => {
             const cantidad = row.getValue('cantidadFreezers') as number | undefined;
             const tieneFreezer = row.original.tieneFreezer;
@@ -139,10 +290,29 @@ export const columns: ColumnDef<Mayorista>[] = [
                 </div>
             );
         },
+        enableSorting: true,
     },
     {
         accessorKey: 'capacidadFreezer',
-        header: 'Capacidad',
+        header: ({ column }) => {
+            const isSorted = column.getIsSorted();
+            return (
+                <button
+                    type="button"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                    className="flex items-center gap-2 hover:text-gray-900 font-medium"
+                >
+                    Capacidad
+                    {isSorted === 'asc' ? (
+                        <ArrowUp className="w-4 h-4" />
+                    ) : isSorted === 'desc' ? (
+                        <ArrowDown className="w-4 h-4" />
+                    ) : (
+                        <ArrowUpDown className="w-4 h-4 opacity-50" />
+                    )}
+                </button>
+            );
+        },
         cell: ({ row }) => {
             const capacidad = row.getValue('capacidadFreezer') as number | undefined;
             const tieneFreezer = row.original.tieneFreezer;
@@ -157,10 +327,29 @@ export const columns: ColumnDef<Mayorista>[] = [
                 </div>
             );
         },
+        enableSorting: true,
     },
     {
         accessorKey: 'tiposNegocio',
-        header: 'Tipo de Negocio',
+        header: ({ column }) => {
+            const isSorted = column.getIsSorted();
+            return (
+                <button
+                    type="button"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                    className="flex items-center gap-2 hover:text-gray-900 font-medium"
+                >
+                    Tipo de Negocio
+                    {isSorted === 'asc' ? (
+                        <ArrowUp className="w-4 h-4" />
+                    ) : isSorted === 'desc' ? (
+                        <ArrowDown className="w-4 h-4" />
+                    ) : (
+                        <ArrowUpDown className="w-4 h-4 opacity-50" />
+                    )}
+                </button>
+            );
+        },
         cell: ({ row }) => {
             const tipos = row.getValue('tiposNegocio') as string[];
 
@@ -178,5 +367,6 @@ export const columns: ColumnDef<Mayorista>[] = [
                 </div>
             );
         },
+        enableSorting: true,
     },
 ];

@@ -8,28 +8,39 @@ export default async function MayoristasPage({
 }: {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-    const { page, pageSize, search, zona } = await searchParams || {
+    const { page, pageSize, search, zona, sortBy, sortDesc } = await searchParams || {
         page: '1',
         pageSize: '50',
         search: '',
-        zona: ''
+        zona: '',
+        sortBy: 'nombre',
+        sortDesc: 'false',
     };
 
     const currentPage = Number(page) || 1;
     const currentPageSize = Number(pageSize) || 50;
     const currentSearch = (search as string) || '';
     const currentZona = (zona as string) && (zona as string).trim() !== '' ? (zona as string) : undefined;
+    const currentSortBy = (sortBy as string) || 'nombre';
+    const currentSortDesc = (sortDesc as string) === 'true';
 
     const pagination: PaginationState = {
         pageIndex: currentPage - 1,
         pageSize: currentPageSize,
     };
 
+    const sorting: SortingState = [{
+        id: currentSortBy,
+        desc: currentSortDesc,
+    }];
+
     const { mayoristas = [], pageCount = 0, total = 0 } = await getMayoristasAction({
         pageIndex: pagination.pageIndex,
         pageSize: pagination.pageSize,
         search: currentSearch,
         zona: currentZona,
+        sortBy: currentSortBy,
+        sortDesc: currentSortDesc,
     });
 
     return (
@@ -53,6 +64,7 @@ export default async function MayoristasPage({
                     pageCount={pageCount}
                     total={total}
                     pagination={pagination}
+                    sorting={sorting}
                 />
             </div>
         </div>

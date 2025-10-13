@@ -130,7 +130,7 @@ function calculateFrecuencia(orders: any[]): string {
 /**
  * Obtiene estadísticas por punto de venta usando punto_de_venta como conexión
  */
-export async function getPuntosVentaStats(): Promise<{
+export async function getPuntosVentaStats(from?: string, to?: string): Promise<{
     success: boolean;
     stats?: PuntoVentaStats[];
     error?: string;
@@ -182,12 +182,34 @@ export async function getPuntosVentaStats(): Promise<{
         for (const puntoVenta of puntosVenta) {
             const puntoVentaId = puntoVenta._id.toString();
 
+            // Construir filtro de órdenes
+            const orderFilter: any = {
+                orderType: 'mayorista',
+                punto_de_venta: puntoVentaId
+            };
+
+            // Si se especificó rango de fechas, filtrar
+            if (from || to) {
+                orderFilter.createdAt = {};
+
+                if (from) {
+                    const startDate = new Date(from);
+                    startDate.setHours(0, 0, 0, 0);
+                    orderFilter.createdAt.$gte = startDate;
+                }
+
+                if (to) {
+                    const endDate = new Date(to);
+                    endDate.setHours(23, 59, 59, 999);
+                    orderFilter.createdAt.$lte = endDate;
+                }
+
+                console.log(`📅 Filtrando por rango: ${from || 'inicio'} - ${to || 'fin'}`);
+            }
+
             // Buscar órdenes mayoristas que tengan este punto_de_venta
             const ordenes = await ordersCollection
-                .find({
-                    orderType: 'mayorista',
-                    punto_de_venta: puntoVentaId
-                })
+                .find(orderFilter)
                 .sort({ createdAt: 1 }) // Más antiguas primero para calcular fechas
                 .toArray();
 

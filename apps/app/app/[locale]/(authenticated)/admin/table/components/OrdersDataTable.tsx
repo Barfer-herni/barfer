@@ -737,14 +737,14 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 (updatedData as any).puntoVentaId = puntoVenta._id;
 
                 // Autocompletar con los datos del punto de venta
-                // user.name y lastName vacíos para que el usuario los complete
-                updatedData.user.name = '';
-                updatedData.user.lastName = '';
-                updatedData.user.email = ''; // Sin email
+                // Para mayoristas, el nombre del cliente es el nombre del punto de venta
+                updatedData.user.name = puntoVenta.nombre || '';
+                updatedData.user.lastName = ''; // No se usa en mayoristas
+                updatedData.user.email = ''; // No se usa en mayoristas
 
                 // Autocompletar dirección desde contacto del punto de venta
                 updatedData.address.address = puntoVenta.contacto?.direccion || '';
-                updatedData.address.city = puntoVenta.zona || ''; // Usar la zona como ciudad
+                updatedData.address.city = ''; // No se usa en mayoristas
                 updatedData.address.phone = puntoVenta.contacto?.telefono || '';
                 updatedData.address.betweenStreets = '';
                 updatedData.address.floorNumber = '';
@@ -1028,57 +1028,92 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                         <Label className="text-base font-semibold">Datos del Cliente</Label>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <Label>Nombre</Label>
-                                        <Input
-                                            value={createFormData.user.name}
-                                            onChange={(e) => handleCreateFormChange('user.name', e.target.value)}
-                                            placeholder="Nombre del cliente"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Apellido</Label>
-                                        <Input
-                                            value={createFormData.user.lastName}
-                                            onChange={(e) => handleCreateFormChange('user.lastName', e.target.value)}
-                                            placeholder="Apellido del cliente"
-                                        />
-                                    </div>
+                                    {/* Para mayoristas: solo nombre, teléfono y dirección */}
+                                    {createFormData.orderType === 'mayorista' ? (
+                                        <>
+                                            <div className="space-y-2 col-span-2">
+                                                <Label>Nombre del Cliente</Label>
+                                                <Input
+                                                    value={createFormData.user.name}
+                                                    onChange={(e) => handleCreateFormChange('user.name', e.target.value)}
+                                                    placeholder="Nombre del cliente (ej: nombre del punto de venta)"
+                                                />
+                                            </div>
 
-                                    <div className="space-y-2">
-                                        <Label>Email</Label>
-                                        <Input
-                                            type="email"
-                                            value={createFormData.user.email}
-                                            onChange={(e) => handleCreateFormChange('user.email', e.target.value)}
-                                            placeholder="Email del cliente"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Teléfono</Label>
-                                        <Input
-                                            value={createFormData.address.phone}
-                                            onChange={(e) => handleCreateFormChange('address.phone', e.target.value)}
-                                            placeholder="Teléfono"
-                                        />
-                                    </div>
+                                            <div className="space-y-2">
+                                                <Label>Teléfono</Label>
+                                                <Input
+                                                    value={createFormData.address.phone}
+                                                    onChange={(e) => handleCreateFormChange('address.phone', e.target.value)}
+                                                    placeholder="Teléfono"
+                                                />
+                                            </div>
 
-                                    <div className="space-y-2">
-                                        <Label>Dirección</Label>
-                                        <Input
-                                            value={createFormData.address.address}
-                                            onChange={(e) => handleCreateFormChange('address.address', e.target.value)}
-                                            placeholder="Dirección"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>Ciudad</Label>
-                                        <Input
-                                            value={createFormData.address.city}
-                                            onChange={(e) => handleCreateFormChange('address.city', e.target.value)}
-                                            placeholder="Ciudad"
-                                        />
-                                    </div>
+                                            <div className="space-y-2">
+                                                <Label>Dirección</Label>
+                                                <Input
+                                                    value={createFormData.address.address}
+                                                    onChange={(e) => handleCreateFormChange('address.address', e.target.value)}
+                                                    placeholder="Dirección"
+                                                />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            {/* Para minoristas: todos los campos */}
+                                            <div className="space-y-2">
+                                                <Label>Nombre</Label>
+                                                <Input
+                                                    value={createFormData.user.name}
+                                                    onChange={(e) => handleCreateFormChange('user.name', e.target.value)}
+                                                    placeholder="Nombre del cliente"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Apellido</Label>
+                                                <Input
+                                                    value={createFormData.user.lastName}
+                                                    onChange={(e) => handleCreateFormChange('user.lastName', e.target.value)}
+                                                    placeholder="Apellido del cliente"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label>Email</Label>
+                                                <Input
+                                                    type="email"
+                                                    value={createFormData.user.email}
+                                                    onChange={(e) => handleCreateFormChange('user.email', e.target.value)}
+                                                    placeholder="Email del cliente"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Teléfono</Label>
+                                                <Input
+                                                    value={createFormData.address.phone}
+                                                    onChange={(e) => handleCreateFormChange('address.phone', e.target.value)}
+                                                    placeholder="Teléfono"
+                                                />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Label>Dirección</Label>
+                                                <Input
+                                                    value={createFormData.address.address}
+                                                    onChange={(e) => handleCreateFormChange('address.address', e.target.value)}
+                                                    placeholder="Dirección"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Ciudad</Label>
+                                                <Input
+                                                    value={createFormData.address.city}
+                                                    onChange={(e) => handleCreateFormChange('address.city', e.target.value)}
+                                                    placeholder="Ciudad"
+                                                />
+                                            </div>
+                                        </>
+                                    )}
 
                                     {/* 3. MEDIO DE PAGO Y ESTADO */}
                                     <div className="space-y-2 col-span-2 mt-4">

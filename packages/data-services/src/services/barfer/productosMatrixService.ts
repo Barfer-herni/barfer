@@ -15,6 +15,7 @@ interface ProductoMayorista {
     product: string;  // "BIG DOG VACA"
     weight: string;   // "15KG"
     kilos: number;    // 15
+    section: string;  // "PERRO", "GATO", "RAW", etc.
 }
 
 /**
@@ -33,6 +34,99 @@ function extractKilosFromWeight(weight: string | null | undefined): number {
  */
 function normalizeProductName(name: string): string {
     return name.trim().toUpperCase().replace(/\s+/g, ' ');
+}
+
+/**
+ * Función de ordenamiento personalizado para productos de matriz
+ * Orden: 
+ * 1. PERRO (sabores): pollo, cerdo, vaca, cordero
+ * 2. PERRO (BIG DOG): pollo, vaca
+ * 3. GATO: pollo, vaca, cordero
+ * 4. OTROS (huesos carnosos)
+ * 5. OTROS (complementos): garras, cornalitos, caldo, huesos recreativos
+ * 6. RAW: todos
+ */
+function sortProductsForMatrix(a: ProductoMayorista, b: ProductoMayorista): number {
+    // Normalizar para comparación
+    const normalizeProduct = (p: string) => p.trim().toUpperCase();
+    const productA = normalizeProduct(a.product);
+    const productB = normalizeProduct(b.product);
+    const sectionA = normalizeProduct(a.section);
+    const sectionB = normalizeProduct(b.section);
+
+    // Definir orden de secciones principales
+    const getSectionOrder = (section: string, product: string): number => {
+        if (section === 'PERRO') {
+            if (product.includes('BIG DOG')) return 2; // Big Dog después de perros regulares
+            return 1; // Perros regulares primero
+        }
+        if (section === 'GATO') return 3;
+        if (section === 'OTROS') {
+            if (product.includes('HUESOS CARNOSOS')) return 4;
+            // Complementos: garras, cornalitos, caldo, huesos recreativos
+            if (product.includes('GARRAS') ||
+                product.includes('CORNALITOS') ||
+                product.includes('CALDO') ||
+                product.includes('HUESOS RECREATIVOS') ||
+                product.includes('COMPLEMENTOS')) {
+                return 5;
+            }
+            return 4.5; // Otros productos de OTROS entre huesos carnosos y complementos
+        }
+        if (section === 'RAW') return 6;
+        return 999; // Secciones desconocidas al final
+    };
+
+    const orderA = getSectionOrder(sectionA, productA);
+    const orderB = getSectionOrder(sectionB, productB);
+
+    if (orderA !== orderB) {
+        return orderA - orderB;
+    }
+
+    // Dentro de la misma sección, ordenar por sabor/producto
+    const getFlavorOrder = (product: string, section: string): number => {
+        // Para PERRO regular (no BIG DOG)
+        if (section === 'PERRO' && !product.includes('BIG DOG')) {
+            if (product.includes('POLLO')) return 1;
+            if (product.includes('CERDO')) return 2;
+            if (product.includes('VACA')) return 3;
+            if (product.includes('CORDERO')) return 4;
+        }
+
+        // Para BIG DOG
+        if (product.includes('BIG DOG')) {
+            if (product.includes('POLLO')) return 1;
+            if (product.includes('VACA')) return 2;
+        }
+
+        // Para GATO
+        if (section === 'GATO') {
+            if (product.includes('POLLO')) return 1;
+            if (product.includes('VACA')) return 2;
+            if (product.includes('CORDERO')) return 3;
+        }
+
+        // Para complementos
+        if (section === 'OTROS') {
+            if (product.includes('GARRAS')) return 1;
+            if (product.includes('CORNALITOS')) return 2;
+            if (product.includes('CALDO')) return 3;
+            if (product.includes('HUESOS RECREATIVOS')) return 4;
+        }
+
+        return 999; // Sin orden específico
+    };
+
+    const flavorA = getFlavorOrder(productA, sectionA);
+    const flavorB = getFlavorOrder(productB, sectionB);
+
+    if (flavorA !== flavorB) {
+        return flavorA - flavorB;
+    }
+
+    // Si tienen el mismo orden de sabor, ordenar alfabéticamente
+    return a.fullName.localeCompare(b.fullName);
 }
 
 /**
@@ -193,7 +287,8 @@ export async function getProductosMatrix(): Promise<{
                     fullName,
                     product: doc.product,
                     weight: weight || 'UNIDAD',
-                    kilos: kilosFinales
+                    kilos: kilosFinales,
+                    section: doc.section || 'OTROS'
                 });
                 console.log(`  🔹 Producto: ${fullName} (${kilosFinales}kg${weight ? '' : ' - SIN PESO, usando 1kg'})`);
             }
@@ -218,10 +313,11 @@ export async function getProductosMatrix(): Promise<{
         console.log(`📍 ${puntosVenta.length} puntos de venta encontrados`);
 
         if (puntosVenta.length === 0) {
+            const sortedProducts = productosMayoristas.sort(sortProductsForMatrix);
             return {
                 success: true,
                 matrix: [],
-                productNames: productosMayoristas.map(p => p.fullName).sort(),
+                productNames: sortedProducts.map(p => p.fullName),
             };
         }
 
@@ -298,8 +394,9 @@ export async function getProductosMatrix(): Promise<{
         // Ordenar por total de kilos descendente
         matrix.sort((a, b) => b.totalKilos - a.totalKilos);
 
-        // Ordenar nombres de productos alfabéticamente
-        const productNames = productosMayoristas.map(p => p.fullName).sort();
+        // Ordenar productos según el criterio personalizado
+        const sortedProducts = productosMayoristas.sort(sortProductsForMatrix);
+        const productNames = sortedProducts.map(p => p.fullName);
 
         console.log(`\n✅ Matriz completada: ${matrix.length} puntos de venta, ${productNames.length} productos`);
 

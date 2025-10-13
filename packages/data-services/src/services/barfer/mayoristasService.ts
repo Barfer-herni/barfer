@@ -66,12 +66,16 @@ export async function getMayoristas({
     search = '',
     zona,
     activo = true,
+    sortBy = 'nombre',
+    sortDesc = false,
 }: {
     pageIndex?: number;
     pageSize?: number;
     search?: string;
     zona?: MayoristaZona;
     activo?: boolean;
+    sortBy?: string;
+    sortDesc?: boolean;
 }): Promise<{
     success: boolean;
     mayoristas?: Mayorista[];
@@ -94,6 +98,7 @@ export async function getMayoristas({
                 { nombre: { $regex: search, $options: 'i' } },
                 { 'contacto.telefono': { $regex: search, $options: 'i' } },
                 { 'contacto.email': { $regex: search, $options: 'i' } },
+                { zona: { $regex: search, $options: 'i' } }, // Incluir zona en la búsqueda
             ];
         }
 
@@ -101,10 +106,14 @@ export async function getMayoristas({
         const total = await mayoristasCollection.countDocuments(filter);
         const pageCount = Math.ceil(total / pageSize);
 
+        // Construir objeto de ordenamiento
+        const sortObject: any = {};
+        sortObject[sortBy] = sortDesc ? -1 : 1;
+
         // Obtener mayoristas con paginación
         const mayoristas = await mayoristasCollection
             .find(filter)
-            .sort({ nombre: 1 })
+            .sort(sortObject)
             .skip(pageIndex * pageSize)
             .limit(pageSize)
             .toArray();

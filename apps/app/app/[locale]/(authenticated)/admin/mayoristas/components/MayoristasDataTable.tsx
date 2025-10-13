@@ -8,6 +8,7 @@ import {
     useReactTable,
     type ColumnDef,
     type PaginationState,
+    type SortingState,
 } from '@tanstack/react-table';
 
 import { Input } from '@repo/design-system/components/ui/input';
@@ -29,6 +30,7 @@ interface MayoristasDataTableProps {
     pageCount: number;
     total: number;
     pagination: PaginationState;
+    sorting: SortingState;
 }
 
 export function MayoristasDataTable({
@@ -37,6 +39,7 @@ export function MayoristasDataTable({
     pageCount,
     total,
     pagination,
+    sorting,
 }: MayoristasDataTableProps) {
     const router = useRouter();
     const pathname = usePathname();
@@ -73,8 +76,20 @@ export function MayoristasDataTable({
         pageCount,
         state: {
             pagination,
+            sorting,
+        },
+        onSortingChange: (updaterOrValue) => {
+            const newSorting = typeof updaterOrValue === 'function'
+                ? updaterOrValue(sorting)
+                : updaterOrValue;
+
+            if (newSorting.length > 0) {
+                const { id, desc } = newSorting[0];
+                navigateToSorting(id);
+            }
         },
         manualPagination: true,
+        manualSorting: true,
         getCoreRowModel: getCoreRowModel(),
     });
 
@@ -92,6 +107,26 @@ export function MayoristasDataTable({
             const params = new URLSearchParams(searchParams);
             params.set('page', (pageIndex + 1).toString());
             params.set('pageSize', pageSize.toString());
+            router.push(`${pathname}?${params.toString()}`);
+        });
+    }, [pathname, router, searchParams]);
+
+    const navigateToSorting = useCallback((columnId: string) => {
+        startTransition(() => {
+            const params = new URLSearchParams(searchParams);
+            const currentSortBy = params.get('sortBy');
+            const currentSortDesc = params.get('sortDesc') === 'true';
+
+            // Si es la misma columna, alternar dirección
+            if (currentSortBy === columnId) {
+                params.set('sortDesc', (!currentSortDesc).toString());
+            } else {
+                // Si es nueva columna, ordenar ascendente
+                params.set('sortBy', columnId);
+                params.set('sortDesc', 'false');
+            }
+
+            params.set('page', '1'); // Resetear a primera página
             router.push(`${pathname}?${params.toString()}`);
         });
     }, [pathname, router, searchParams]);
@@ -222,7 +257,7 @@ export function MayoristasDataTable({
             <div className="flex items-center gap-4">
                 <div className="relative flex-1">
                     <Input
-                        placeholder="Buscar por nombre, teléfono o email..."
+                        placeholder="Buscar por nombre, zona, teléfono o email..."
                         value={searchInput}
                         onChange={(event) => handleSearchChange(event.target.value)}
                         onKeyDown={handleSearchKeyDown}
