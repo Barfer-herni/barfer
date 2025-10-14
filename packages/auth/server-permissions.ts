@@ -52,11 +52,13 @@ export type Permission =
     // Permisos dinámicos por categoría (se generan automáticamente)
     | 'outputs:view_all_categories'
     | `outputs:view_category:${string}`
-    // Mayoristas
+    // Mayoristas/Puntos de Venta
     | 'mayoristas:view'
     | 'mayoristas:create'
     | 'mayoristas:edit'
     | 'mayoristas:delete'
+    | 'mayoristas:view_statistics'
+    | 'mayoristas:view_matrix'
 
 // Permisos por defecto para admins (siempre tienen todos)
 export const ADMIN_PERMISSIONS: Permission[] = [
@@ -96,6 +98,8 @@ export const ADMIN_PERMISSIONS: Permission[] = [
     'mayoristas:create',
     'mayoristas:edit',
     'mayoristas:delete',
+    'mayoristas:view_statistics',
+    'mayoristas:view_matrix',
 ];
 
 /**

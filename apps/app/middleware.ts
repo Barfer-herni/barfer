@@ -26,6 +26,7 @@ const ROUTE_PERMISSIONS: Record<string, string[]> = {
   '/admin/salidas': ['outputs:view'], // Salidas es la ruta en español para outputs
   '/admin/prices': ['prices:view'],
   '/admin/repartos': ['table:view'], // Usar el mismo permiso que table por ahora
+  '/admin/mayoristas': ['mayoristas:view'],
 };
 
 // Role configuration with route permissions

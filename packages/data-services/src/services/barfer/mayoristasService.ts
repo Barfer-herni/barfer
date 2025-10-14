@@ -94,11 +94,15 @@ export async function getMayoristas({
         }
 
         if (search) {
+            // Crear patrón regex flexible para zona que acepta espacios o guiones bajos
+            // Ejemplo: "la plata" -> "la[\s_]plata" coincide con "la plata" o "LA_PLATA"
+            const flexibleZonaTerm = search.replace(/\s+/g, '[\\s_]');
+
             filter.$or = [
                 { nombre: { $regex: search, $options: 'i' } },
                 { 'contacto.telefono': { $regex: search, $options: 'i' } },
                 { 'contacto.email': { $regex: search, $options: 'i' } },
-                { zona: { $regex: search, $options: 'i' } }, // Incluir zona en la búsqueda
+                { zona: { $regex: flexibleZonaTerm, $options: 'i' } }, // Búsqueda flexible de zona
             ];
         }
 

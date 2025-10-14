@@ -539,6 +539,82 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Permisos de Puntos de Venta */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-2 w-2 rounded-full bg-purple-500"></div>
+                                        <Label className="text-sm font-medium text-purple-700 dark:text-purple-400">Permisos de Puntos de Venta</Label>
+                                    </div>
+                                    <div className="ml-4 space-y-2">
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                checked={userForm.permissions.includes('mayoristas:view')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) setUserForm(prev => ({ ...prev, permissions: [...prev.permissions, 'mayoristas:view'] }));
+                                                    else setUserForm(prev => ({ ...prev, permissions: prev.permissions.filter(p => p !== 'mayoristas:view') }));
+                                                }}
+                                                disabled={isPending}
+                                            />
+                                            <Label className="text-sm">Ver puntos de venta</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                checked={userForm.permissions.includes('mayoristas:create')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) setUserForm(prev => ({ ...prev, permissions: [...prev.permissions, 'mayoristas:create'] }));
+                                                    else setUserForm(prev => ({ ...prev, permissions: prev.permissions.filter(p => p !== 'mayoristas:create') }));
+                                                }}
+                                                disabled={isPending}
+                                            />
+                                            <Label className="text-sm">Crear puntos de venta</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                checked={userForm.permissions.includes('mayoristas:edit')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) setUserForm(prev => ({ ...prev, permissions: [...prev.permissions, 'mayoristas:edit'] }));
+                                                    else setUserForm(prev => ({ ...prev, permissions: prev.permissions.filter(p => p !== 'mayoristas:edit') }));
+                                                }}
+                                                disabled={isPending}
+                                            />
+                                            <Label className="text-sm">Editar puntos de venta</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                checked={userForm.permissions.includes('mayoristas:delete')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) setUserForm(prev => ({ ...prev, permissions: [...prev.permissions, 'mayoristas:delete'] }));
+                                                    else setUserForm(prev => ({ ...prev, permissions: prev.permissions.filter(p => p !== 'mayoristas:delete') }));
+                                                }}
+                                                disabled={isPending}
+                                            />
+                                            <Label className="text-sm">Eliminar puntos de venta</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                checked={userForm.permissions.includes('mayoristas:view_statistics')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) setUserForm(prev => ({ ...prev, permissions: [...prev.permissions, 'mayoristas:view_statistics'] }));
+                                                    else setUserForm(prev => ({ ...prev, permissions: prev.permissions.filter(p => p !== 'mayoristas:view_statistics') }));
+                                                }}
+                                                disabled={isPending}
+                                            />
+                                            <Label className="text-sm">Ver estadísticas de puntos de venta</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                checked={userForm.permissions.includes('mayoristas:view_matrix')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) setUserForm(prev => ({ ...prev, permissions: [...prev.permissions, 'mayoristas:view_matrix'] }));
+                                                    else setUserForm(prev => ({ ...prev, permissions: prev.permissions.filter(p => p !== 'mayoristas:view_matrix') }));
+                                                }}
+                                                disabled={isPending}
+                                            />
+                                            <Label className="text-sm">Ver matriz de productos</Label>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <p className="text-sm text-muted-foreground pt-2">

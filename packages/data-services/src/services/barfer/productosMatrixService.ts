@@ -16,6 +16,7 @@ interface ProductoMayorista {
     weight: string;   // "15KG"
     kilos: number;    // 15
     section: string;  // "PERRO", "GATO", "RAW", etc.
+    groupKey: string; // "PERRO - POLLO" (para agrupar sin peso)
 }
 
 /**
@@ -34,6 +35,90 @@ function extractKilosFromWeight(weight: string | null | undefined): number {
  */
 function normalizeProductName(name: string): string {
     return name.trim().toUpperCase().replace(/\s+/g, ' ');
+}
+
+/**
+ * Genera una clave de agrupación para un producto basada en sección y sabor
+ * Ejemplos:
+ * - "POLLO" en sección "PERRO" -> "PERRO - POLLO"
+ * - "BIG DOG VACA" en sección "PERRO" -> "PERRO - BIG DOG VACA"
+ * - "GARRAS DE POLLO" en sección "OTROS" -> "OTROS - GARRAS DE POLLO"
+ * - "OREJA X1" en sección "RAW" -> "RAW - OREJA"
+ * - "HIGADO 100GRS" en sección "RAW" -> "RAW - HIGADO"
+ */
+function generateGroupKey(product: string, section: string): string {
+    const originalProduct = product;
+    let normalizedProduct = product.trim().toUpperCase();
+    const normalizedSection = section.trim().toUpperCase();
+
+    // Para productos RAW, eliminar presentaciones y pesos del nombre
+    if (normalizedSection === 'RAW') {
+        // Eliminar patrones de peso/cantidad de forma más agresiva
+        normalizedProduct = normalizedProduct
+            // Elimina patrones como: X1, X2, X50, X100, etc.
+            .replace(/\s*X\s*\d+\s*/gi, '')
+            // Elimina S + números + GR/GRS/GRAMOS (ej: "Hígados 40grs" -> "Hígado")
+            .replace(/S?\s*\d+\s*(GR|GRS|GRAMOS|G)\s*/gi, '')
+            // Elimina solo números al final (ej: "HIGADO 100" -> "HIGADO")
+            .replace(/\s+\d+\s*$/gi, '')
+            // Normalizar espacios múltiples a uno solo
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        // Normalizar nombres similares comunes
+        const normalizations: Record<string, string> = {
+            'OREJA': 'OREJA',
+            'OREJAS': 'OREJA',
+            'HÍGADO': 'HIGADO', // Con acento
+            'HIGADO': 'HIGADO',
+            'HÍGADOS': 'HIGADO', // Con acento y plural
+            'HIGADOS': 'HIGADO', // Plural
+            'TRÁQUEA': 'TRAQUEA', // Con acento
+            'TRAQUEA': 'TRAQUEA',
+            'POLLO': 'POLLO',
+            'POLLOS': 'POLLO',
+            'CORNALITO': 'CORNALITO',
+            'CORNALITOS': 'CORNALITO',
+            'CORNALITOSS': 'CORNALITO' // Por si acaso quedó con doble S
+        };
+
+        if (normalizations[normalizedProduct]) {
+            normalizedProduct = normalizations[normalizedProduct];
+        }
+
+        console.log(`    🔧 RAW producto limpiado: "${originalProduct}" -> "${normalizedProduct}" (sección: ${normalizedSection})`);
+    }
+
+    // Para productos que ya tienen identificadores especiales, mantenerlos
+    if (normalizedProduct.includes('BIG DOG')) {
+        return `${normalizedSection} - ${normalizedProduct}`;
+    }
+
+    // Para otros productos, usar el nombre procesado
+    return `${normalizedSection} - ${normalizedProduct}`;
+}
+
+/**
+ * Determina si un producto debe contar para el total de kilos
+ * Solo cuentan: PERRO (sabores), BIG DOG, GATO, HUESOS CARNOSOS
+ * No cuentan: complementos (garras, cornalitos, caldo, huesos recreativos, etc.)
+ */
+function shouldCountInTotal(product: ProductoMayorista): boolean {
+    const normalizedProduct = product.product.trim().toUpperCase();
+    const normalizedSection = product.section.trim().toUpperCase();
+
+    // PERRO y GATO siempre cuentan (incluye BIG DOG)
+    if (normalizedSection === 'PERRO' || normalizedSection === 'GATO') {
+        return true;
+    }
+
+    // En OTROS, solo cuentan los HUESOS CARNOSOS
+    if (normalizedSection === 'OTROS') {
+        return normalizedProduct.includes('HUESOS CARNOSOS');
+    }
+
+    // RAW y otros no cuentan
+    return false;
 }
 
 /**
@@ -125,8 +210,8 @@ function sortProductsForMatrix(a: ProductoMayorista, b: ProductoMayorista): numb
         return flavorA - flavorB;
     }
 
-    // Si tienen el mismo orden de sabor, ordenar alfabéticamente
-    return a.fullName.localeCompare(b.fullName);
+    // Si tienen el mismo orden de sabor, ordenar alfabéticamente por groupKey
+    return a.groupKey.localeCompare(b.groupKey);
 }
 
 /**
@@ -224,23 +309,49 @@ function matchItemToProduct(
 }
 
 /**
- * Calcula cuántos kilos hay en un item de orden
+ * Extrae el multiplicador de unidades de un string
+ * Ej: "X1" -> 1, "X50" -> 50, "X100" -> 100
+ */
+function extractUnitMultiplier(text: string | null | undefined): number {
+    if (!text || typeof text !== 'string') return 1;
+    const match = text.match(/X(\d+)/i);
+    return match ? parseInt(match[1], 10) : 1;
+}
+
+/**
+ * Calcula cuántos kilos o unidades hay en un item de orden
+ * - Para productos con peso en KG: extrae el peso de las opciones y lo multiplica por la cantidad
+ * - Para productos RAW (sin peso en KG): cuenta unidades considerando multiplicadores X1, X50, X100
  */
 function calculateItemQuantity(item: any, producto: ProductoMayorista): number {
-    let totalQuantity = 0;
+    let total = 0;
 
-    // Si tiene opciones, sumar las cantidades
+    // Si tiene opciones, procesar cada una
     if (item.options && Array.isArray(item.options)) {
         for (const option of item.options) {
             const quantity = option.quantity || 0;
-            totalQuantity += quantity;
+            const optionName = option.name || '';
+
+            // Intentar extraer kilos del nombre de la opción (ej: "5KG", "10KG")
+            const kilosFromOption = extractKilosFromWeight(optionName);
+
+            if (kilosFromOption > 0) {
+                // Si la opción tiene peso en KG, usar ese peso
+                total += kilosFromOption * quantity;
+            } else {
+                // Para productos RAW, buscar multiplicador (X1, X50, X100) en el weight del producto
+                const unitMultiplier = extractUnitMultiplier(producto.weight);
+                // El peso del producto será 1 si no tiene peso definido
+                total += producto.kilos * quantity * unitMultiplier;
+            }
         }
     } else {
-        // Si no tiene opciones, asumir cantidad 1
-        totalQuantity = 1;
+        // Si no tiene opciones, usar el peso del producto con su multiplicador
+        const unitMultiplier = extractUnitMultiplier(producto.weight);
+        total += producto.kilos * unitMultiplier;
     }
 
-    return totalQuantity;
+    return total;
 }
 
 /**
@@ -282,15 +393,22 @@ export async function getProductosMatrix(): Promise<{
             // Si no tiene kilos (weight es null o no válido), usar 1kg por defecto
             const kilosFinales = kilos > 0 ? kilos : 1;
 
-            if (!productosMayoristasMap.has(fullName)) {
-                productosMayoristasMap.set(fullName, {
+            const section = doc.section || 'OTROS';
+            const groupKey = generateGroupKey(doc.product, section);
+
+            // Usar groupKey como clave del mapa para agrupar productos sin importar peso
+            if (!productosMayoristasMap.has(groupKey)) {
+                productosMayoristasMap.set(groupKey, {
                     fullName,
                     product: doc.product,
                     weight: weight || 'UNIDAD',
                     kilos: kilosFinales,
-                    section: doc.section || 'OTROS'
+                    section,
+                    groupKey
                 });
-                console.log(`  🔹 Producto: ${fullName} (${kilosFinales}kg${weight ? '' : ' - SIN PESO, usando 1kg'})`);
+                console.log(`  ✅ Producto agregado: ${groupKey} (base: ${fullName}, section: ${section})`);
+            } else {
+                console.log(`  ⏭️  Producto ya existe, omitiendo: ${fullName} -> ${groupKey}`);
             }
         }
 
@@ -317,7 +435,7 @@ export async function getProductosMatrix(): Promise<{
             return {
                 success: true,
                 matrix: [],
-                productNames: sortedProducts.map(p => p.fullName),
+                productNames: sortedProducts.map(p => p.groupKey),
             };
         }
 
@@ -361,16 +479,22 @@ export async function getProductosMatrix(): Promise<{
                     const matchedProduct = matchItemToProduct(item, productosMayoristas);
 
                     if (matchedProduct) {
-                        const quantity = calculateItemQuantity(item, matchedProduct);
-                        const kilos = matchedProduct.kilos * quantity;
+                        // calculateItemQuantity ahora retorna kilos totales directamente
+                        const kilos = calculateItemQuantity(item, matchedProduct);
 
-                        productosMap[matchedProduct.fullName] =
-                            (productosMap[matchedProduct.fullName] || 0) + kilos;
+                        // Usar groupKey para agrupar todos los pesos del mismo sabor
+                        productosMap[matchedProduct.groupKey] =
+                            (productosMap[matchedProduct.groupKey] || 0) + kilos;
 
-                        totalKilos += kilos;
+                        // Solo sumar al total si el producto debe contar
+                        if (shouldCountInTotal(matchedProduct)) {
+                            totalKilos += kilos;
+                            console.log(`    ✅ Match: "${item.name}" -> "${matchedProduct.groupKey}" (${kilos}kg - CUENTA EN TOTAL)`);
+                        } else {
+                            console.log(`    ✅ Match: "${item.name}" -> "${matchedProduct.groupKey}" (${kilos}kg - NO cuenta en total)`);
+                        }
+
                         matchedItems++;
-
-                        console.log(`    ✅ Match: "${item.name}" -> "${matchedProduct.fullName}" (${quantity} × ${matchedProduct.kilos}kg = ${kilos}kg)`);
                     } else {
                         unmatchedItems++;
                         console.log(`    ⚠️  Sin match: "${item.name}"`);
@@ -396,7 +520,7 @@ export async function getProductosMatrix(): Promise<{
 
         // Ordenar productos según el criterio personalizado
         const sortedProducts = productosMayoristas.sort(sortProductsForMatrix);
-        const productNames = sortedProducts.map(p => p.fullName);
+        const productNames = sortedProducts.map(p => p.groupKey);
 
         console.log(`\n✅ Matriz completada: ${matrix.length} puntos de venta, ${productNames.length} productos`);
 
