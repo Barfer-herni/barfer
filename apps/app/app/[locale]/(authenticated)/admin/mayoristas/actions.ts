@@ -143,10 +143,10 @@ export async function getPuntosVentaStatsAction(from?: string, to?: string) {
     return await getPuntosVentaStats(from, to);
 }
 
-export async function getProductosMatrixAction() {
+export async function getProductosMatrixAction(from?: string, to?: string) {
     'use server';
 
     const { getProductosMatrix } = await import('@repo/data-services');
-    return await getProductosMatrix();
+    return await getProductosMatrix(from, to);
 }
 

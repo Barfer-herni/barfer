@@ -43,50 +43,22 @@ function normalizeProductName(name: string): string {
  * - "POLLO" en sección "PERRO" -> "PERRO - POLLO"
  * - "BIG DOG VACA" en sección "PERRO" -> "PERRO - BIG DOG VACA"
  * - "GARRAS DE POLLO" en sección "OTROS" -> "OTROS - GARRAS DE POLLO"
- * - "OREJA X1" en sección "RAW" -> "RAW - OREJA"
- * - "HIGADO 100GRS" en sección "RAW" -> "RAW - HIGADO"
+ * - "OREJA X1" en sección "RAW" -> "RAW - OREJA X1" (NO se agrupa)
+ * - "HIGADO 100GRS" en sección "RAW" -> "RAW - HIGADO 100GRS" (NO se agrupa)
  */
 function generateGroupKey(product: string, section: string): string {
-    const originalProduct = product;
     let normalizedProduct = product.trim().toUpperCase();
     const normalizedSection = section.trim().toUpperCase();
 
-    // Para productos RAW, eliminar presentaciones y pesos del nombre
+    // Para productos RAW, NO agrupar - mantener el nombre completo con peso/presentación
     if (normalizedSection === 'RAW') {
-        // Eliminar patrones de peso/cantidad de forma más agresiva
+        // Solo normalizar espacios y mayúsculas, pero mantener pesos y presentaciones
         normalizedProduct = normalizedProduct
-            // Elimina patrones como: X1, X2, X50, X100, etc.
-            .replace(/\s*X\s*\d+\s*/gi, '')
-            // Elimina S + números + GR/GRS/GRAMOS (ej: "Hígados 40grs" -> "Hígado")
-            .replace(/S?\s*\d+\s*(GR|GRS|GRAMOS|G)\s*/gi, '')
-            // Elimina solo números al final (ej: "HIGADO 100" -> "HIGADO")
-            .replace(/\s+\d+\s*$/gi, '')
-            // Normalizar espacios múltiples a uno solo
             .replace(/\s+/g, ' ')
             .trim();
 
-        // Normalizar nombres similares comunes
-        const normalizations: Record<string, string> = {
-            'OREJA': 'OREJA',
-            'OREJAS': 'OREJA',
-            'HÍGADO': 'HIGADO', // Con acento
-            'HIGADO': 'HIGADO',
-            'HÍGADOS': 'HIGADO', // Con acento y plural
-            'HIGADOS': 'HIGADO', // Plural
-            'TRÁQUEA': 'TRAQUEA', // Con acento
-            'TRAQUEA': 'TRAQUEA',
-            'POLLO': 'POLLO',
-            'POLLOS': 'POLLO',
-            'CORNALITO': 'CORNALITO',
-            'CORNALITOS': 'CORNALITO',
-            'CORNALITOSS': 'CORNALITO' // Por si acaso quedó con doble S
-        };
-
-        if (normalizations[normalizedProduct]) {
-            normalizedProduct = normalizations[normalizedProduct];
-        }
-
-        console.log(`    🔧 RAW producto limpiado: "${originalProduct}" -> "${normalizedProduct}" (sección: ${normalizedSection})`);
+        console.log(`    🔧 RAW producto (sin agrupar): "${product}" -> "${normalizedSection} - ${normalizedProduct}"`);
+        return `${normalizedSection} - ${normalizedProduct}`;
     }
 
     // Para productos que ya tienen identificadores especiales, mantenerlos
@@ -94,7 +66,7 @@ function generateGroupKey(product: string, section: string): string {
         return `${normalizedSection} - ${normalizedProduct}`;
     }
 
-    // Para otros productos, usar el nombre procesado
+    // Para otros productos (PERRO, GATO, OTROS), usar el nombre procesado
     return `${normalizedSection} - ${normalizedProduct}`;
 }
 
@@ -224,10 +196,45 @@ function matchItemToProduct(
     const itemName = item.name || item.id || '';
     const normalizedItemName = normalizeProductName(itemName);
 
-    console.log(`      🔍 Buscando match para: "${itemName}"`);
+    console.log(`      🔍 Buscando match para: "${itemName}" (opciones: ${JSON.stringify(item.options)})`);
+
+    // Detectar la sección del item basándose en su nombre y opciones PRIMERO
+    const detectSection = (name: string, options: any[]): string | null => {
+        const normalized = name.toUpperCase();
+
+        // Detección por nombre
+        if (normalized.includes('BOX GATO') || normalized.includes('GATO')) return 'GATO';
+        if (normalized.includes('BOX PERRO') || normalized.includes('PERRO')) return 'PERRO';
+        if (normalized.includes('BIG DOG')) return 'PERRO';
+
+        // Si tiene opciones con pesos en gramos (40GRS, 100GRS, 30GRS) o unidades (X1, X50), es RAW
+        if (options && Array.isArray(options)) {
+            for (const option of options) {
+                const optionName = (option.name || '').toUpperCase();
+                if (optionName.match(/\d+\s*GRS?/i) || optionName.match(/X\d+/i)) {
+                    return 'RAW';
+                }
+            }
+        }
+
+        return null;
+    };
+
+    const detectedSection = detectSection(itemName, item.options || []);
+
+    if (detectedSection) {
+        console.log(`      🏷️  Sección detectada: ${detectedSection}`);
+    }
+
+    // Filtrar productos por sección si se detectó una
+    const productosFiltrados = detectedSection
+        ? productosMayoristas.filter(p => p.section === detectedSection)
+        : productosMayoristas;
+
+    console.log(`      📦 Buscando en ${productosFiltrados.length} productos (sección: ${detectedSection || 'todas'})`);
 
     // Intentar match exacto primero (nombre completo con peso)
-    let match = productosMayoristas.find(p =>
+    let match = productosFiltrados.find(p =>
         normalizeProductName(p.fullName) === normalizedItemName
     );
 
@@ -237,7 +244,7 @@ function matchItemToProduct(
     }
 
     // Intentar match exacto solo por nombre de producto (sin peso)
-    match = productosMayoristas.find(p =>
+    match = productosFiltrados.find(p =>
         normalizeProductName(p.product) === normalizedItemName
     );
 
@@ -255,7 +262,7 @@ function matchItemToProduct(
             const normalizedOption = normalizeProductName(optionName);
 
             // Match por peso en la opción
-            match = productosMayoristas.find(p =>
+            match = productosFiltrados.find(p =>
                 normalizeProductName(p.weight) === normalizedOption
             );
 
@@ -275,7 +282,7 @@ function matchItemToProduct(
     }
 
     // Intentar match parcial por nombre de producto y peso
-    for (const producto of productosMayoristas) {
+    for (const producto of productosFiltrados) {
         const productWords = producto.product.split(' ');
         const weightNormalized = normalizeProductName(producto.weight);
 
@@ -290,8 +297,26 @@ function matchItemToProduct(
         }
     }
 
+    // Match especial para BOX PERRO/GATO: extraer el sabor del nombre
+    // Ej: "BOX PERRO POLLO" -> buscar producto "POLLO" en sección "PERRO"
+    if (detectedSection === 'PERRO' || detectedSection === 'GATO') {
+        // Remover "BOX PERRO " o "BOX GATO " del nombre para obtener el sabor
+        const prefix = detectedSection === 'PERRO' ? 'BOX PERRO ' : 'BOX GATO ';
+        const sabor = normalizedItemName.replace(prefix, '').trim();
+
+        // Buscar el producto que coincida con el sabor en la sección correcta
+        match = productosFiltrados.find(p =>
+            normalizeProductName(p.product) === sabor
+        );
+
+        if (match) {
+            console.log(`      ✅ Match BOX especial: "${itemName}" -> "${match.fullName}" (sección: ${match.section})`);
+            return match;
+        }
+    }
+
     // Último intento: match parcial solo por producto (sin requerir peso)
-    for (const producto of productosMayoristas) {
+    for (const producto of productosFiltrados) {
         const productWords = producto.product.split(' ');
 
         const hasAllWords = productWords.every(word =>
@@ -299,7 +324,7 @@ function matchItemToProduct(
         );
 
         if (hasAllWords && productWords.length > 0) {
-            console.log(`      ✅ Match flexible: "${itemName}" -> "${producto.fullName}"`);
+            console.log(`      ✅ Match flexible: "${itemName}" -> "${producto.fullName}" (sección: ${producto.section})`);
             return producto;
         }
     }
@@ -356,8 +381,10 @@ function calculateItemQuantity(item: any, producto: ProductoMayorista): number {
 
 /**
  * Obtiene la matriz de productos comprados por cada punto de venta
+ * @param from - Fecha inicial (opcional)
+ * @param to - Fecha final (opcional)
  */
-export async function getProductosMatrix(): Promise<{
+export async function getProductosMatrix(from?: string, to?: string): Promise<{
     success: boolean;
     matrix?: ProductoMatrixData[];
     productNames?: string[]; // Lista de todos los nombres de productos únicos
@@ -447,12 +474,30 @@ export async function getProductosMatrix(): Promise<{
 
             // Buscar órdenes de este punto de venta (por _id)
             const puntoVentaId = puntoVenta._id.toString();
+
+            // Construir query con filtro de fecha opcional
+            const query: any = {
+                orderType: 'mayorista',
+                punto_de_venta: puntoVentaId,
+                status: { $in: ['pending', 'confirmed', 'delivered'] }
+            };
+
+            // Agregar filtro de fecha si se proporciona
+            if (from || to) {
+                query.createdAt = {};
+                if (from) {
+                    query.createdAt.$gte = new Date(from);
+                }
+                if (to) {
+                    // Agregar un día para incluir todo el día 'to'
+                    const toDate = new Date(to);
+                    toDate.setDate(toDate.getDate() + 1);
+                    query.createdAt.$lt = toDate;
+                }
+            }
+
             const orders = await ordersCollection
-                .find({
-                    orderType: 'mayorista',
-                    punto_de_venta: puntoVentaId,
-                    status: { $in: ['pending', 'confirmed', 'delivered'] }
-                })
+                .find(query)
                 .toArray();
 
             console.log(`  📊 ${orders.length} órdenes encontradas para punto_de_venta: ${puntoVentaId}`);
@@ -482,9 +527,17 @@ export async function getProductosMatrix(): Promise<{
                         // calculateItemQuantity ahora retorna kilos totales directamente
                         const kilos = calculateItemQuantity(item, matchedProduct);
 
+                        console.log(`    🔢 Cálculo detallado:`);
+                        console.log(`       - Producto matched: ${matchedProduct.fullName} (groupKey: ${matchedProduct.groupKey})`);
+                        console.log(`       - Opciones del item:`, item.options);
+                        console.log(`       - Kilos calculados: ${kilos}kg`);
+                        console.log(`       - Acumulado anterior en ${matchedProduct.groupKey}: ${productosMap[matchedProduct.groupKey] || 0}kg`);
+
                         // Usar groupKey para agrupar todos los pesos del mismo sabor
                         productosMap[matchedProduct.groupKey] =
                             (productosMap[matchedProduct.groupKey] || 0) + kilos;
+
+                        console.log(`       - Nuevo acumulado en ${matchedProduct.groupKey}: ${productosMap[matchedProduct.groupKey]}kg`);
 
                         // Solo sumar al total si el producto debe contar
                         if (shouldCountInTotal(matchedProduct)) {

@@ -21,6 +21,7 @@ interface ProductoMayorista {
     product: string;
     weight: string;
     kilos: number;
+    section: string;
 }
 
 /**
@@ -30,6 +31,16 @@ function extractKilosFromWeight(weight: string | null | undefined): number {
     if (!weight || typeof weight !== 'string') return 0;
     const match = weight.match(/(\d+)\s*KG/i);
     return match ? parseInt(match[1], 10) : 0;
+}
+
+/**
+ * Extrae el multiplicador de unidades de un string
+ * Ej: "X1" -> 1, "X50" -> 50, "X100" -> 100
+ */
+function extractUnitMultiplier(text: string | null | undefined): number {
+    if (!text || typeof text !== 'string') return 1;
+    const match = text.match(/X(\d+)/i);
+    return match ? parseInt(match[1], 10) : 1;
 }
 
 /**
@@ -49,20 +60,72 @@ function matchItemToProduct(
     const itemName = item.name || item.id || '';
     const normalizedItemName = normalizeProductName(itemName);
 
+    // Detectar la sección del item basándose en su nombre y opciones PRIMERO
+    const detectSection = (name: string, options: any[]): string | null => {
+        const normalized = name.toUpperCase();
+
+        // Detección por nombre
+        if (normalized.includes('BOX GATO') || normalized.includes('GATO')) return 'GATO';
+        if (normalized.includes('BOX PERRO') || normalized.includes('PERRO')) return 'PERRO';
+        if (normalized.includes('BIG DOG')) return 'PERRO';
+
+        // Si tiene opciones con pesos en gramos (40GRS, 100GRS, 30GRS) o unidades (X1, X50), es RAW
+        if (options && Array.isArray(options)) {
+            for (const option of options) {
+                const optionName = (option.name || '').toUpperCase();
+                if (optionName.match(/\d+\s*GRS?/i) || optionName.match(/X\d+/i)) {
+                    return 'RAW';
+                }
+            }
+        }
+
+        return null;
+    };
+
+    const detectedSection = detectSection(itemName, item.options || []);
+
+    // Filtrar productos por sección si se detectó una
+    const productosFiltrados = detectedSection
+        ? productosMayoristas.filter(p => p.section === detectedSection)
+        : productosMayoristas;
+
     // Match exacto con nombre completo
-    let match = productosMayoristas.find(p =>
+    let match = productosFiltrados.find(p =>
         normalizeProductName(p.fullName) === normalizedItemName
     );
     if (match) return match;
 
     // Match exacto solo por producto
-    match = productosMayoristas.find(p =>
+    match = productosFiltrados.find(p =>
         normalizeProductName(p.product) === normalizedItemName
     );
     if (match) return match;
 
+    // Match especial para BOX PERRO/GATO: extraer el sabor del nombre
+    // Ej: "BOX PERRO POLLO" -> buscar producto "POLLO" en sección "PERRO"
+    if (detectedSection === 'PERRO' || detectedSection === 'GATO') {
+        // Remover "BOX PERRO " o "BOX GATO " del nombre para obtener el sabor
+        const prefix = detectedSection === 'PERRO' ? 'BOX PERRO ' : 'BOX GATO ';
+        const sabor = normalizedItemName.replace(prefix, '').trim();
+
+        console.log(`        🎯 BOX Match: item="${itemName}", sección="${detectedSection}", sabor="${sabor}"`);
+        console.log(`        📦 Buscando en ${productosFiltrados.length} productos de ${detectedSection}`);
+
+        // Buscar el producto que coincida con el sabor en la sección correcta
+        match = productosFiltrados.find(p =>
+            normalizeProductName(p.product) === sabor
+        );
+        if (match) {
+            console.log(`        ✅ Match encontrado: ${match.fullName} (section: ${match.section})`);
+            return match;
+        } else {
+            console.log(`        ❌ NO match para sabor "${sabor}"`);
+            console.log(`        Productos disponibles:`, productosFiltrados.map(p => `"${p.product}"`).slice(0, 5));
+        }
+    }
+
     // Match parcial
-    for (const producto of productosMayoristas) {
+    for (const producto of productosFiltrados) {
         const productWords = producto.product.split(' ');
         const hasAllWords = productWords.every(word =>
             normalizedItemName.includes(word)
@@ -77,34 +140,82 @@ function matchItemToProduct(
 }
 
 /**
- * Calcula la cantidad de un item
+ * Determina si un producto debe contar para el total de kilos
+ * Solo cuentan: PERRO (sabores), BIG DOG, GATO, HUESOS CARNOSOS
+ * No cuentan: complementos (garras, cornalitos, caldo, huesos recreativos, etc.) ni RAW
  */
-function calculateItemQuantity(item: any): number {
-    let totalQuantity = 0;
+function shouldCountInTotal(product: ProductoMayorista): boolean {
+    const normalizedProduct = product.product.trim().toUpperCase();
+    const normalizedSection = product.section.trim().toUpperCase();
 
-    if (item.options && Array.isArray(item.options)) {
-        for (const option of item.options) {
-            totalQuantity += option.quantity || 0;
-        }
-    } else {
-        totalQuantity = 1;
+    // PERRO y GATO siempre cuentan (incluye BIG DOG)
+    if (normalizedSection === 'PERRO' || normalizedSection === 'GATO') {
+        return true;
     }
 
-    return totalQuantity;
+    // En OTROS, solo cuentan los HUESOS CARNOSOS
+    if (normalizedSection === 'OTROS') {
+        return normalizedProduct.includes('HUESOS CARNOSOS');
+    }
+
+    // RAW y otros no cuentan
+    return false;
 }
 
 /**
- * Calcula kilos de un item usando productos oficiales
+ * Calcula cuántos kilos hay en un item de orden
+ * @param countInTotal - Si es true, solo cuenta productos que deben ir al total (PERRO, GATO, HUESOS CARNOSOS)
  */
-function calculateItemKilos(item: any, productosMayoristas: ProductoMayorista[]): number {
+function calculateItemKilos(item: any, productosMayoristas: ProductoMayorista[], countInTotal: boolean = false): number {
     const matchedProduct = matchItemToProduct(item, productosMayoristas);
 
-    if (matchedProduct) {
-        const quantity = calculateItemQuantity(item);
-        return matchedProduct.kilos * quantity;
+    if (!matchedProduct) {
+        if (countInTotal) {
+            console.log(`        ❌ SIN MATCH: "${item.name}" - NO SE PUEDE CALCULAR`);
+        }
+        return 0;
     }
 
-    return 0;
+    // Calcular el total primero
+    let total = 0;
+
+    // Si tiene opciones, procesar cada una
+    if (item.options && Array.isArray(item.options)) {
+        for (const option of item.options) {
+            const quantity = option.quantity || 0;
+            const optionName = option.name || '';
+
+            // Intentar extraer kilos de la opción (ej: "5KG", "10KG")
+            const kilosFromOption = extractKilosFromWeight(optionName);
+
+            if (kilosFromOption > 0) {
+                // Si la opción tiene kilos, usar esos
+                total += kilosFromOption * quantity;
+            } else {
+                // Para productos RAW, buscar multiplicador (X1, X50, X100) en el weight del producto
+                const unitMultiplier = extractUnitMultiplier(matchedProduct.weight);
+                // El peso del producto será 1 si no tiene peso definido
+                total += matchedProduct.kilos * quantity * unitMultiplier;
+            }
+        }
+    } else {
+        // Sin opciones, usar el peso del producto con su multiplicador
+        const unitMultiplier = extractUnitMultiplier(matchedProduct.weight);
+        total += matchedProduct.kilos * unitMultiplier;
+    }
+
+    // Si countInTotal es true, verificar si el producto debe contar
+    const shouldCount = shouldCountInTotal(matchedProduct);
+
+    if (countInTotal) {
+        console.log(`        🔍 "${item.name}" -> ${matchedProduct.fullName} (${matchedProduct.section}): ${total}kg - ${shouldCount ? '✅ CUENTA' : '❌ NO CUENTA'}`);
+
+        if (!shouldCount) {
+            return 0;
+        }
+    }
+
+    return total;
 }
 
 /**
@@ -156,19 +267,27 @@ export async function getPuntosVentaStats(from?: string, to?: string): Promise<{
             const fullName = weight ? `${doc.product} ${weight}`.trim() : doc.product;
             const kilos = extractKilosFromWeight(doc.weight);
             const kilosFinales = kilos > 0 ? kilos : 1;
+            const section = doc.section || 'OTROS';
 
             if (!productosMayoristasMap.has(fullName)) {
                 productosMayoristasMap.set(fullName, {
                     fullName,
                     product: doc.product,
                     weight: weight || 'UNIDAD',
-                    kilos: kilosFinales
+                    kilos: kilosFinales,
+                    section
                 });
             }
         }
 
         const productosMayoristas = Array.from(productosMayoristasMap.values());
         console.log(`✅ ${productosMayoristas.length} productos mayoristas cargados`);
+
+        // DEBUG: Mostrar productos PERRO y GATO
+        const perroProds = productosMayoristas.filter(p => p.section === 'PERRO');
+        const gatoProds = productosMayoristas.filter(p => p.section === 'GATO');
+        console.log(`   🐕 PERRO: ${perroProds.length} productos`);
+        console.log(`   🐱 GATO: ${gatoProds.length} productos`);
 
         // 2. Obtener todos los puntos de venta activos
         const puntosVenta = await puntosVentaCollection
@@ -232,29 +351,39 @@ export async function getPuntosVentaStats(from?: string, to?: string): Promise<{
             }
 
             // Calcular estadísticas usando productos oficiales
+            // Solo contar productos que deben ir al total (PERRO, GATO, HUESOS CARNOSOS)
             let kgTotales = 0;
             const kgPorOrden: number[] = [];
 
             for (const orden of ordenes) {
+                console.log(`  📦 Procesando orden ${orden._id} con ${orden.items?.length || 0} items`);
+                if (orden.items && Array.isArray(orden.items)) {
+                    console.log(`     Items: ${orden.items.map((i: any) => i.name || i.id).join(', ')}`);
+                }
+
                 const kilos = orden.items?.reduce((sum: number, item: any) =>
-                    sum + calculateItemKilos(item, productosMayoristas), 0) || 0;
+                    sum + calculateItemKilos(item, productosMayoristas, true), 0) || 0;
                 kgTotales += kilos;
                 kgPorOrden.push(kilos);
-                console.log(`  📦 Orden ${orden._id}: ${kilos}kg`);
+                console.log(`     Total orden: ${kilos}kg`);
             }
 
             const promedioKg = ordenes.length > 0 ? kgTotales / ordenes.length : 0;
             const ultimaOrden = ordenes[ordenes.length - 1];
             const kgUltimaCompra = ultimaOrden
                 ? ultimaOrden.items?.reduce((sum: number, item: any) =>
-                    sum + calculateItemKilos(item, productosMayoristas), 0) || 0
+                    sum + calculateItemKilos(item, productosMayoristas, true), 0) || 0
                 : 0;
 
             const frecuencia = calculateFrecuencia(ordenes);
             const primerPedido = new Date(ordenes[0].createdAt);
             const ultimoPedido = new Date(ultimaOrden.createdAt);
 
-            console.log(`  ✅ ${puntoVenta.nombre}: ${kgTotales}kg totales, ${Math.round(promedioKg)}kg promedio`);
+            console.log(`  ✅ ${puntoVenta.nombre}:`);
+            console.log(`     📊 Total órdenes: ${ordenes.length}`);
+            console.log(`     📦 kg Totales: ${kgTotales}kg`);
+            console.log(`     📈 kg Promedio: ${Math.round(promedioKg)}kg`);
+            console.log(`     🎯 kg Última compra: ${kgUltimaCompra}kg`);
 
             statsArray.push({
                 _id: puntoVenta._id.toString(),
