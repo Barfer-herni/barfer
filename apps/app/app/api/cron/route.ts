@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getActiveScheduledEmailCampaigns, getClientsByCategory } from '@repo/data-services';
+import { getCollection, ObjectId } from '@repo/database';
 import resend, { BulkEmailTemplate } from '@repo/email';
 import { CronExpressionParser } from 'cron-parser';
 import { format } from 'date-fns';
@@ -35,6 +36,16 @@ export async function GET() {
                 const isDue = timeSincePrev < twoMinutes || (timeToNext > 0 && timeToNext < twoMinutes);
 
                 if (isDue) {
+                    // Obtener el template de email desde MongoDB
+                    const templatesCollection = await getCollection('email_templates');
+                    const emailTemplate = await templatesCollection.findOne({
+                        _id: new ObjectId(campaign.emailTemplateId)
+                    });
+
+                    if (!emailTemplate) {
+                        console.error(`[Campaign Cron] Email template not found: ${campaign.emailTemplateId}`);
+                        continue;
+                    }
 
                     const audience = campaign.targetAudience as { type: 'behavior' | 'spending'; category: string };
                     const clients = await getClientsByCategory(audience.category, audience.type);
@@ -44,10 +55,10 @@ export async function GET() {
                         const emailPayloads = clients.map(client => ({
                             to: client.email,
                             from: 'Barfer <ventas@barferalimento.com>',
-                            subject: campaign.emailTemplate.subject,
+                            subject: emailTemplate.subject,
                             react: BulkEmailTemplate({
                                 clientName: client.name,
-                                content: campaign.emailTemplate.content,
+                                content: emailTemplate.content,
                             }),
                         }));
 

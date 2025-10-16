@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { database } from '@repo/database';
+import { getCollection, ObjectId } from '@repo/database';
 import type {
     EmailTemplateData,
     WhatsAppTemplateData,
@@ -20,20 +20,29 @@ import type {
  */
 export async function getEmailTemplates(userId: string): Promise<EmailTemplateData[]> {
     try {
-        const templates = await database.emailTemplate.findMany({
-            where: {
-                OR: [
+        const collection = await getCollection('email_templates');
+
+        const templates = await collection
+            .find({
+                $or: [
                     { createdBy: userId },
                     { isDefault: true }
                 ]
-            },
-            orderBy: [
-                { isDefault: 'desc' }, // Templates por defecto primero
-                { createdAt: 'desc' }
-            ]
-        });
+            })
+            .sort({ isDefault: -1, createdAt: -1 }) // Templates por defecto primero
+            .toArray();
 
-        return templates as EmailTemplateData[];
+        return templates.map(template => ({
+            id: template._id.toString(),
+            name: template.name,
+            subject: template.subject,
+            content: template.content,
+            description: template.description,
+            isDefault: template.isDefault,
+            createdBy: template.createdBy,
+            createdAt: template.createdAt,
+            updatedAt: template.updatedAt
+        }));
     } catch (error) {
         console.error('Error al obtener templates de email:', error);
         throw new Error('No se pudieron obtener los templates de email');
@@ -48,16 +57,28 @@ export async function createEmailTemplate(
     data: CreateEmailTemplateData
 ): Promise<EmailTemplateData> {
     try {
-        const template = await database.emailTemplate.create({
-            data: {
-                ...data,
-                createdBy: userId,
-                isDefault: data.isDefault || false
-            }
-        });
+        const collection = await getCollection('email_templates');
+
+        const now = new Date();
+        const newTemplate = {
+            name: data.name,
+            subject: data.subject,
+            content: data.content,
+            description: data.description,
+            isDefault: data.isDefault || false,
+            createdBy: userId,
+            createdAt: now,
+            updatedAt: now
+        };
+
+        const result = await collection.insertOne(newTemplate);
 
         revalidatePath('/admin/clients/email');
-        return template as EmailTemplateData;
+
+        return {
+            id: result.insertedId.toString(),
+            ...newTemplate
+        };
     } catch (error) {
         console.error('Error al crear template de email:', error);
         throw new Error('No se pudo crear el template de email');
@@ -73,25 +94,51 @@ export async function updateEmailTemplate(
     data: UpdateEmailTemplateData
 ): Promise<EmailTemplateData> {
     try {
+        const collection = await getCollection('email_templates');
+
         // Verificar que el usuario pueda editar este template
-        const existingTemplate = await database.emailTemplate.findFirst({
-            where: {
-                id: templateId,
-                createdBy: userId // Solo puede editar sus propios templates
-            }
+        const existingTemplate = await collection.findOne({
+            _id: new ObjectId(templateId),
+            createdBy: userId // Solo puede editar sus propios templates
         });
 
         if (!existingTemplate) {
             throw new Error('Template no encontrado o sin permisos para editarlo');
         }
 
-        const template = await database.emailTemplate.update({
-            where: { id: templateId },
-            data
-        });
+        const updateData: any = {
+            updatedAt: new Date()
+        };
+
+        if (data.name !== undefined) updateData.name = data.name;
+        if (data.subject !== undefined) updateData.subject = data.subject;
+        if (data.content !== undefined) updateData.content = data.content;
+        if (data.description !== undefined) updateData.description = data.description;
+        if (data.isDefault !== undefined) updateData.isDefault = data.isDefault;
+
+        const result = await collection.findOneAndUpdate(
+            { _id: new ObjectId(templateId) },
+            { $set: updateData },
+            { returnDocument: 'after' }
+        );
+
+        if (!result) {
+            throw new Error('No se pudo actualizar el template');
+        }
 
         revalidatePath('/admin/clients/email');
-        return template as EmailTemplateData;
+
+        return {
+            id: result._id.toString(),
+            name: result.name,
+            subject: result.subject,
+            content: result.content,
+            description: result.description,
+            isDefault: result.isDefault,
+            createdBy: result.createdBy,
+            createdAt: result.createdAt,
+            updatedAt: result.updatedAt
+        };
     } catch (error) {
         console.error('Error al actualizar template de email:', error);
         throw new Error('No se pudo actualizar el template de email');
@@ -103,19 +150,19 @@ export async function updateEmailTemplate(
  */
 export async function deleteEmailTemplate(templateId: string, userId: string): Promise<void> {
     try {
+        const collection = await getCollection('email_templates');
+
         // Verificar que el template existe
-        const existingTemplate = await database.emailTemplate.findFirst({
-            where: {
-                id: templateId
-            }
+        const existingTemplate = await collection.findOne({
+            _id: new ObjectId(templateId)
         });
 
         if (!existingTemplate) {
             throw new Error('Template no encontrado');
         }
 
-        await database.emailTemplate.delete({
-            where: { id: templateId }
+        await collection.deleteOne({
+            _id: new ObjectId(templateId)
         });
 
         revalidatePath('/admin/clients/email');
@@ -134,20 +181,28 @@ export async function deleteEmailTemplate(templateId: string, userId: string): P
  */
 export async function getWhatsAppTemplates(userId: string): Promise<WhatsAppTemplateData[]> {
     try {
-        const templates = await database.whatsAppTemplate.findMany({
-            where: {
-                OR: [
+        const collection = await getCollection('whatsapp_templates');
+
+        const templates = await collection
+            .find({
+                $or: [
                     { createdBy: userId },
                     { isDefault: true }
                 ]
-            },
-            orderBy: [
-                { isDefault: 'desc' }, // Templates por defecto primero
-                { createdAt: 'desc' }
-            ]
-        });
+            })
+            .sort({ isDefault: -1, createdAt: -1 }) // Templates por defecto primero
+            .toArray();
 
-        return templates as WhatsAppTemplateData[];
+        return templates.map(template => ({
+            id: template._id.toString(),
+            name: template.name,
+            content: template.content,
+            description: template.description,
+            isDefault: template.isDefault,
+            createdBy: template.createdBy,
+            createdAt: template.createdAt,
+            updatedAt: template.updatedAt
+        }));
     } catch (error) {
         console.error('Error al obtener templates de WhatsApp:', error);
         throw new Error('No se pudieron obtener los templates de WhatsApp');
@@ -162,16 +217,27 @@ export async function createWhatsAppTemplate(
     data: CreateWhatsAppTemplateData
 ): Promise<WhatsAppTemplateData> {
     try {
-        const template = await database.whatsAppTemplate.create({
-            data: {
-                ...data,
-                createdBy: userId,
-                isDefault: data.isDefault || false
-            }
-        });
+        const collection = await getCollection('whatsapp_templates');
+
+        const now = new Date();
+        const newTemplate = {
+            name: data.name,
+            content: data.content,
+            description: data.description,
+            isDefault: data.isDefault || false,
+            createdBy: userId,
+            createdAt: now,
+            updatedAt: now
+        };
+
+        const result = await collection.insertOne(newTemplate);
 
         revalidatePath('/admin/clients/whatsapp');
-        return template as WhatsAppTemplateData;
+
+        return {
+            id: result.insertedId.toString(),
+            ...newTemplate
+        };
     } catch (error) {
         console.error('Error al crear template de WhatsApp:', error);
         throw new Error('No se pudo crear el template de WhatsApp');
@@ -187,25 +253,49 @@ export async function updateWhatsAppTemplate(
     data: UpdateWhatsAppTemplateData
 ): Promise<WhatsAppTemplateData> {
     try {
+        const collection = await getCollection('whatsapp_templates');
+
         // Verificar que el usuario pueda editar este template
-        const existingTemplate = await database.whatsAppTemplate.findFirst({
-            where: {
-                id: templateId,
-                createdBy: userId // Solo puede editar sus propios templates
-            }
+        const existingTemplate = await collection.findOne({
+            _id: new ObjectId(templateId),
+            createdBy: userId // Solo puede editar sus propios templates
         });
 
         if (!existingTemplate) {
             throw new Error('Template no encontrado o sin permisos para editarlo');
         }
 
-        const template = await database.whatsAppTemplate.update({
-            where: { id: templateId },
-            data
-        });
+        const updateData: any = {
+            updatedAt: new Date()
+        };
+
+        if (data.name !== undefined) updateData.name = data.name;
+        if (data.content !== undefined) updateData.content = data.content;
+        if (data.description !== undefined) updateData.description = data.description;
+        if (data.isDefault !== undefined) updateData.isDefault = data.isDefault;
+
+        const result = await collection.findOneAndUpdate(
+            { _id: new ObjectId(templateId) },
+            { $set: updateData },
+            { returnDocument: 'after' }
+        );
+
+        if (!result) {
+            throw new Error('No se pudo actualizar el template');
+        }
 
         revalidatePath('/admin/clients/whatsapp');
-        return template as WhatsAppTemplateData;
+
+        return {
+            id: result._id.toString(),
+            name: result.name,
+            content: result.content,
+            description: result.description,
+            isDefault: result.isDefault,
+            createdBy: result.createdBy,
+            createdAt: result.createdAt,
+            updatedAt: result.updatedAt
+        };
     } catch (error) {
         console.error('Error al actualizar template de WhatsApp:', error);
         throw new Error('No se pudo actualizar el template de WhatsApp');
@@ -217,19 +307,19 @@ export async function updateWhatsAppTemplate(
  */
 export async function deleteWhatsAppTemplate(templateId: string, userId: string): Promise<void> {
     try {
+        const collection = await getCollection('whatsapp_templates');
+
         // Verificar que el template existe
-        const existingTemplate = await database.whatsAppTemplate.findFirst({
-            where: {
-                id: templateId
-            }
+        const existingTemplate = await collection.findOne({
+            _id: new ObjectId(templateId)
         });
 
         if (!existingTemplate) {
             throw new Error('Template no encontrado');
         }
 
-        await database.whatsAppTemplate.delete({
-            where: { id: templateId }
+        await collection.deleteOne({
+            _id: new ObjectId(templateId)
         });
 
         revalidatePath('/admin/clients/whatsapp');
