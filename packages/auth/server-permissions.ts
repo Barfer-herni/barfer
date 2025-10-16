@@ -28,6 +28,8 @@ export type Permission =
     | 'clients:edit'
     | 'clients:delete'
     | 'clients:view_analytics'
+    | 'clients:send_email'
+    | 'clients:send_whatsapp'
     // Table
     | 'table:view'
     | 'table:export'
@@ -79,6 +81,8 @@ export const ADMIN_PERMISSIONS: Permission[] = [
     'clients:edit',
     'clients:delete',
     'clients:view_analytics',
+    'clients:send_email',
+    'clients:send_whatsapp',
     'table:view',
     'table:export',
     'table:delete',

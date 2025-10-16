@@ -10,12 +10,16 @@ interface ClientCategoriesServerProps {
     behaviorCategories: ClientCategoryStats[];
     spendingCategories: ClientCategoryStats[];
     dictionary: Dictionary;
+    canSendEmail?: boolean;
+    canSendWhatsApp?: boolean;
 }
 
 export function ClientCategoriesServer({
     behaviorCategories,
     spendingCategories,
-    dictionary
+    dictionary,
+    canSendEmail = false,
+    canSendWhatsApp = false
 }: ClientCategoriesServerProps) {
     const [activeTab, setActiveTab] = useState('behavior');
 
@@ -72,6 +76,8 @@ export function ClientCategoriesServer({
                             category={category}
                             type="behavior"
                             dictionary={dictionary}
+                            canSendEmail={canSendEmail}
+                            canSendWhatsApp={canSendWhatsApp}
                         />
                     ))}
                 </div>
@@ -85,6 +91,8 @@ export function ClientCategoriesServer({
                             category={category}
                             type="spending"
                             dictionary={dictionary}
+                            canSendEmail={canSendEmail}
+                            canSendWhatsApp={canSendWhatsApp}
                         />
                     ))}
                 </div>

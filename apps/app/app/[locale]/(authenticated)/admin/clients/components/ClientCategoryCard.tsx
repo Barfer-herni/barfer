@@ -12,6 +12,8 @@ interface ClientCategoryCardProps {
     category: ClientCategoryStats;
     type: 'behavior' | 'spending';
     dictionary: Dictionary;
+    canSendEmail?: boolean;
+    canSendWhatsApp?: boolean;
 }
 
 const getCategoryColor = (category: ClientBehaviorCategory | ClientSpendingCategory, type: 'behavior' | 'spending'): string => {
@@ -105,7 +107,9 @@ const formatCurrency = (amount: number): string => {
 export function ClientCategoryCard({
     category,
     type,
-    dictionary
+    dictionary,
+    canSendEmail = false,
+    canSendWhatsApp = false
 }: ClientCategoryCardProps) {
     const router = useRouter();
     const colorClasses = getCategoryColor(category.category, type);
@@ -162,27 +166,33 @@ export function ClientCategoryCard({
                     )}
                 </div>
 
-                {/* Action buttons - always at bottom */}
-                <div className="flex gap-2 pt-4 border-t border-border mt-auto">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleEmailClick}
-                        className="flex-1 h-8 text-xs"
-                    >
-                        <Mail className="h-3 w-3 mr-1" />
-                        Email
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleWhatsAppClick}
-                        className="flex-1 h-8 text-xs bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
-                    >
-                        <MessageCircle className="h-3 w-3 mr-1" />
-                        WhatsApp
-                    </Button>
-                </div>
+                {/* Action buttons - only show if user has at least one permission */}
+                {(canSendEmail || canSendWhatsApp) && (
+                    <div className="flex gap-2 pt-4 border-t border-border mt-auto">
+                        {canSendEmail && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleEmailClick}
+                                className="flex-1 h-8 text-xs"
+                            >
+                                <Mail className="h-3 w-3 mr-1" />
+                                Email
+                            </Button>
+                        )}
+                        {canSendWhatsApp && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleWhatsAppClick}
+                                className="flex-1 h-8 text-xs bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                            >
+                                <MessageCircle className="h-3 w-3 mr-1" />
+                                WhatsApp
+                            </Button>
+                        )}
+                    </div>
+                )}
             </CardContent>
         </Card>
     );

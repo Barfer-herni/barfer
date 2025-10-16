@@ -2,6 +2,7 @@ import { getDictionary } from '@repo/internationalization';
 import { getClientsPaginatedWithStatus, getEmailTemplates } from '@repo/data-services';
 import { getCurrentUser } from '@repo/data-services/src/services/authService';
 import { EmailClientsViewServer } from './components/EmailClientsViewServer';
+import { PermissionGate } from '@repo/auth/components/PermissionGate';
 
 interface EmailPageProps {
     params: Promise<{
@@ -43,19 +44,30 @@ export default async function EmailPage({ params, searchParams }: EmailPageProps
     const clients = clientsResult.clients;
 
     return (
-        <EmailClientsViewServer
-            category={category}
-            type={type}
-            visibility={visibility}
-            dictionary={dictionary}
-            clients={clients}
-            emailTemplates={emailTemplates}
-            paginationInfo={{
-                totalCount: clientsResult.totalCount,
-                totalPages: clientsResult.totalPages,
-                currentPage: page,
-                hasMore: clientsResult.hasMore
-            }}
-        />
+        <PermissionGate
+            permission="clients:send_email"
+            fallback={
+                <div className="p-6 border rounded-lg bg-muted/50">
+                    <p className="text-sm text-muted-foreground text-center">
+                        No tienes permisos para enviar emails a clientes.
+                    </p>
+                </div>
+            }
+        >
+            <EmailClientsViewServer
+                category={category}
+                type={type}
+                visibility={visibility}
+                dictionary={dictionary}
+                clients={clients}
+                emailTemplates={emailTemplates}
+                paginationInfo={{
+                    totalCount: clientsResult.totalCount,
+                    totalPages: clientsResult.totalPages,
+                    currentPage: page,
+                    hasMore: clientsResult.hasMore
+                }}
+            />
+        </PermissionGate>
     );
 } 
