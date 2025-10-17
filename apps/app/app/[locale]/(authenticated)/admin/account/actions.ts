@@ -7,7 +7,7 @@ import {
     deleteUser as deleteUserService,
     updateUser as updateUserService,
 } from '@repo/data-services/src/services/userService';
-import { getAllCategorias, type UserRole } from '@repo/data-services';
+import type { UserRole } from '@repo/data-services';
 import { z } from 'zod';
 import { hasPermission } from '@repo/auth/server-permissions';
 import { getCurrentUser } from '@repo/data-services/src/services/authService';
@@ -206,16 +206,19 @@ export async function updateUserCategoryPermissions(userId: string, permissions:
 
 export async function getAvailableCategoriesAction() {
     try {
-        const result = await getAllCategorias();
+        // Usar MongoDB en lugar de Prisma
+        const { getCollection } = await import('@repo/database');
+        const categoriasCollection = await getCollection('categorias');
 
-        if (result.success && result.categorias) {
-            return {
-                success: true,
-                categories: result.categorias.map(cat => cat.nombre)
-            };
-        }
+        const categorias = await categoriasCollection
+            .find({ isActive: true })
+            .sort({ nombre: 1 })
+            .toArray();
 
-        return { success: false, categories: [] };
+        return {
+            success: true,
+            categories: categorias.map(cat => cat.nombre)
+        };
     } catch (error) {
         console.error('Error getting available categories:', error);
         return { success: false, categories: [] };
