@@ -69,6 +69,9 @@ export function AddSalidaModal({ open, onOpenChange, onSalidaCreated }: AddSalid
         proveedorId: '',
     });
 
+    // Estado para el monto formateado (display)
+    const [montoDisplay, setMontoDisplay] = useState('');
+
     // Estados para datos de BD
     const [categoriasDisponibles, setCategorias] = useState<Array<{ id: string, nombre: string }>>([]);
     const [metodosPagoDisponibles, setMetodosPago] = useState<Array<{ id: string, nombre: string }>>([]);
@@ -264,6 +267,33 @@ export function AddSalidaModal({ open, onOpenChange, onSalidaCreated }: AddSalid
         handleInputChange('proveedorId', '');
     };
 
+    // Función para formatear el monto (agregar separadores de miles)
+    const formatMontoDisplay = (value: string): string => {
+        // Remover todo excepto números
+        const numbersOnly = value.replace(/[^\d]/g, '');
+
+        if (numbersOnly === '') return '';
+
+        // Formatear con separadores de miles
+        return Number(numbersOnly).toLocaleString('es-AR');
+    };
+
+    // Función para parsear el monto display a número
+    const parseMontoDisplay = (value: string): number => {
+        // Remover todo excepto números
+        const numbersOnly = value.replace(/[^\d]/g, '');
+        return numbersOnly === '' ? 0 : Number(numbersOnly);
+    };
+
+    // Handler para cambio en el input de monto
+    const handleMontoChange = (value: string) => {
+        const formatted = formatMontoDisplay(value);
+        setMontoDisplay(formatted);
+
+        const numericValue = parseMontoDisplay(value);
+        handleInputChange('monto', numericValue);
+    };
+
     const validateForm = () => {
         const newErrors: Record<string, string> = {};
 
@@ -335,6 +365,7 @@ export function AddSalidaModal({ open, onOpenChange, onSalidaCreated }: AddSalid
                     comprobanteNumber: '',
                     proveedorId: '',
                 });
+                setMontoDisplay('');
                 setErrors({});
 
                 // Resetear estados de campos personalizados
@@ -646,18 +677,27 @@ export function AddSalidaModal({ open, onOpenChange, onSalidaCreated }: AddSalid
 
                             <div className="grid gap-2">
                                 <Label htmlFor="monto">Monto *</Label>
-                                <Input
-                                    id="monto"
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    placeholder="0.00"
-                                    value={formData.monto || ''}
-                                    onChange={(e) => handleInputChange('monto', parseFloat(e.target.value) || 0)}
-                                    className={errors.monto ? 'border-red-500' : ''}
-                                />
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                                        $
+                                    </span>
+                                    <Input
+                                        id="monto"
+                                        type="text"
+                                        inputMode="numeric"
+                                        placeholder="0"
+                                        value={montoDisplay}
+                                        onChange={(e) => handleMontoChange(e.target.value)}
+                                        className={`pl-7 ${errors.monto ? 'border-red-500' : ''}`}
+                                    />
+                                </div>
                                 {errors.monto && (
                                     <span className="text-sm text-red-500">{errors.monto}</span>
+                                )}
+                                {montoDisplay && (
+                                    <span className="text-xs text-gray-500">
+                                        Valor: ${montoDisplay}
+                                    </span>
                                 )}
                             </div>
                         </div>
