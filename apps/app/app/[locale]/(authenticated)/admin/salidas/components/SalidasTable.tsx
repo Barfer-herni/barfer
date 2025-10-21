@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useCallback, useTransition } from 'react';
+import { useState, useMemo, useCallback, useTransition, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { TipoSalida, TipoRegistro } from '@repo/database';
 import {
@@ -40,12 +40,21 @@ interface SalidasTableProps {
     pagination: PaginationState;
     pageCount: number;
     total: number;
+    initialFilters?: {
+        searchTerm?: string;
+        categoriaId?: string;
+        marca?: string;
+        metodoPagoId?: string;
+        tipo?: 'ORDINARIO' | 'EXTRAORDINARIO';
+        tipoRegistro?: 'BLANCO' | 'NEGRO';
+        fecha?: string;
+    };
 }
 
 type SortField = 'fechaFactura' | 'categoria' | 'proveedor' | 'detalle' | 'tipo' | 'marca' | 'monto' | 'metodoPago' | 'tipoRegistro' | 'fechaPago' | 'comprobanteNumber';
 type SortDirection = 'asc' | 'desc';
 
-export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions = [], pagination, pageCount, total }: SalidasTableProps) {
+export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions = [], pagination, pageCount, total, initialFilters = {} }: SalidasTableProps) {
     const router = useRouter();
     const pathname = usePathname();
     const [isPending, startTransition] = useTransition();
@@ -55,7 +64,27 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [selectedSalida, setSelectedSalida] = useState<SalidaMongoData | null>(null);
 
-    // Función para navegar entre páginas
+    // Función para aplicar filtros y navegar
+    const applyFilters = useCallback((newFilters: Record<string, string | undefined>) => {
+        startTransition(() => {
+            const params = new URLSearchParams();
+
+            // Restablecer a página 1 cuando se cambian filtros
+            params.set('page', '1');
+            params.set('pageSize', pagination.pageSize.toString());
+
+            // Agregar filtros no vacíos
+            Object.entries(newFilters).forEach(([key, value]) => {
+                if (value && value.trim() !== '') {
+                    params.set(key, value);
+                }
+            });
+
+            router.push(`${pathname}?${params.toString()}`);
+        });
+    }, [pathname, router, pagination.pageSize]);
+
+    // Función para navegar entre páginas (mantiene los filtros actuales)
     const navigateToPagination = useCallback((pageIndex: number, pageSize: number) => {
         startTransition(() => {
             const params = new URLSearchParams(window.location.search);
@@ -65,18 +94,60 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
         });
     }, [pathname, router]);
 
-    // Estados para los filtros
-    const [searchTerm, setSearchTerm] = useState('');
-    const [selectedCategoria, setSelectedCategoria] = useState<string>('');
-    const [selectedMarca, setSelectedMarca] = useState<string>('');
-    const [selectedMetodoPago, setSelectedMetodoPago] = useState<string>('');
-    const [selectedTipo, setSelectedTipo] = useState<string>('');
-    const [selectedTipoRegistro, setSelectedTipoRegistro] = useState<string>('');
-    const [selectedFecha, setSelectedFecha] = useState<string>('');
+    // Estados para los filtros (inicializados desde el servidor)
+    const [searchTerm, setSearchTerm] = useState(initialFilters.searchTerm || '');
+    const [selectedCategoria, setSelectedCategoria] = useState(initialFilters.categoriaId || '');
+    const [selectedMarca, setSelectedMarca] = useState(initialFilters.marca || '');
+    const [selectedMetodoPago, setSelectedMetodoPago] = useState(initialFilters.metodoPagoId || '');
+    const [selectedTipo, setSelectedTipo] = useState(initialFilters.tipo || '');
+    const [selectedTipoRegistro, setSelectedTipoRegistro] = useState(initialFilters.tipoRegistro || '');
+    const [selectedFecha, setSelectedFecha] = useState(initialFilters.fecha || '');
 
     // Estados para el ordenamiento
     const [sortField, setSortField] = useState<SortField>('fechaFactura');
     const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+    // Debounce para el searchTerm
+    const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
+    const isInitialMount = useRef(true);
+
+    // Aplicar filtros cuando cambien (con debounce para searchTerm)
+    useEffect(() => {
+        // Saltar el primer render para evitar aplicar filtros innecesariamente
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
+        }
+
+        if (searchDebounceRef.current) {
+            clearTimeout(searchDebounceRef.current);
+        }
+
+        searchDebounceRef.current = setTimeout(() => {
+            const params = new URLSearchParams();
+
+            // Restablecer a página 1 cuando se cambian filtros
+            params.set('page', '1');
+            params.set('pageSize', pagination.pageSize.toString());
+
+            // Agregar filtros no vacíos
+            if (searchTerm && searchTerm.trim() !== '') params.set('searchTerm', searchTerm);
+            if (selectedCategoria) params.set('categoriaId', selectedCategoria);
+            if (selectedMarca) params.set('marca', selectedMarca);
+            if (selectedMetodoPago) params.set('metodoPagoId', selectedMetodoPago);
+            if (selectedTipo) params.set('tipo', selectedTipo);
+            if (selectedTipoRegistro) params.set('tipoRegistro', selectedTipoRegistro);
+            if (selectedFecha) params.set('fecha', selectedFecha);
+
+            router.push(`${pathname}?${params.toString()}`);
+        }, 500); // 500ms de debounce
+
+        return () => {
+            if (searchDebounceRef.current) {
+                clearTimeout(searchDebounceRef.current);
+            }
+        };
+    }, [searchTerm, selectedCategoria, selectedMarca, selectedMetodoPago, selectedTipo, selectedTipoRegistro, selectedFecha, router, pathname, pagination.pageSize]);
 
     const formatDate = (date: Date | string) => {
         // Asegurar que tenemos un objeto Date válido
@@ -147,13 +218,15 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
         return labels[metodoPago] || metodoPago;
     };
 
-    // Obtener opciones únicas para los filtros
+    // Obtener opciones únicas para los filtros (desde todas las salidas, no solo la página actual)
+    // NOTA: Idealmente estos deberían venir del servidor como opciones disponibles
     const uniqueCategorias = useMemo(() => {
         const categorias = salidas
-            .map(s => s.categoria?.nombre)
-            .filter((name): name is string => name !== undefined)
-            .filter((name, index, array) => array.indexOf(name) === index);
-        return categorias.sort();
+            .map(s => s.categoria)
+            .filter((cat): cat is NonNullable<typeof cat> => cat !== undefined && cat !== null)
+            .filter((cat, index, array) => array.findIndex(c => c._id === cat._id) === index)
+            .sort((a, b) => a.nombre.localeCompare(b.nombre));
+        return categorias;
     }, [salidas]);
 
     const uniqueMarcas = useMemo(() => {
@@ -162,10 +235,11 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
 
     const uniqueMetodosPago = useMemo(() => {
         const metodos = salidas
-            .map(s => s.metodoPago?.nombre)
-            .filter((name): name is string => name !== undefined)
-            .filter((name, index, array) => array.indexOf(name) === index);
-        return metodos.sort();
+            .map(s => s.metodoPago)
+            .filter((mp): mp is NonNullable<typeof mp> => mp !== undefined && mp !== null)
+            .filter((mp, index, array) => array.findIndex(m => m._id === mp._id) === index)
+            .sort((a, b) => a.nombre.localeCompare(b.nombre));
+        return metodos;
     }, [salidas]);
 
     // Función para manejar el ordenamiento
@@ -190,91 +264,9 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
             : <ChevronDown className="h-4 w-4 text-blue-600" />;
     };
 
-    // Filtrar y ordenar las salidas
-    const filteredAndSortedSalidas = useMemo(() => {
-        // Primero filtrar
-        const filtered = salidas.filter(salida => {
-            // Filtro por texto de búsqueda
-            if (searchTerm) {
-                const searchLower = searchTerm.toLowerCase();
-                const matchesDetalle = salida.detalle.toLowerCase().includes(searchLower);
-                const matchesCategoria = salida.categoria?.nombre?.toLowerCase().includes(searchLower);
-                const matchesMarca = salida.marca?.toLowerCase().includes(searchLower);
-                const matchesMetodoPago = salida.metodoPago?.nombre?.toLowerCase().includes(searchLower);
-                const matchesMonto = salida.monto.toString().includes(searchTerm);
-                const matchesProveedor = salida.proveedor?.nombre?.toLowerCase().includes(searchLower);
-
-                if (!matchesDetalle && !matchesCategoria && !matchesMarca && !matchesMetodoPago && !matchesMonto && !matchesProveedor) {
-                    return false;
-                }
-            }
-
-            // Filtro por categoría
-            if (selectedCategoria && salida.categoria?.nombre !== selectedCategoria) {
-                return false;
-            }
-
-            // Filtro por marca
-            if (selectedMarca && salida.marca !== selectedMarca) {
-                return false;
-            }
-
-            // Filtro por método de pago
-            if (selectedMetodoPago && salida.metodoPago?.nombre !== selectedMetodoPago) {
-                return false;
-            }
-
-            // Filtro por tipo
-            if (selectedTipo && salida.tipo !== selectedTipo) {
-                return false;
-            }
-
-            // Filtro por tipo de registro
-            if (selectedTipoRegistro && salida.tipoRegistro !== selectedTipoRegistro) {
-                return false;
-            }
-
-            // Filtro por fecha exacta
-            if (selectedFecha) {
-                let fechaSalida: Date;
-
-                // Asegurar que tenemos un objeto Date válido
-                if (salida.fechaFactura instanceof Date) {
-                    fechaSalida = salida.fechaFactura;
-                } else if (typeof salida.fechaFactura === 'string') {
-                    // Extraer solo la parte de la fecha para evitar problemas de zona horaria
-                    const fechaString = salida.fechaFactura as string;
-                    const dateOnly = fechaString.split(' ')[0];
-                    const [year, month, day] = dateOnly.split('-').map(Number);
-
-                    // Crear la fecha usando UTC para evitar problemas de zona horaria
-                    fechaSalida = new Date(Date.UTC(year, month - 1, day));
-
-                    // Convertir a zona horaria local
-                    const localYear = fechaSalida.getFullYear();
-                    const localMonth = fechaSalida.getMonth();
-                    const localDay = fechaSalida.getDate();
-                    fechaSalida = new Date(localYear, localMonth, localDay);
-                } else {
-                    fechaSalida = new Date(salida.fechaFactura);
-                }
-
-                const fechaFilter = new Date(selectedFecha);
-
-                // Comparar solo año, mes y día (ignorar tiempo)
-                const salidaDateString = fechaSalida.toISOString().split('T')[0];
-                const filterDateString = fechaFilter.toISOString().split('T')[0];
-
-                if (salidaDateString !== filterDateString) {
-                    return false;
-                }
-            }
-
-            return true;
-        });
-
-        // Luego ordenar
-        return filtered.sort((a, b) => {
+    // Ordenar las salidas localmente (el filtrado se hace en el servidor)
+    const sortedSalidas = useMemo(() => {
+        return [...salidas].sort((a, b) => {
             let aValue: any;
             let bValue: any;
 
@@ -315,6 +307,10 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                     aValue = a.tipoRegistro;
                     bValue = b.tipoRegistro;
                     break;
+                case 'fechaPago':
+                    aValue = a.fechaPago ? new Date(a.fechaPago) : new Date(0);
+                    bValue = b.fechaPago ? new Date(b.fechaPago) : new Date(0);
+                    break;
                 case 'comprobanteNumber':
                     aValue = (a as any).comprobanteNumber ? String((a as any).comprobanteNumber).toLowerCase() : '';
                     bValue = (b as any).comprobanteNumber ? String((b as any).comprobanteNumber).toLowerCase() : '';
@@ -331,7 +327,7 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
             }
             return 0;
         });
-    }, [salidas, searchTerm, selectedCategoria, selectedMarca, selectedMetodoPago, selectedTipo, selectedTipoRegistro, selectedFecha, sortField, sortDirection]);
+    }, [salidas, sortField, sortDirection]);
 
     const clearFilters = () => {
         setSearchTerm('');
@@ -341,6 +337,17 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
         setSelectedTipo('');
         setSelectedTipoRegistro('');
         setSelectedFecha('');
+
+        // Aplicar filtros vacíos (resetear)
+        applyFilters({
+            searchTerm: undefined,
+            categoriaId: undefined,
+            marca: undefined,
+            metodoPagoId: undefined,
+            tipo: undefined,
+            tipoRegistro: undefined,
+            fecha: undefined,
+        });
     };
 
     const handleAddSalida = () => {
@@ -378,7 +385,7 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                     <p className="text-sm text-muted-foreground">
                         {total === 0
                             ? 'No hay salidas registradas'
-                            : `${filteredAndSortedSalidas.length} de ${total} salida${total !== 1 ? 's' : ''} totales${filteredAndSortedSalidas.length !== salidas.length ? ' (filtradas en esta página)' : ''}`
+                            : `Mostrando ${salidas.length} de ${total} salida${total !== 1 ? 's' : ''} totales`
                         }
                     </p>
                 </div>
@@ -422,8 +429,8 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                                 </SelectTrigger>
                                 <SelectContent>
                                     {uniqueCategorias.map(categoria => (
-                                        <SelectItem key={categoria} value={categoria}>
-                                            {categoria}
+                                        <SelectItem key={categoria._id} value={categoria._id}>
+                                            {categoria.nombre}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -450,8 +457,8 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                                 </SelectTrigger>
                                 <SelectContent>
                                     {uniqueMetodosPago.map(metodo => (
-                                        <SelectItem key={metodo} value={metodo}>
-                                            {getFormaPagoLabel(metodo)}
+                                        <SelectItem key={metodo._id} value={metodo._id}>
+                                            {getFormaPagoLabel(metodo.nombre)}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -617,11 +624,11 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredAndSortedSalidas.length === 0 ? (
+                            {sortedSalidas.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={13} className="text-center py-12 text-muted-foreground">
                                         <div className="flex flex-col items-center gap-2">
-                                            {salidas.length === 0 ? (
+                                            {total === 0 ? (
                                                 <>
                                                     <div className="text-base font-medium">No hay salidas registradas aún</div>
                                                     <div className="text-sm">Haz clic en "Agregar Salida" para comenzar</div>
@@ -636,7 +643,7 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                filteredAndSortedSalidas.map((salida) => (
+                                sortedSalidas.map((salida) => (
                                     <TableRow key={salida._id} className="hover:bg-muted/30">
                                         <TableCell className="font-medium text-sm w-[100px]">
                                             {formatDate(salida.fechaFactura)}

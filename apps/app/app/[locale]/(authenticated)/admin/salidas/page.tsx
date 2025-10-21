@@ -13,14 +13,35 @@ export default async function SalidasPage({ params, searchParams }: SalidasPageP
     const { locale } = await params;
     const dictionary = await getDictionary(locale);
 
-    // Obtener parámetros de paginación
-    const { page, pageSize } = await searchParams || {
-        page: '1',
-        pageSize: '50',
-    };
+    // Obtener todos los parámetros de búsqueda
+    const searchParamsResolved = await searchParams || {};
 
-    const currentPage = Number(page) || 1;
-    const currentPageSize = Number(pageSize) || 50;
+    // Parámetros de paginación
+    const currentPage = Number(searchParamsResolved.page) || 1;
+    const currentPageSize = Number(searchParamsResolved.pageSize) || 50;
+
+    // Parámetros de filtros
+    const filters: {
+        searchTerm?: string;
+        categoriaId?: string;
+        marca?: string;
+        metodoPagoId?: string;
+        tipo?: 'ORDINARIO' | 'EXTRAORDINARIO';
+        tipoRegistro?: 'BLANCO' | 'NEGRO';
+        fecha?: string;
+    } = {
+        searchTerm: typeof searchParamsResolved.searchTerm === 'string' ? searchParamsResolved.searchTerm : undefined,
+        categoriaId: typeof searchParamsResolved.categoriaId === 'string' ? searchParamsResolved.categoriaId : undefined,
+        marca: typeof searchParamsResolved.marca === 'string' ? searchParamsResolved.marca : undefined,
+        metodoPagoId: typeof searchParamsResolved.metodoPagoId === 'string' ? searchParamsResolved.metodoPagoId : undefined,
+        tipo: (searchParamsResolved.tipo === 'ORDINARIO' || searchParamsResolved.tipo === 'EXTRAORDINARIO')
+            ? searchParamsResolved.tipo as 'ORDINARIO' | 'EXTRAORDINARIO'
+            : undefined,
+        tipoRegistro: (searchParamsResolved.tipoRegistro === 'BLANCO' || searchParamsResolved.tipoRegistro === 'NEGRO')
+            ? searchParamsResolved.tipoRegistro as 'BLANCO' | 'NEGRO'
+            : undefined,
+        fecha: typeof searchParamsResolved.fecha === 'string' ? searchParamsResolved.fecha : undefined,
+    };
 
     // Obtener usuario actual con permisos
     const userWithPermissions = await getCurrentUserWithPermissions();
@@ -31,10 +52,11 @@ export default async function SalidasPage({ params, searchParams }: SalidasPageP
     // Verificar si puede ver estadísticas
     const canViewStats = await canViewSalidaStatistics();
 
-    // Obtener salidas paginadas
+    // Obtener salidas paginadas con filtros
     const result = await getSalidasPaginatedAction({
         pageIndex: currentPage - 1,
         pageSize: currentPageSize,
+        filters,
     });
 
     const salidas = result.success ? (result.salidas || []) : [];
@@ -63,6 +85,7 @@ export default async function SalidasPage({ params, searchParams }: SalidasPageP
                 }}
                 pageCount={pageCount}
                 total={total}
+                initialFilters={filters}
             />
         </div>
     );

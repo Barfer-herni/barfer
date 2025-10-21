@@ -66,13 +66,23 @@ export async function getAllSalidasAction() {
 export async function getSalidasPaginatedAction({
     pageIndex = 0,
     pageSize = 50,
+    filters = {},
 }: {
     pageIndex?: number;
     pageSize?: number;
+    filters?: {
+        searchTerm?: string;
+        categoriaId?: string;
+        marca?: string;
+        metodoPagoId?: string;
+        tipo?: 'ORDINARIO' | 'EXTRAORDINARIO';
+        tipoRegistro?: 'BLANCO' | 'NEGRO';
+        fecha?: string;
+    };
 }) {
     'use server';
 
-    const result = await getSalidasPaginatedMongo({ pageIndex, pageSize });
+    const result = await getSalidasPaginatedMongo({ pageIndex, pageSize, filters });
     return result;
 }
 

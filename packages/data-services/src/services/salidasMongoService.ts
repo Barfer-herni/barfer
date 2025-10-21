@@ -212,14 +212,29 @@ export async function getAllSalidasWithPermissionFilterMongo(): Promise<{
 }
 
 /**
+ * Filtros de búsqueda para salidas
+ */
+export interface SalidasFilters {
+    searchTerm?: string;
+    categoriaId?: string;
+    marca?: string;
+    metodoPagoId?: string;
+    tipo?: 'ORDINARIO' | 'EXTRAORDINARIO';
+    tipoRegistro?: 'BLANCO' | 'NEGRO';
+    fecha?: string; // Formato ISO date string
+}
+
+/**
  * Obtener salidas paginadas con filtros de permisos (OPTIMIZADO)
  */
 export async function getSalidasPaginatedMongo({
     pageIndex = 0,
     pageSize = 50,
+    filters = {},
 }: {
     pageIndex?: number;
     pageSize?: number;
+    filters?: SalidasFilters;
 }): Promise<{
     success: boolean;
     salidas?: SalidaMongoData[];
@@ -257,6 +272,8 @@ export async function getSalidasPaginatedMongo({
         ];
 
         // 3. Si NO es admin (viewableCategories !== ['*']), filtrar por categorías permitidas
+        const matchConditions: any = {};
+
         if (!viewableCategories.includes('*')) {
             if (viewableCategories.length === 0) {
                 // Usuario sin permisos - retornar vacío
@@ -269,17 +286,76 @@ export async function getSalidasPaginatedMongo({
             }
 
             // Filtrar solo las categorías permitidas
-            pipeline.push({
-                $match: {
-                    'categoria.nombre': { $in: viewableCategories }
-                }
-            });
+            matchConditions['categoria.nombre'] = { $in: viewableCategories };
             console.log(`🔒 Filtrando por categorías: ${viewableCategories.join(', ')}`);
         } else {
             console.log(`🔓 Admin - sin filtro de categorías`);
         }
 
-        // 4. Agregar resto de lookups y ordenamiento
+        // 4. Aplicar filtros adicionales del usuario
+        if (filters.categoriaId) {
+            const categoriasCollection = await getCollection('categorias');
+            const categoria = await categoriasCollection.findOne({ _id: new ObjectId(filters.categoriaId) });
+            if (categoria) {
+                // Si ya hay un filtro de permisos, combinar con AND
+                if (matchConditions['categoria.nombre']) {
+                    // Asegurar que la categoría seleccionada esté en las permitidas
+                    if (Array.isArray(matchConditions['categoria.nombre'].$in)) {
+                        if (matchConditions['categoria.nombre'].$in.includes(categoria.nombre)) {
+                            matchConditions['categoria.nombre'] = categoria.nombre;
+                        } else {
+                            // La categoría seleccionada no está permitida, retornar vacío
+                            return {
+                                success: true,
+                                salidas: [],
+                                total: 0,
+                                pageCount: 0
+                            };
+                        }
+                    }
+                } else {
+                    matchConditions['categoria.nombre'] = categoria.nombre;
+                }
+                console.log(`🔍 Filtro categoría: ${categoria.nombre}`);
+            }
+        }
+
+        if (filters.marca) {
+            matchConditions['marca'] = filters.marca;
+            console.log(`🔍 Filtro marca: ${filters.marca}`);
+        }
+
+        if (filters.tipo) {
+            matchConditions['tipo'] = filters.tipo;
+            console.log(`🔍 Filtro tipo: ${filters.tipo}`);
+        }
+
+        if (filters.tipoRegistro) {
+            matchConditions['tipoRegistro'] = filters.tipoRegistro;
+            console.log(`🔍 Filtro tipo registro: ${filters.tipoRegistro}`);
+        }
+
+        if (filters.fecha) {
+            // Parsear fecha y crear rango para el día completo
+            const dateObj = new Date(filters.fecha);
+            const startOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0);
+            const endOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 23, 59, 59, 999);
+
+            matchConditions['fechaFactura'] = {
+                $gte: startOfDay,
+                $lte: endOfDay
+            };
+            console.log(`🔍 Filtro fecha: ${filters.fecha}`);
+        }
+
+        // Agregar $match si hay condiciones
+        if (Object.keys(matchConditions).length > 0) {
+            pipeline.push({
+                $match: matchConditions
+            });
+        }
+
+        // 5. Agregar resto de lookups
         pipeline.push(
             {
                 $lookup: {
@@ -302,13 +378,54 @@ export async function getSalidasPaginatedMongo({
                     metodoPago: { $arrayElemAt: ['$metodoPago', 0] },
                     proveedor: { $arrayElemAt: ['$proveedor', 0] }
                 }
-            },
-            {
-                $sort: { fechaFactura: -1 }
             }
         );
 
-        // 5. Contar total ANTES de paginar (más eficiente)
+        // 6. Aplicar filtros que requieren lookups (después de los lookups)
+        const postLookupConditions: any[] = [];
+
+        if (filters.metodoPagoId) {
+            const metodosPagoCollection = await getCollection('metodos_pago');
+            const metodoPago = await metodosPagoCollection.findOne({ _id: new ObjectId(filters.metodoPagoId) });
+            if (metodoPago) {
+                postLookupConditions.push({
+                    'metodoPago.nombre': metodoPago.nombre
+                });
+                console.log(`🔍 Filtro método pago: ${metodoPago.nombre}`);
+            }
+        }
+
+        // 7. Filtro de búsqueda de texto (después de lookups para buscar en campos relacionados)
+        if (filters.searchTerm && filters.searchTerm.trim() !== '') {
+            const searchRegex = { $regex: filters.searchTerm, $options: 'i' };
+            postLookupConditions.push({
+                $or: [
+                    { detalle: searchRegex },
+                    { 'categoria.nombre': searchRegex },
+                    { 'proveedor.nombre': searchRegex },
+                    { marca: searchRegex },
+                    { 'metodoPago.nombre': searchRegex },
+                    { monto: isNaN(Number(filters.searchTerm)) ? -1 : Number(filters.searchTerm) }
+                ]
+            });
+            console.log(`🔍 Búsqueda de texto: ${filters.searchTerm}`);
+        }
+
+        // Agregar condiciones post-lookup si existen
+        if (postLookupConditions.length > 0) {
+            pipeline.push({
+                $match: postLookupConditions.length === 1
+                    ? postLookupConditions[0]
+                    : { $and: postLookupConditions }
+            });
+        }
+
+        // 8. Ordenar
+        pipeline.push({
+            $sort: { fechaFactura: -1 }
+        });
+
+        // 9. Contar total ANTES de paginar (más eficiente)
         console.time('⏱️ count');
         const countPipeline = [...pipeline, { $count: 'total' }];
         const countResult = await salidasCollection.aggregate(countPipeline).toArray();
@@ -317,19 +434,19 @@ export async function getSalidasPaginatedMongo({
         console.timeEnd('⏱️ count');
         console.log(`📊 Total: ${total}, Páginas: ${pageCount}`);
 
-        // 6. Aplicar paginación en MongoDB
+        // 10. Aplicar paginación en MongoDB
         pipeline.push(
             { $skip: pageIndex * pageSize },
             { $limit: pageSize }
         );
 
-        // 7. Ejecutar query paginada
+        // 11. Ejecutar query paginada
         console.time('⏱️ query');
         const salidas = await salidasCollection.aggregate(pipeline).toArray();
         console.timeEnd('⏱️ query');
         console.log(`📄 Salidas obtenidas: ${salidas.length}`);
 
-        // 8. Formatear salidas
+        // 12. Formatear salidas
         const formattedSalidas = salidas.map(salida => ({
             _id: salida._id.toString(),
             fechaFactura: salida.fechaFactura,

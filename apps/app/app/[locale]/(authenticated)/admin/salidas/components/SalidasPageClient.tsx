@@ -21,6 +21,15 @@ interface SalidasPageClientProps {
     pagination: PaginationState;
     pageCount: number;
     total: number;
+    initialFilters?: {
+        searchTerm?: string;
+        categoriaId?: string;
+        marca?: string;
+        metodoPagoId?: string;
+        tipo?: 'ORDINARIO' | 'EXTRAORDINARIO';
+        tipoRegistro?: 'BLANCO' | 'NEGRO';
+        fecha?: string;
+    };
 }
 
 export function SalidasPageClient({
@@ -30,7 +39,8 @@ export function SalidasPageClient({
     canViewStatistics = false,
     pagination,
     pageCount,
-    total
+    total,
+    initialFilters
 }: SalidasPageClientProps) {
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'tabla' | 'estadisticas' | 'categorias' | 'proveedores'>('tabla');
@@ -98,6 +108,7 @@ export function SalidasPageClient({
                                 pagination={pagination}
                                 pageCount={pageCount}
                                 total={total}
+                                initialFilters={initialFilters}
                             />
                         </CardContent>
                     </Card>
