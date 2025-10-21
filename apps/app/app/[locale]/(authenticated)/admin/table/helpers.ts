@@ -647,20 +647,57 @@ export const mapDBProductToSelectOption = (dbProductName: string, dbOptionName: 
         return dbProductName;
     }
 
-    // Si no, intentar reconstruir el formato desde los datos de la DB
-    // Construir el nombre completo incluyendo el peso de la opción
-    if (dbOptionName && dbOptionName.trim() !== '') {
-        // Si la opción contiene peso (ej: "10KG"), agregarlo al nombre del producto
-        const weightMatch = dbOptionName.match(/(\d+(?:\.\d+)?)\s*KG/i);
-        if (weightMatch) {
-            return `${dbProductName} - ${weightMatch[0]}`;
+    // Intentar reconstruir el formato completo "SECTION - PRODUCT - WEIGHT" desde el formato de DB
+    // El formato de DB puede ser:
+    // - "BOX PERRO VACA" + "10KG" -> "PERRO - VACA - 10KG"
+    // - "BOX GATO POLLO" + "5KG" -> "GATO - POLLO - 5KG"
+    // - "BIG DOG (15kg)" + "VACA" -> "PERRO - BIG DOG VACA - 15KG"
+    // - "5KG" + "x1" -> No se puede reconstruir (datos corruptos), devolver tal cual
+
+    let section = '';
+    let product = '';
+    let weight = dbOptionName || '';
+
+    // Detectar sección y producto desde el nombre de DB
+    if (dbProductName.startsWith('BOX PERRO ')) {
+        section = 'PERRO';
+        product = dbProductName.replace('BOX PERRO ', '');
+    } else if (dbProductName.startsWith('BOX GATO ')) {
+        section = 'GATO';
+        product = dbProductName.replace('BOX GATO ', '');
+    } else if (dbProductName.includes('BIG DOG')) {
+        section = 'PERRO';
+        // "BIG DOG (15kg)" + "VACA" -> "BIG DOG VACA"
+        if (dbOptionName && dbOptionName.match(/^[A-Z]+$/)) {
+            // La opción es el sabor (VACA, POLLO, etc)
+            product = `BIG DOG ${dbOptionName}`;
+            weight = '15KG';
+        } else {
+            product = dbProductName;
         }
-        // Si no tiene formato de peso pero tiene contenido, agregarlo
-        return `${dbProductName} - ${dbOptionName}`;
+    } else if (dbProductName.startsWith('HUESOS') ||
+        dbProductName.startsWith('TRAQUEA') ||
+        dbProductName.startsWith('OREJAS') ||
+        dbProductName.startsWith('GARRAS') ||
+        dbProductName.startsWith('COMPLEMENTOS') ||
+        dbProductName.startsWith('CORNALITOS') ||
+        dbProductName.startsWith('CALDO')) {
+        section = 'OTROS';
+        product = dbProductName;
+    } else {
+        // No se puede reconstruir, devolver tal cual
+        console.warn(`⚠️ No se puede reconstruir fullName desde DB: name="${dbProductName}", option="${dbOptionName}"`);
+        if (dbOptionName && dbOptionName.trim() !== '') {
+            return `${dbProductName} - ${dbOptionName}`;
+        }
+        return dbProductName;
     }
 
-    // Si no hay opción, devolver solo el nombre del producto
-    return dbProductName;
+    // Construir el formato completo
+    if (weight && weight.trim() !== '') {
+        return `${section} - ${product} - ${weight}`;
+    }
+    return `${section} - ${product}`;
 };
 
 // Función para mapear desde la opción del select hacia el formato de la DB

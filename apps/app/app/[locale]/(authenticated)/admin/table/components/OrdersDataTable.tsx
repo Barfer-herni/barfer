@@ -307,12 +307,12 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
 
         // Procesar items para convertir fullName de vuelta al formato de la DB
         const processedItems = validItems.map(item => {
-            // Procesar TODOS los items, no solo los que tienen fullName diferente a name
-            // Esto asegura que items no modificados también pasen por el procesamiento
-            const itemToProcess = item.fullName || item.name;
+            // Solo procesar items que fueron modificados (tienen fullName diferente a name)
+            // Items no modificados ya están en formato DB correcto
+            const itemToProcess = item.fullName;
 
-            // Si el item parece ser una opción del select (contiene " - "), procesarlo
-            if (itemToProcess && itemToProcess.includes(' - ')) {
+            // Solo procesar si hay fullName, es diferente del name, y parece ser una opción del select
+            if (itemToProcess && itemToProcess !== item.name && itemToProcess.includes(' - ')) {
                 const dbFormat = mapSelectOptionToDBFormat(itemToProcess);
                 return {
                     ...item,
@@ -364,12 +364,12 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
 
             // Procesar items para convertir fullName de vuelta al formato de la DB
             const processedItems = filteredItems.map(item => {
-                // Procesar TODOS los items, no solo los que tienen fullName diferente a name
-                // Esto asegura que items no modificados también pasen por el procesamiento
-                const itemToProcess = item.fullName || item.name;
+                // Solo procesar items que fueron modificados (tienen fullName diferente a name)
+                // Items no modificados ya están en formato DB correcto
+                const itemToProcess = item.fullName;
 
-                // Si el item parece ser una opción del select (contiene " - "), procesarlo
-                if (itemToProcess && itemToProcess.includes(' - ')) {
+                // Solo procesar si hay fullName, es diferente del name, y parece ser una opción del select
+                if (itemToProcess && itemToProcess !== item.name && itemToProcess.includes(' - ')) {
                     const dbFormat = mapSelectOptionToDBFormat(itemToProcess);
                     return {
                         ...item,
@@ -504,12 +504,12 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
 
             // Procesar items para convertir fullName de vuelta al formato de la DB
             const processedItems = filteredItems.map(item => {
-                // Procesar TODOS los items, no solo los que tienen fullName diferente a name
-                // Esto asegura que items no modificados también pasen por el procesamiento
-                const itemToProcess = item.fullName || item.name;
+                // Solo procesar items que fueron modificados (tienen fullName diferente a name)
+                // Items no modificados ya están en formato DB correcto
+                const itemToProcess = item.fullName;
 
-                // Si el item parece ser una opción del select (contiene " - "), procesarlo
-                if (itemToProcess && itemToProcess.includes(' - ')) {
+                // Solo procesar si hay fullName, es diferente del name, y parece ser una opción del select
+                if (itemToProcess && itemToProcess !== item.name && itemToProcess.includes(' - ')) {
                     const dbFormat = mapSelectOptionToDBFormat(itemToProcess);
                     return {
                         ...item,
@@ -643,12 +643,12 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
 
         // Procesar items para convertir fullName de vuelta al formato de la DB
         const processedItems = validItems.map(item => {
-            // Procesar TODOS los items, no solo los que tienen fullName diferente a name
-            // Esto asegura que items no modificados también pasen por el procesamiento
-            const itemToProcess = item.fullName || item.name;
+            // Solo procesar items que fueron modificados (tienen fullName diferente a name)
+            // Items no modificados ya están en formato DB correcto
+            const itemToProcess = item.fullName;
 
-            // Si el item parece ser una opción del select (contiene " - "), procesarlo
-            if (itemToProcess && itemToProcess.includes(' - ')) {
+            // Solo procesar si hay fullName, es diferente del name, y parece ser una opción del select
+            if (itemToProcess && itemToProcess !== item.name && itemToProcess.includes(' - ')) {
                 const dbFormat = mapSelectOptionToDBFormat(itemToProcess);
                 return {
                     ...item,

@@ -358,7 +358,7 @@ export function processOrderItems(items: any[]): any[] {
         }
 
         // Crear un nuevo objeto solo con los campos necesarios para la DB
-        const cleanItem = {
+        const cleanItem: any = {
             id: itemId,
             name: itemName,
             description: item.description || '',
@@ -368,6 +368,11 @@ export function processOrderItems(items: any[]): any[] {
             salesCount: item.salesCount || 0,
             discountApllied: item.discountApllied || 0
         };
+
+        // IMPORTANTE: Preservar fullName si existe para poder reconstruir el nombre completo después
+        if (item.fullName) {
+            cleanItem.fullName = item.fullName;
+        }
 
         // Asegurar que options tenga la estructura correcta
         if (cleanItem.options && Array.isArray(cleanItem.options)) {
