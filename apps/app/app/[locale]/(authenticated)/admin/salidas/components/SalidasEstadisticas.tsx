@@ -19,27 +19,30 @@ import { Button } from '@repo/design-system/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@repo/design-system/components/ui/select';
 import { Badge } from '@repo/design-system/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@repo/design-system/components/ui/tabs';
-import { Input } from '@repo/design-system/components/ui/input';
-import { ChartBar, PieChart as PieChartIcon, TrendingUp, Filter, Calendar, CalendarDays } from 'lucide-react';
+import { ChartBar, PieChart as PieChartIcon, TrendingUp, Filter } from 'lucide-react';
 import {
     getSalidasCategoryAnalyticsAction,
     getSalidasTypeAnalyticsAction,
     getSalidasMonthlyAnalyticsAction,
     getSalidasOverviewAnalyticsAction,
-    getAllCategoriasAction,
-    getSalidasDetailsByCategoryAction
+    getAllCategoriasAction
 } from '../actions';
 import {
     type SalidaCategoryStats,
     type SalidaTipoStats,
     type SalidaMonthlyStats,
-    type SalidasAnalyticsSummary,
-    type CategoriaData,
-    type SalidaMongoData
+    type SalidasAnalyticsSummary
 } from '@repo/data-services';
 
 interface SalidasEstadisticasProps {
     onRefreshData?: () => void;
+}
+
+// Tipo para categorías (compatible con MongoDB)
+interface CategoriaData {
+    _id: string;
+    id?: string;
+    nombre: string;
 }
 
 // Colores para los gráficos
@@ -61,140 +64,20 @@ export function SalidasEstadisticas({ onRefreshData }: SalidasEstadisticasProps)
     const [selectedCategory, setSelectedCategory] = useState<string>('all');
     const [isLoading, setIsLoading] = useState(true);
 
-    // Estados para filtros de fecha
-    const [selectedPeriod, setSelectedPeriod] = useState<string>('last30days');
-    const [customStartDate, setCustomStartDate] = useState<string>('');
-    const [customEndDate, setCustomEndDate] = useState<string>('');
-
-    // Estados para desglose interactivo
-    const [expandedCategoryId, setExpandedCategoryId] = useState<string | null>(null);
-    const [categoryDetails, setCategoryDetails] = useState<SalidaMongoData[]>([]);
-    const [loadingDetails, setLoadingDetails] = useState(false);
-
-    // Funciones para calcular períodos de fecha
-    const getPeriodDates = (period: string): { startDate?: Date, endDate?: Date } => {
-        const now = new Date();
-
-        // Función helper para crear fecha al inicio del día (00:00:00)
-        const startOfDay = (date: Date) => {
-            const d = new Date(date);
-            d.setHours(0, 0, 0, 0);
-            return d;
-        };
-
-        // Función helper para crear fecha al final del día (23:59:59)
-        const endOfDay = (date: Date) => {
-            const d = new Date(date);
-            d.setHours(23, 59, 59, 999);
-            return d;
-        };
-
-        switch (period) {
-            case 'today':
-                return {
-                    startDate: startOfDay(now),
-                    endDate: endOfDay(now)
-                };
-            case 'yesterday':
-                const yesterday = new Date(now);
-                yesterday.setDate(now.getDate() - 1);
-                return {
-                    startDate: startOfDay(yesterday),
-                    endDate: endOfDay(yesterday)
-                };
-            case 'last7days':
-                const last7Days = new Date(now);
-                last7Days.setDate(now.getDate() - 7);
-                return {
-                    startDate: startOfDay(last7Days),
-                    endDate: endOfDay(now)
-                };
-            case 'last30days':
-                const last30Days = new Date(now);
-                last30Days.setDate(now.getDate() - 30);
-                return {
-                    startDate: startOfDay(last30Days),
-                    endDate: endOfDay(now)
-                };
-            case 'thismonth':
-                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-                return {
-                    startDate: startOfDay(startOfMonth),
-                    endDate: endOfDay(now)
-                };
-            case 'lastmonth':
-                const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-                return {
-                    startDate: startOfDay(startOfLastMonth),
-                    endDate: endOfDay(endOfLastMonth)
-                };
-            case 'last3months':
-                const last3Months = new Date(now);
-                last3Months.setMonth(now.getMonth() - 3);
-                return {
-                    startDate: startOfDay(last3Months),
-                    endDate: endOfDay(now)
-                };
-            case 'thisyear':
-                const startOfYear = new Date(now.getFullYear(), 0, 1);
-                return {
-                    startDate: startOfDay(startOfYear),
-                    endDate: endOfDay(now)
-                };
-            case 'custom':
-                if (customStartDate && customEndDate) {
-                    return {
-                        startDate: startOfDay(new Date(customStartDate)),
-                        endDate: endOfDay(new Date(customEndDate))
-                    };
-                } else if (customStartDate) {
-                    return {
-                        startDate: startOfDay(new Date(customStartDate)),
-                        endDate: endOfDay(now)
-                    };
-                } else if (customEndDate) {
-                    return {
-                        endDate: endOfDay(new Date(customEndDate))
-                    };
-                }
-                return {};
-            default:
-                return {};
-        }
-    };
-
     // Cargar datos
     useEffect(() => {
         loadAllData();
         loadCategories();
     }, []);
 
-    // Recargar datos cuando cambie el período
-    useEffect(() => {
-        // Limpiar expansión cuando cambie el período
-        setExpandedCategoryId(null);
-        setCategoryDetails([]);
-
-        if (selectedPeriod !== 'custom') {
-            // Para períodos predefinidos, cargar inmediatamente
-            loadAllData();
-        } else if (selectedPeriod === 'custom' && (customStartDate || customEndDate)) {
-            // Para custom, cargar si al menos una fecha está definida
-            loadAllData();
-        }
-    }, [selectedPeriod, customStartDate, customEndDate]);
-
     const loadAllData = async () => {
         setIsLoading(true);
         try {
-            const { startDate, endDate } = getPeriodDates(selectedPeriod);
-
             const [categoryData, typeData, monthlyData, overviewData] = await Promise.all([
-                getSalidasCategoryAnalyticsAction(startDate, endDate),
-                getSalidasTypeAnalyticsAction(startDate, endDate),
-                getSalidasMonthlyAnalyticsAction(undefined, startDate, endDate),
-                getSalidasOverviewAnalyticsAction(startDate, endDate)
+                getSalidasCategoryAnalyticsAction(),
+                getSalidasTypeAnalyticsAction(),
+                getSalidasMonthlyAnalyticsAction(),
+                getSalidasOverviewAnalyticsAction()
             ]);
 
             setCategoryStats(categoryData);
@@ -212,13 +95,10 @@ export function SalidasEstadisticas({ onRefreshData }: SalidasEstadisticasProps)
         try {
             const response = await getAllCategoriasAction();
             if (response.success && response.categorias) {
+                // Adaptar categorías MongoDB al formato esperado
                 setAvailableCategories(response.categorias.map(c => ({
-                    id: c._id,
-                    nombre: c.nombre,
-                    descripcion: c.descripcion,
-                    isActive: c.isActive,
-                    createdAt: c.createdAt,
-                    updatedAt: c.updatedAt
+                    ...c,
+                    id: c._id
                 })));
             }
         } catch (error) {
@@ -228,9 +108,8 @@ export function SalidasEstadisticas({ onRefreshData }: SalidasEstadisticasProps)
 
     const loadMonthlyData = async () => {
         try {
-            const { startDate, endDate } = getPeriodDates(selectedPeriod);
             const categoryId = selectedCategory === 'all' || selectedCategory === '' ? undefined : selectedCategory;
-            const data = await getSalidasMonthlyAnalyticsAction(categoryId, startDate, endDate);
+            const data = await getSalidasMonthlyAnalyticsAction(categoryId);
             setMonthlyStats(data);
         } catch (error) {
             console.error('Error loading monthly data:', error);
@@ -280,75 +159,8 @@ export function SalidasEstadisticas({ onRefreshData }: SalidasEstadisticasProps)
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('es-AR', {
             style: 'currency',
-            currency: 'ARS',
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2
+            currency: 'ARS'
         }).format(amount);
-    };
-
-    // Función para manejar click en categoría
-    const handleCategoryClick = async (categoriaId: string) => {
-        if (expandedCategoryId === categoriaId) {
-            // Si ya está expandida, colapsar
-            setExpandedCategoryId(null);
-            setCategoryDetails([]);
-            return;
-        }
-
-        setLoadingDetails(true);
-        setExpandedCategoryId(categoriaId);
-
-        try {
-            const { startDate, endDate } = getPeriodDates(selectedPeriod);
-            const result = await getSalidasDetailsByCategoryAction(categoriaId, startDate, endDate);
-
-            if (result.success && result.salidas) {
-                setCategoryDetails(result.salidas);
-            } else {
-                setCategoryDetails([]);
-            }
-        } catch (error) {
-            console.error('Error obteniendo desglose:', error);
-            setCategoryDetails([]);
-        } finally {
-            setLoadingDetails(false);
-        }
-    };
-
-    const formatDate = (date: Date | string) => {
-        // Asegurar que tenemos un objeto Date válido
-        let dateObj: Date;
-
-        if (date instanceof Date) {
-            dateObj = date;
-        } else if (typeof date === 'string') {
-            // Si es un string, parsear la fecha considerando que está en zona horaria local
-            // Extraer solo la parte de la fecha (YYYY-MM-DD) para evitar problemas de zona horaria
-            const dateOnly = date.split(' ')[0]; // Tomar solo "2025-07-27"
-            const [year, month, day] = dateOnly.split('-').map(Number);
-
-            // Crear la fecha usando UTC para evitar problemas de zona horaria
-            dateObj = new Date(Date.UTC(year, month - 1, day));
-
-            // Convertir a zona horaria local
-            const localYear = dateObj.getFullYear();
-            const localMonth = dateObj.getMonth();
-            const localDay = dateObj.getDate();
-            dateObj = new Date(localYear, localMonth, localDay);
-        } else {
-            dateObj = new Date(date);
-        }
-
-        // Verificar si la fecha es válida
-        if (isNaN(dateObj.getTime())) {
-            return 'Fecha inválida';
-        }
-
-        return new Intl.DateTimeFormat('es-AR', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        }).format(dateObj);
     };
 
     const CustomTooltip = ({ active, payload, label }: any) => {
@@ -383,125 +195,8 @@ export function SalidasEstadisticas({ onRefreshData }: SalidasEstadisticasProps)
         );
     }
 
-    const formatDateForInput = (date: Date) => {
-        return date.toISOString().split('T')[0];
-    };
-
-    const getPeriodLabel = (period: string) => {
-        switch (period) {
-            case 'today': return 'Hoy';
-            case 'yesterday': return 'Ayer';
-            case 'last7days': return 'Últimos 7 días';
-            case 'last30days': return 'Últimos 30 días';
-            case 'thismonth': return 'Este mes';
-            case 'lastmonth': return 'Mes pasado';
-            case 'last3months': return 'Últimos 3 meses';
-            case 'thisyear': return 'Este año';
-            case 'custom': return 'Rango personalizado';
-            default: return 'Período';
-        }
-    };
-
     return (
         <div className="space-y-6">
-            {/* Panel de filtros de fecha */}
-            <Card>
-                <CardHeader className="pb-4">
-                    <CardTitle className="text-base flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        Período de Análisis
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {/* Períodos rápidos */}
-                    <div>
-                        <label className="text-sm font-medium text-muted-foreground mb-2 block">Períodos rápidos</label>
-                        <div className="flex flex-wrap gap-2">
-                            {[
-                                { value: 'today', label: 'Hoy' },
-                                { value: 'yesterday', label: 'Ayer' },
-                                { value: 'last7days', label: 'Últimos 7 días' },
-                                { value: 'last30days', label: 'Últimos 30 días' },
-                                { value: 'thismonth', label: 'Este mes' },
-                                { value: 'lastmonth', label: 'Mes pasado' },
-                                { value: 'last3months', label: 'Últimos 3 meses' },
-                                { value: 'thisyear', label: 'Este año' }
-                            ].map((period) => (
-                                <Button
-                                    key={period.value}
-                                    variant={selectedPeriod === period.value ? 'default' : 'outline'}
-                                    size="sm"
-                                    onClick={() => setSelectedPeriod(period.value)}
-                                    className="text-xs"
-                                >
-                                    {period.label}
-                                </Button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Rango personalizado */}
-                    <div>
-                        <div className="flex items-center gap-2 mb-2">
-                            <label className="text-sm font-medium text-muted-foreground">Rango personalizado</label>
-                            <Button
-                                variant={selectedPeriod === 'custom' ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => setSelectedPeriod('custom')}
-                                className="text-xs"
-                            >
-                                <CalendarDays className="h-3 w-3 mr-1" />
-                                Personalizado
-                            </Button>
-                        </div>
-
-                        {selectedPeriod === 'custom' && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label className="text-xs text-muted-foreground mb-1 block">Desde</label>
-                                    <Input
-                                        type="date"
-                                        value={customStartDate}
-                                        onChange={(e) => setCustomStartDate(e.target.value)}
-                                        className="text-sm"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-xs text-muted-foreground mb-1 block">Hasta</label>
-                                    <Input
-                                        type="date"
-                                        value={customEndDate}
-                                        onChange={(e) => setCustomEndDate(e.target.value)}
-                                        className="text-sm"
-                                    />
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Período seleccionado */}
-                    <div className="pt-2 border-t">
-                        <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">Período actual:</span>
-                            <span className="font-medium">{getPeriodLabel(selectedPeriod)}</span>
-                        </div>
-                        {(() => {
-                            const { startDate, endDate } = getPeriodDates(selectedPeriod);
-                            if (startDate || endDate) {
-                                return (
-                                    <div className="text-xs text-muted-foreground mt-1">
-                                        {startDate && `Desde: ${startDate.toLocaleDateString('es-AR')} ${startDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`}
-                                        {startDate && endDate && ' • '}
-                                        {endDate && `Hasta: ${endDate.toLocaleDateString('es-AR')} ${endDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`}
-                                    </div>
-                                );
-                            }
-                            return null;
-                        })()}
-                    </div>
-                </CardContent>
-            </Card>
-
             {/* Resumen general */}
             {overviewStats && (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -607,81 +302,26 @@ export function SalidasEstadisticas({ onRefreshData }: SalidasEstadisticasProps)
                         <Card>
                             <CardHeader>
                                 <CardTitle>Ranking por Categoría</CardTitle>
-                                <p className="text-sm text-muted-foreground mt-1">
-                                    Haz click en una categoría para ver el desglose detallado de gastos
-                                </p>
                             </CardHeader>
                             <CardContent>
                                 <div className="space-y-3">
                                     {categoryStats.map((item, index) => (
-                                        <div key={item.categoriaId}>
-                                            {/* Fila principal de categoría - clickeable */}
-                                            <div
-                                                className="flex items-center justify-between p-3 bg-muted/50 rounded-lg cursor-pointer hover:bg-muted/70 transition-colors"
-                                                onClick={() => handleCategoryClick(item.categoriaId)}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <div className="text-lg font-bold text-muted-foreground">
-                                                        #{index + 1}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-medium flex items-center gap-2">
-                                                            {item.categoriaNombre}
-                                                            {expandedCategoryId === item.categoriaId && (
-                                                                <span className="text-xs text-blue-600">▼</span>
-                                                            )}
-                                                        </p>
-                                                        <p className="text-sm text-muted-foreground">{item.cantidad} transacciones</p>
-                                                    </div>
+                                        <div key={item.categoriaId} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                                            <div className="flex items-center gap-3">
+                                                <div className="text-lg font-bold text-muted-foreground">
+                                                    #{index + 1}
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="font-bold">{formatCurrency(item.totalMonto)}</p>
-                                                    <Badge variant="secondary" className="text-xs">
-                                                        {item.porcentaje.toFixed(1)}%
-                                                    </Badge>
+                                                <div>
+                                                    <p className="font-medium">{item.categoriaNombre}</p>
+                                                    <p className="text-sm text-muted-foreground">{item.cantidad} transacciones</p>
                                                 </div>
                                             </div>
-
-                                            {/* Desglose detallado - solo visible si está expandida */}
-                                            {expandedCategoryId === item.categoriaId && (
-                                                <div className="ml-4 mt-2 space-y-2">
-                                                    {loadingDetails ? (
-                                                        <div className="text-center py-4 text-sm text-muted-foreground">
-                                                            Cargando desglose...
-                                                        </div>
-                                                    ) : categoryDetails.length > 0 ? (
-                                                        <>
-                                                            <div className="text-sm font-medium text-muted-foreground mb-2">
-                                                                Detalle de gastos:
-                                                            </div>
-                                                            {categoryDetails.map((salida, detailIndex) => (
-                                                                <div key={salida._id} className="flex items-center justify-between p-2 bg-background border rounded text-sm">
-                                                                    <div className="flex-1">
-                                                                        <p className="font-medium text-sm">
-                                                                            {salida.detalle}
-                                                                        </p>
-                                                                        <p className="text-xs text-muted-foreground">
-                                                                            {formatDate(salida.fechaFactura)} • {salida.metodoPago?.nombre || 'N/A'}
-                                                                        </p>
-                                                                    </div>
-                                                                    <div className="text-right">
-                                                                        <p className="font-semibold">
-                                                                            {formatCurrency(salida.monto)}
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                            <div className="text-xs text-muted-foreground pt-2 border-t">
-                                                                Total: {categoryDetails.length} gastos • {formatCurrency(categoryDetails.reduce((sum, s) => sum + s.monto, 0))}
-                                                            </div>
-                                                        </>
-                                                    ) : (
-                                                        <div className="text-center py-4 text-sm text-muted-foreground">
-                                                            No hay gastos para mostrar en este período
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
+                                            <div className="text-right">
+                                                <p className="font-bold">{formatCurrency(item.totalMonto)}</p>
+                                                <Badge variant="secondary" className="text-xs">
+                                                    {item.porcentaje.toFixed(1)}%
+                                                </Badge>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -744,7 +384,7 @@ export function SalidasEstadisticas({ onRefreshData }: SalidasEstadisticasProps)
                                     <SelectContent>
                                         <SelectItem value="all">Todas las categorías</SelectItem>
                                         {availableCategories.map(categoria => (
-                                            <SelectItem key={categoria.id} value={categoria.id}>
+                                            <SelectItem key={categoria._id} value={categoria._id}>
                                                 {categoria.nombre}
                                             </SelectItem>
                                         ))}
@@ -776,4 +416,4 @@ export function SalidasEstadisticas({ onRefreshData }: SalidasEstadisticasProps)
             </Tabs>
         </div>
     );
-} 
+}

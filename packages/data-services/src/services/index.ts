@@ -9,7 +9,7 @@ export * from './userService';
 export * from './templateService';
 // export * from './pricesService'; // DEPRECATED: Migrado a MongoDB en barfer/pricesCalculationService.ts
 export * from './salidasService';
-export * from './salidasAnalyticsService';
+// export * from './salidasAnalyticsService'; // DEPRECATED: Migrado a MongoDB en salidasAnalyticsMongoService.ts
 export { getSalidasDetailsByCategory } from './salidasService';
 export * from './balanceService';
 export * from './categoriasService';
@@ -19,6 +19,7 @@ export * from './metodosPagoService';
 // SERVICIOS MIGRADOS A MONGODB
 // ==========================================
 export * from './salidasMongoService';
+export * from './salidasAnalyticsMongoService';
 export * from './categoriasMongoService';
 export * from './metodosPagoMongoService';
 export * from './categoriasProveedoresMongoService';

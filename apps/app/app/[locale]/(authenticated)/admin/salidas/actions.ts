@@ -31,12 +31,11 @@ import {
     updateCategoriaProveedorMongo,
     deleteCategoriaProveedorMongo,
     initializeCategoriasProveedoresMongo,
-    // Servicios de Analytics
-    getSalidasCategoryAnalytics,
-    getSalidasTypeAnalytics,
-    getSalidasMonthlyAnalytics,
-    getSalidasOverviewAnalytics,
-    getSalidasDetailsByCategory,
+    // Servicios de Analytics MongoDB
+    getSalidasCategoryAnalyticsMongo,
+    getSalidasTypeAnalyticsMongo,
+    getSalidasMonthlyAnalyticsMongo,
+    getSalidasOverviewAnalyticsMongo,
     // Servicios adicionales
     getSalidasByCategory,
     // Tipos MongoDB
@@ -224,24 +223,24 @@ export async function getSalidasStatsByMonthAction(year: number, month: number) 
 // ACCIONES DE ANALYTICS (PostgreSQL/Prisma)
 // ==========================================
 
-// Obtener estadísticas de salidas por categoría
+// Obtener estadísticas de salidas por categoría (MongoDB)
 export async function getSalidasCategoryAnalyticsAction(startDate?: Date, endDate?: Date) {
-    return await getSalidasCategoryAnalytics(startDate, endDate);
+    return await getSalidasCategoryAnalyticsMongo(startDate, endDate);
 }
 
-// Obtener estadísticas de salidas por tipo (ordinario vs extraordinario)
+// Obtener estadísticas de salidas por tipo (ordinario vs extraordinario) (MongoDB)
 export async function getSalidasTypeAnalyticsAction(startDate?: Date, endDate?: Date) {
-    return await getSalidasTypeAnalytics(startDate, endDate);
+    return await getSalidasTypeAnalyticsMongo(startDate, endDate);
 }
 
-// Obtener estadísticas de salidas por mes
+// Obtener estadísticas de salidas por mes (MongoDB)
 export async function getSalidasMonthlyAnalyticsAction(categoriaId?: string, startDate?: Date, endDate?: Date) {
-    return await getSalidasMonthlyAnalytics(categoriaId, startDate, endDate);
+    return await getSalidasMonthlyAnalyticsMongo(categoriaId, startDate, endDate);
 }
 
-// Obtener resumen general de salidas
+// Obtener resumen general de salidas (MongoDB)
 export async function getSalidasOverviewAnalyticsAction(startDate?: Date, endDate?: Date) {
-    return await getSalidasOverviewAnalytics(startDate, endDate);
+    return await getSalidasOverviewAnalyticsMongo(startDate, endDate);
 }
 
 // Obtener detalles de salidas por categoría
