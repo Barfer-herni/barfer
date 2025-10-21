@@ -216,6 +216,20 @@ export function parseFormattedProduct(formattedProduct: string): {
             product = sectionParts[2]; // "POLLO"
             weight = parts[1].trim(); // "5KG"
         }
+    } else if (section.toUpperCase().includes('HUESOS CARNOSOS') || section.toUpperCase().includes('HUESO CARNOSO')) {
+        // Formato: "HUESOS CARNOSOS - 5KG"
+        // En la DB: section = "OTROS", product = "HUESOS CARNOSOS 5KG", weight = null
+        // El peso está incluido en el nombre del producto, no como campo separado
+        section = 'OTROS';
+        product = `${parts[0].trim()} ${parts[1].trim()}`; // "HUESOS CARNOSOS 5KG"
+        weight = null; // El peso está en el nombre del producto
+    } else if (section.toUpperCase().includes('BOX DE COMPLEMENTOS') || section.toUpperCase().includes('BOX COMPLEMENTOS')) {
+        // Formato: "BOX DE COMPLEMENTOS - 1U" o "BOX DE COMPLEMENTOS"
+        // En la DB: section = "OTROS", product = "BOX DE COMPLEMENTOS", weight = null
+        // El "1U" es solo una referencia visual, no se almacena en la DB
+        section = 'OTROS';
+        product = parts[0].trim(); // "BOX DE COMPLEMENTOS"
+        weight = null; // Siempre null en la DB
     }
 
     // Manejo especial para CORNALITOS - el peso está en el nombre del producto
@@ -351,18 +365,21 @@ export async function calculateOrderTotalExact(
 
             if (productName.includes('GATO')) {
                 deducedSection = 'GATO';
+            } else if (productName.includes('BOX DE COMPLEMENTOS') ||
+                productName.includes('HUESOS CARNOSOS') ||
+                productName.includes('HUESO CARNOSO')) {
+                deducedSection = 'OTROS';
             } else if (productName.includes('CORNALITOS') ||
                 productName.includes('GARRAS') ||
                 productName.includes('CALDO') ||
                 productName.includes('HUESOS RECREATIVO') ||
+                productName.includes('HUESO RECREATIVO') ||
                 productName.includes('HIGADO') ||
                 productName.includes('POLLO') && (productName.includes('40GRS') || productName.includes('100GRS')) ||
                 productName.includes('TRAQUEA') ||
-                productName.includes('OREJAS')) {
+                productName.includes('OREJAS') ||
+                productName.includes('TREAT')) {
                 deducedSection = 'RAW';
-            } else if (productName.includes('BOX DE COMPLEMENTOS') ||
-                productName.includes('HUESOS CARNOSOS')) {
-                deducedSection = 'OTROS';
             }
 
             console.log(`🔍 Fallback con sección deducida: ${deducedSection} para ${item.name}`);
