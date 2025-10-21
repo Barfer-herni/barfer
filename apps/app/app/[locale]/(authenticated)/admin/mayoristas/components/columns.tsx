@@ -134,6 +134,48 @@ export const columns: ColumnDef<Mayorista>[] = [
         enableSorting: true,
     },
     {
+        accessorKey: 'horarios',
+        header: ({ column }) => {
+            const isSorted = column.getIsSorted();
+            return (
+                <button
+                    type="button"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                    className="flex items-center gap-2 hover:text-gray-900 font-medium"
+                >
+                    Horarios de Atención
+                    {isSorted === 'asc' ? (
+                        <ArrowUp className="w-4 h-4" />
+                    ) : isSorted === 'desc' ? (
+                        <ArrowDown className="w-4 h-4" />
+                    ) : (
+                        <ArrowUpDown className="w-4 h-4 opacity-50" />
+                    )}
+                </button>
+            );
+        },
+        cell: ({ row }) => {
+            const horarios = row.getValue('horarios') as string | undefined;
+            if (!horarios || horarios.trim() === '') {
+                return <span className="text-gray-400">--</span>;
+            }
+
+            // Dividir por saltos de línea para mostrar en múltiples líneas
+            const lineas = horarios.split('\n').filter(l => l.trim() !== '');
+
+            return (
+                <div className="min-w-[180px] text-xs whitespace-pre-line">
+                    {lineas.map((linea, index) => (
+                        <div key={index} className="py-0.5">
+                            {linea}
+                        </div>
+                    ))}
+                </div>
+            );
+        },
+        enableSorting: true,
+    },
+    {
         accessorKey: 'fechaPrimerPedido',
         header: ({ column }) => {
             const isSorted = column.getIsSorted();

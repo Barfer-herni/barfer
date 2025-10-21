@@ -416,7 +416,24 @@ export const processSingleItem = (item: any): any => {
     const originalName = item.fullName || item.name;
     console.log(`🔄 Nombre original para procesar: "${originalName}"`);
 
-    // Si el nombre parece ser una opción del select (contiene "barfer box", "big dog", etc.)
+    // PRIORIDAD 1: Si el nombre contiene " - " es formato de BD (ej: "PERRO - BIG DOG VACA - 15KG")
+    if (originalName.includes(' - ')) {
+        console.log(`🔄 Detectado formato de BD (contiene " - "), aplicando mapeo: "${originalName}"`);
+        const dbFormat = mapSelectOptionToDBFormat(originalName);
+
+        return {
+            ...item,
+            id: dbFormat.name,
+            name: dbFormat.name,
+            fullName: originalName,
+            options: [{
+                ...item.options?.[0],
+                name: dbFormat.option
+            }]
+        };
+    }
+
+    // PRIORIDAD 2: Si el nombre parece ser una opción del select (contiene palabras clave)
     // usar el mapeo inverso para obtener el formato de la DB
     if (originalName.toLowerCase().includes('barfer box') ||
         originalName.toLowerCase().includes('big dog') ||
@@ -431,7 +448,7 @@ export const processSingleItem = (item: any): any => {
         originalName.toLowerCase().includes('garras') ||
         originalName.toLowerCase().includes('complementos')) {
 
-        console.log(`🔄 Detectado nombre de select, aplicando mapeo inverso: "${originalName}"`);
+        console.log(`🔄 Detectado nombre de select por palabra clave, aplicando mapeo inverso: "${originalName}"`);
         const dbFormat = mapSelectOptionToDBFormat(originalName);
 
         return {
@@ -649,12 +666,16 @@ export const mapDBProductToSelectOption = (dbProductName: string, dbOptionName: 
 // Función para mapear desde la opción del select hacia el formato de la DB
 // NUEVA IMPLEMENTACIÓN: Usa directamente los valores de la base de datos
 export const mapSelectOptionToDBFormat = (selectOption: string): { name: string, option: string } => {
+    console.log(`🔍 mapSelectOptionToDBFormat - INPUT: "${selectOption}"`);
+
     // NUEVO: Manejar formato de productos desde la base de datos (ej: "PERRO - VACA - 10KG")
     if (selectOption.includes(' - ')) {
         const parts = selectOption.split(' - ');
+        console.log(`🔍 Split parts:`, parts);
+
         if (parts.length >= 2) {
             const section = parts[0]; // PERRO, GATO, OTROS
-            const product = parts[1]; // VACA, POLLO, etc.
+            const product = parts[1]; // VACA, POLLO, BIG DOG VACA, etc.
             const weight = parts[2] || null; // 10KG, 5KG, etc.
 
             console.log(`🔄 Mapeando producto desde BD:`, {
@@ -662,18 +683,49 @@ export const mapSelectOptionToDBFormat = (selectOption: string): { name: string,
                 section,
                 product,
                 weight,
-                mappedName: selectOption,
-                mappedOption: weight || ''
+                isBigDog: product.startsWith('BIG DOG')
             });
 
             let cleanName = '';
             console.log(`🔄 section: ${section}`);
             console.log(`🔄 product: ${product}`);
+            console.log(`🔄 product.startsWith('BIG DOG'): ${product.startsWith('BIG DOG')}`);
+
+            let mappedOption = weight || '';
 
             if (section === 'PERRO') {
-                cleanName = `BOX PERRO ${product.replace('BOX ', '')}`; // Mantener el nombre completo original
+                // BIG DOG: En BD se guarda como "BIG DOG VACA" o "BIG DOG POLLO"
+                // Pero en items debe ser: name="BIG DOG (15kg)", option="VACA"
+
+                // Normalizar para comparación (eliminar espacios extras y convertir a mayúsculas)
+                const productNormalized = product.trim().toUpperCase();
+                console.log(`🐕 Verificando si es BIG DOG: "${productNormalized}"`);
+
+                if (productNormalized.startsWith('BIG DOG')) {
+                    // Extraer el sabor del nombre del producto
+                    // "BIG DOG VACA" -> name="BIG DOG (15kg)", option="VACA"
+                    const sabor = productNormalized.replace('BIG DOG', '').trim(); // Extraer "VACA", "POLLO", etc.
+                    cleanName = 'BIG DOG (15kg)'; // Nombre base del producto
+                    mappedOption = sabor; // El sabor como opción (VACA, POLLO, CORDERO)
+                    console.log(`🐕 ES BIG DOG! Sabor extraído: "${sabor}"`);
+                } else {
+                    // Es un BOX PERRO normal
+                    console.log(`📦 Es BOX PERRO normal: "${product}"`);
+                    // Solo agregar "BOX PERRO" si el producto NO empieza con "BOX"
+                    if (product.startsWith('BOX ')) {
+                        cleanName = product; // Ya tiene el formato correcto
+                    } else {
+                        cleanName = `BOX PERRO ${product}`; // "BOX PERRO VACA", "BOX PERRO POLLO", etc.
+                    }
+                    mappedOption = weight || '';
+                }
             } else if (section === 'GATO') {
-                cleanName = `BOX GATO ${product.replace('BOX ', '')}`; // Mantener el nombre completo original
+                // Solo agregar "BOX GATO" si el producto NO empieza con "BOX"
+                if (product.startsWith('BOX ')) {
+                    cleanName = product; // Ya tiene el formato correcto
+                } else {
+                    cleanName = `BOX GATO ${product}`;
+                }
             } else if (section === 'RAW') {
                 cleanName = product;
             } else if (section === 'OTROS') {
@@ -682,25 +734,30 @@ export const mapSelectOptionToDBFormat = (selectOption: string): { name: string,
                 cleanName = product; // Solo usar el nombre del producto
             }
 
-            console.log(`🔄 Mapeando producto desde BD:`, {
+            console.log(`🔄 Mapeando producto desde BD (RESULTADO FINAL):`, {
                 original: selectOption,
                 section,
                 product,
                 weight,
                 cleanName,
-                mappedOption: weight || ''
+                mappedOption
             });
 
-            return {
+            const result = {
                 name: cleanName, // Nombre limpio sin guiones
-                option: weight || '' // El peso como opción
+                option: mappedOption // El peso o sabor como opción
             };
+
+            console.log(`✅ mapSelectOptionToDBFormat - OUTPUT:`, result);
+            return result;
         }
     }
 
     // Si no es el formato de la base de datos, es un caso de compatibilidad para datos antiguos
-    console.warn(`Producto sin formato de BD: ${selectOption}`);
-    return { name: selectOption.toUpperCase(), option: '' };
+    console.warn(`⚠️ Producto sin formato de BD: ${selectOption}`);
+    const fallbackResult = { name: selectOption.toUpperCase(), option: '' };
+    console.log(`✅ mapSelectOptionToDBFormat - OUTPUT (fallback):`, fallbackResult);
+    return fallbackResult;
 };
 
 /**

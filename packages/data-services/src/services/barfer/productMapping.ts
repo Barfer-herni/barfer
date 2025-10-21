@@ -13,7 +13,69 @@ export interface ProductMapping {
  * @returns Objeto con el nombre y opción en formato DB
  */
 export function mapSelectOptionToDBFormat(selectOption: string): ProductMapping {
+    console.log(`🔍 [BACKEND] mapSelectOptionToDBFormat - INPUT: "${selectOption}"`);
+
+    // NUEVO: Manejar formato de productos desde la base de datos (ej: "PERRO - BIG DOG VACA - 15KG")
+    if (selectOption.includes(' - ')) {
+        const parts = selectOption.split(' - ');
+        console.log(`🔍 [BACKEND] Split parts:`, parts);
+
+        if (parts.length >= 2) {
+            const section = parts[0]; // PERRO, GATO, OTROS
+            const product = parts[1]; // VACA, POLLO, BIG DOG VACA, etc.
+            const weight = parts[2] || null; // 10KG, 5KG, etc.
+
+            console.log(`🔄 [BACKEND] Mapeando producto desde BD:`, {
+                original: selectOption,
+                section,
+                product,
+                weight,
+                isBigDog: product.trim().toUpperCase().startsWith('BIG DOG')
+            });
+
+            // Normalizar para comparación
+            const productNormalized = product.trim().toUpperCase();
+
+            if (section === 'PERRO') {
+                // BIG DOG: En BD se guarda como "BIG DOG VACA" o "BIG DOG POLLO"
+                // Pero en items debe ser: name="BIG DOG (15kg)", option="VACA"
+                if (productNormalized.startsWith('BIG DOG')) {
+                    // Extraer el sabor del nombre del producto
+                    const sabor = productNormalized.replace('BIG DOG', '').trim();
+                    const result = { name: 'BIG DOG (15kg)', option: sabor };
+                    console.log(`🐕 [BACKEND] ES BIG DOG! Resultado:`, result);
+                    return result;
+                } else {
+                    // Es un BOX PERRO normal
+                    const cleanName = product.startsWith('BOX ') ? product : `BOX PERRO ${product}`;
+                    const result = { name: cleanName, option: weight || '' };
+                    console.log(`📦 [BACKEND] BOX PERRO normal. Resultado:`, result);
+                    return result;
+                }
+            } else if (section === 'GATO') {
+                const cleanName = product.startsWith('BOX ') ? product : `BOX GATO ${product}`;
+                const result = { name: cleanName, option: weight || '' };
+                console.log(`🐱 [BACKEND] BOX GATO. Resultado:`, result);
+                return result;
+            } else if (section === 'RAW') {
+                const result = { name: product, option: weight || '' };
+                console.log(`🥩 [BACKEND] RAW. Resultado:`, result);
+                return result;
+            } else if (section === 'OTROS') {
+                const result = { name: product, option: weight || '' };
+                console.log(`🔧 [BACKEND] OTROS. Resultado:`, result);
+                return result;
+            } else {
+                const result = { name: product, option: weight || '' };
+                console.log(`❓ [BACKEND] Sección desconocida. Resultado:`, result);
+                return result;
+            }
+        }
+    }
+
+    // Si no es el formato de BD, usar la lógica antigua (texto normalizado)
     const normalizedSelect = selectOption.toLowerCase().trim();
+    console.log(`⚠️ [BACKEND] No es formato BD, usando lógica antigua con texto normalizado: "${normalizedSelect}"`);
 
     // Debug específico para CORNALITOS
     if (normalizedSelect.includes('cornalitos')) {

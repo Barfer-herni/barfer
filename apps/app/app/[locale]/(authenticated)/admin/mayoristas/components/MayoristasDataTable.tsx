@@ -62,6 +62,7 @@ export function MayoristasDataTable({
         cantidadFreezers: 0,
         capacidadFreezer: 0,
         tiposNegocio: [],
+        horarios: '',
         contacto: {
             telefono: '',
             email: '',
@@ -242,6 +243,7 @@ export function MayoristasDataTable({
             cantidadFreezers: mayorista.cantidadFreezers || 0,
             capacidadFreezer: mayorista.capacidadFreezer || 0,
             tiposNegocio: mayorista.tiposNegocio || [],
+            horarios: mayorista.horarios || '',
             contacto: mayorista.contacto || {
                 telefono: '',
                 email: '',
@@ -354,6 +356,20 @@ export function MayoristasDataTable({
                                     })}
                                     placeholder="Teléfono de contacto"
                                 />
+                            </div>
+
+                            <div className="space-y-2 col-span-2">
+                                <Label>Horarios de Atención</Label>
+                                <Textarea
+                                    value={formData.horarios}
+                                    onChange={(e) => setFormData({ ...formData, horarios: e.target.value })}
+                                    placeholder="Ej: Lunes a viernes de 10 a 14hs&#10;Sábados de 10 a 14hs"
+                                    rows={3}
+                                    className="text-sm"
+                                />
+                                <p className="text-xs text-gray-500">
+                                    Puedes usar varias líneas para diferentes horarios
+                                </p>
                             </div>
 
                             <div className="space-y-2">
@@ -565,6 +581,20 @@ export function MayoristasDataTable({
                                                                     contacto: { ...formData.contacto, telefono: e.target.value }
                                                                 })}
                                                             />
+                                                        </div>
+
+                                                        <div className="space-y-2 col-span-2">
+                                                            <Label>Horarios de Atención</Label>
+                                                            <Textarea
+                                                                value={formData.horarios}
+                                                                onChange={(e) => setFormData({ ...formData, horarios: e.target.value })}
+                                                                placeholder="Ej: Lunes a viernes de 10 a 14hs&#10;Sábados de 10 a 14hs"
+                                                                rows={3}
+                                                                className="text-sm"
+                                                            />
+                                                            <p className="text-xs text-gray-500">
+                                                                Puedes usar varias líneas para diferentes horarios
+                                                            </p>
                                                         </div>
 
                                                         <div className="space-y-2">

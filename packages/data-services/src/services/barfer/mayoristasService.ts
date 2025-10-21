@@ -18,6 +18,7 @@ export interface Mayorista {
     cantidadFreezers?: number; // Cantidad de freezers
     capacidadFreezer?: number; // en litros o unidad de medida
     tiposNegocio: MayoristaTipoNegocio[]; // Array para múltiples opciones
+    horarios?: string; // Horarios de atención (ej: "Lunes a viernes de 10 a 14hs\nSábados de 10 a 14hs")
     kilosPorMes: Array<{
         mes: number; // 1-12
         anio: number;
@@ -45,6 +46,7 @@ export interface MayoristaCreateInput {
     cantidadFreezers?: number;
     capacidadFreezer?: number;
     tiposNegocio: MayoristaTipoNegocio[];
+    horarios?: string;
     contacto?: {
         telefono?: string;
         email?: string;
