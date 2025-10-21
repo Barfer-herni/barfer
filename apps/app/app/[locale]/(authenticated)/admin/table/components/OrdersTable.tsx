@@ -8,7 +8,7 @@ import {
     useReactTable,
     type Table as TanstackTable,
 } from '@tanstack/react-table';
-import { Pencil, Save, Trash2, X, Copy, Calculator } from 'lucide-react';
+import { Pencil, Save, Trash2, X, Copy, Calculator, Download } from 'lucide-react';
 
 import {
     Table,
@@ -40,6 +40,7 @@ import {
     formatPhoneNumber
 } from '../helpers';
 import type { DataTableProps } from '../types';
+import { generateMayoristaPDF } from '../generateMayoristaPDF';
 
 interface OrdersTableProps<TData extends { _id: string }, TValue> extends DataTableProps<TData, TValue> {
     editingRowId: string | null;
@@ -265,13 +266,101 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                 {/* Botones de acción */}
                                 <TableCell className="px-0 py-1 border-r border-border">
                                     {editingRowId === row.id ? (
-                                        <div className="flex gap-2 justify-center">
+                                        <div className="flex gap-1 justify-center">
                                             {canEdit && (
-                                                <Button size="icon" variant="default" onClick={() => onSave(row)} disabled={loading}>
+                                                <Button size="icon" variant="default" onClick={() => onSave(row)} disabled={loading} title="Guardar cambios">
                                                     <Save className="w-4 h-4" />
                                                 </Button>
                                             )}
-                                            <Button size="icon" variant="outline" onClick={onCancel} disabled={loading}>
+                                            {/* Botón de descargar PDF - solo para órdenes mayoristas */}
+                                            {(editValues.orderType === 'mayorista' || (row.original as any).orderType === 'mayorista') && (
+                                                <Button
+                                                    size="icon"
+                                                    variant="outline"
+                                                    onClick={async () => {
+                                                        try {
+                                                            const rowData = row.original as any;
+                                                            const currentItems = editValues.items || rowData.items || [];
+                                                            const currentOrderType = editValues.orderType || rowData.orderType || 'mayorista';
+                                                            const currentPaymentMethod = editValues.paymentMethod || rowData.paymentMethod || '';
+
+                                                            // Calcular precios de cada item usando la action
+                                                            const { calculatePriceAction } = await import('../actions');
+                                                            const priceResult = await calculatePriceAction(
+                                                                currentItems,
+                                                                currentOrderType,
+                                                                currentPaymentMethod
+                                                            );
+
+                                                            // Mapear los items con sus precios calculados
+                                                            let itemsWithPrices = currentItems;
+                                                            if (priceResult.success && priceResult.itemPrices) {
+                                                                itemsWithPrices = currentItems.map((item: any, index: number) => {
+                                                                    const priceInfo = priceResult.itemPrices?.[index];
+                                                                    return {
+                                                                        ...item,
+                                                                        price: priceInfo?.unitPrice || 0,
+                                                                        options: [{
+                                                                            ...item.options?.[0],
+                                                                            price: priceInfo?.unitPrice || 0,
+                                                                            quantity: item.options?.[0]?.quantity || 1
+                                                                        }]
+                                                                    };
+                                                                });
+                                                            }
+
+                                                            // Preparar los datos para el PDF
+                                                            const pdfData = {
+                                                                user: {
+                                                                    name: editValues.userName || rowData.user?.name || '',
+                                                                    lastName: editValues.userLastName || rowData.user?.lastName || '',
+                                                                    email: editValues.userEmail || rowData.user?.email || ''
+                                                                },
+                                                                address: {
+                                                                    address: editValues.address?.address || rowData.address?.address || '',
+                                                                    city: editValues.address?.city || rowData.address?.city || '',
+                                                                    phone: editValues.address?.phone || rowData.address?.phone || ''
+                                                                },
+                                                                items: itemsWithPrices,
+                                                                total: priceResult.total || editValues.total || rowData.total || 0,
+                                                                deliveryDay: editValues.deliveryDay || rowData.deliveryDay || '',
+                                                                paymentMethod: editValues.paymentMethod || rowData.paymentMethod || '',
+                                                                notes: editValues.notes || rowData.notes || ''
+                                                            };
+
+                                                            generateMayoristaPDF(pdfData);
+                                                        } catch (error) {
+                                                            console.error('Error calculando precios para PDF:', error);
+                                                            // Fallback: generar PDF sin precios calculados
+                                                            const rowData = row.original as any;
+                                                            const pdfData = {
+                                                                user: {
+                                                                    name: editValues.userName || rowData.user?.name || '',
+                                                                    lastName: editValues.userLastName || rowData.user?.lastName || '',
+                                                                    email: editValues.userEmail || rowData.user?.email || ''
+                                                                },
+                                                                address: {
+                                                                    address: editValues.address?.address || rowData.address?.address || '',
+                                                                    city: editValues.address?.city || rowData.address?.city || '',
+                                                                    phone: editValues.address?.phone || rowData.address?.phone || ''
+                                                                },
+                                                                items: editValues.items || rowData.items || [],
+                                                                total: editValues.total || rowData.total || 0,
+                                                                deliveryDay: editValues.deliveryDay || rowData.deliveryDay || '',
+                                                                paymentMethod: editValues.paymentMethod || rowData.paymentMethod || '',
+                                                                notes: editValues.notes || rowData.notes || ''
+                                                            };
+                                                            generateMayoristaPDF(pdfData);
+                                                        }
+                                                    }}
+                                                    disabled={loading}
+                                                    title="Descargar PDF del pedido"
+                                                    className="border-green-500 text-green-600 hover:bg-green-50"
+                                                >
+                                                    <Download className="w-4 h-4" />
+                                                </Button>
+                                            )}
+                                            <Button size="icon" variant="outline" onClick={onCancel} disabled={loading} title="Cancelar edición">
                                                 <X className="w-4 h-4" />
                                             </Button>
                                         </div>
