@@ -115,7 +115,7 @@ export function SalidasPageClient({
                 )}
 
                 {activeTab === 'estadisticas' && canViewStatistics && (
-                    <SalidasEstadisticas onRefreshData={refreshSalidas} />
+                    <SalidasEstadisticas />
                 )}
 
                 {activeTab === 'categorias' && canViewStatistics && (

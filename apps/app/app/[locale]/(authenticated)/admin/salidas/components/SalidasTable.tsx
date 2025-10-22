@@ -737,27 +737,6 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                 </div>
             </div>
 
-            {/* Información adicional */}
-            <div className="text-sm text-muted-foreground space-y-1">
-                <p>• Haz clic en los títulos de las columnas para ordenar por ese criterio</p>
-                <p>• Usa el buscador de texto para buscar en detalle, categoría, marca, método de pago o monto</p>
-                <p>• Los filtros desplegables permiten filtrar por criterios específicos</p>
-                <p>• Usa el filtro "Fecha" para mostrar solo salidas de una fecha específica</p>
-                <p>• El tipo "ORDINARIO" representa gastos habituales, "EXTRAORDINARIO" gastos excepcionales</p>
-                <p>• "BLANCO" son gastos declarados, "NEGRO" son gastos no declarados</p>
-                <p>• "Llega Factura" y "Pago Factura" permiten hacer seguimiento del ciclo de facturación</p>
-                {!hasAllCategoriesPermission(userPermissions) &&
-                    getCategoryPermissions(userPermissions).length === 0 && (
-                        <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
-                            <p className="text-amber-800 font-medium">⚠️ Información sobre permisos</p>
-                            <p className="text-amber-700 text-xs mt-1">
-                                Solo puedes ver las categorías para las que tienes permisos específicos.
-                                Contacta al administrador si necesitas acceso a categorías adicionales.
-                            </p>
-                        </div>
-                    )}
-            </div>
-
             {/* Modal para agregar salida */}
             <AddSalidaModal
                 open={isAddModalOpen}
