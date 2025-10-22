@@ -290,7 +290,7 @@ export function AddSalidaModal({
         handleInputChange('proveedorId', '');
     };
 
-    // Función para formatear el monto (agregar separadores de miles y permitir decimales)
+    // Función para formatear el monto (formateo automático mientras escribes)
     const formatMontoDisplay = (value: string): string => {
         // Permitir números, coma y punto
         const cleaned = value.replace(/[^\d.,]/g, '');
@@ -299,35 +299,89 @@ export function AddSalidaModal({
             return '';
         }
 
-        // Dividir en parte entera y decimal
-        const parts = cleaned.split(/[.,]/);
-        const integerPart = parts[0] || '';
-        const decimalPart = parts.length > 1 ? (parts.at(-1) || '') : '';
+        // Detectar si hay coma decimal
+        const hasComma = cleaned.includes(',');
+        let integerPart = cleaned;
+        let decimalPart = '';
 
-        // Formatear parte entera con separadores de miles
-        const formattedInteger = integerPart
-            ? Number(integerPart).toLocaleString('es-AR')
-            : '';
-
-        // Si hay decimal, agregarlo con coma
-        if (parts.length > 1 && decimalPart !== undefined) {
-            // Limitar a 2 decimales
-            const limitedDecimal = decimalPart.slice(0, 2);
-            return formattedInteger + (limitedDecimal ? `,${limitedDecimal}` : ',');
+        if (hasComma) {
+            const parts = cleaned.split(',');
+            integerPart = parts[0] || '';
+            decimalPart = parts.length > 1 ? parts[1] : ''; // Permitir escribir decimales libremente
         }
 
-        return formattedInteger;
+        // Formatear parte entera con puntos de miles automáticamente
+        if (integerPart) {
+            // Remover puntos existentes para recalcular
+            const cleanInteger = integerPart.replace(/\./g, '');
+            const numericValue = parseInt(cleanInteger, 10);
+
+            if (!isNaN(numericValue) && numericValue > 0) {
+                // Formatear con puntos de miles usando formato argentino
+                const formattedInteger = numericValue.toLocaleString('es-AR').replace(/,/g, '.');
+
+                // Si hay coma en el input original, mantenerla
+                if (hasComma) {
+                    return `${formattedInteger},${decimalPart}`;
+                } else {
+                    return formattedInteger;
+                }
+            }
+        }
+
+        return cleaned;
     };
 
-    // Función para parsear el monto display a número
+    // Función para parsear el monto display a número (más inteligente)
     const parseMontoDisplay = (value: string): number => {
-        // Remover separadores de miles (puntos)
-        // Reemplazar coma por punto para el decimal
-        const cleaned = value
-            .replace(/\./g, '') // Remover puntos de miles
-            .replace(',', '.'); // Convertir coma decimal a punto
+        if (!value || value.trim() === '') {
+            return 0;
+        }
 
-        const parsed = Number.parseFloat(cleaned);
+        // Limpiar espacios
+        const cleaned = value.trim();
+
+        // Detectar si usa coma o punto como separador decimal
+        const hasComma = cleaned.includes(',');
+        const hasDot = cleaned.includes('.');
+
+        let numericString = cleaned;
+
+        if (hasComma && hasDot) {
+            // Si tiene ambos, determinar cuál es el separador decimal
+            const lastComma = cleaned.lastIndexOf(',');
+            const lastDot = cleaned.lastIndexOf('.');
+
+            if (lastComma > lastDot) {
+                // La coma está después del punto, entonces coma es decimal
+                numericString = cleaned.replace(/\./g, '').replace(',', '.');
+            } else {
+                // El punto está después de la coma, entonces punto es decimal
+                numericString = cleaned.replace(/,/g, '').replace('.', '.');
+            }
+        } else if (hasComma) {
+            // Solo coma: puede ser separador de miles o decimal
+            const parts = cleaned.split(',');
+            if (parts.length === 2 && parts[1].length <= 2) {
+                // Probablemente coma decimal (ej: "123,45")
+                numericString = cleaned.replace(',', '.');
+            } else {
+                // Probablemente separador de miles (ej: "1,234,567")
+                numericString = cleaned.replace(/,/g, '');
+            }
+        } else if (hasDot) {
+            // Solo punto: puede ser separador de miles o decimal
+            const parts = cleaned.split('.');
+            if (parts.length === 2 && parts[1].length <= 2) {
+                // Probablemente punto decimal (ej: "123.45")
+                numericString = cleaned;
+            } else {
+                // Probablemente separador de miles (ej: "1.234.567")
+                numericString = cleaned.replace(/\./g, '');
+            }
+        }
+
+        const parsed = Number.parseFloat(numericString);
         return Number.isNaN(parsed) ? 0 : parsed;
     };
 
@@ -338,6 +392,19 @@ export function AddSalidaModal({
 
         const numericValue = parseMontoDisplay(value);
         handleInputChange('monto', numericValue);
+    };
+
+    // Handler para cuando el usuario termine de escribir (onBlur)
+    const handleMontoBlur = () => {
+        const numericValue = parseMontoDisplay(montoDisplay);
+        if (numericValue > 0) {
+            // Formatear con puntos de miles y coma decimal
+            const formatted = numericValue.toLocaleString('es-AR', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 2
+            }).replace(/,/g, '.');
+            setMontoDisplay(formatted);
+        }
     };
 
     const validateForm = () => {
@@ -747,6 +814,7 @@ export function AddSalidaModal({
                                         placeholder="0"
                                         value={montoDisplay}
                                         onChange={(e) => handleMontoChange(e.target.value)}
+                                        onBlur={handleMontoBlur}
                                         className={`pl-7 ${errors.monto ? 'border-red-500' : ''}`}
                                     />
                                 </div>

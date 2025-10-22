@@ -43,22 +43,39 @@ function normalizeProductName(name: string): string {
  * - "POLLO" en sección "PERRO" -> "PERRO - POLLO"
  * - "BIG DOG VACA" en sección "PERRO" -> "PERRO - BIG DOG VACA"
  * - "GARRAS DE POLLO" en sección "OTROS" -> "OTROS - GARRAS DE POLLO"
- * - "OREJA X1" en sección "RAW" -> "RAW - OREJA X1" (NO se agrupa)
- * - "HIGADO 100GRS" en sección "RAW" -> "RAW - HIGADO 100GRS" (NO se agrupa)
+ * - "OREJA X1" en sección "RAW" -> "RAW - OREJA" (se agrupa por nombre base)
+ * - "OREJA X50" en sección "RAW" -> "RAW - OREJA" (se agrupa por nombre base)
+ * - "HIGADO 100GRS" en sección "RAW" -> "RAW - HIGADO" (se agrupa por nombre base)
  */
 function generateGroupKey(product: string, section: string): string {
     let normalizedProduct = product.trim().toUpperCase();
     const normalizedSection = section.trim().toUpperCase();
 
-    // Para productos RAW, NO agrupar - mantener el nombre completo con peso/presentación
+    // Para productos RAW, agrupar por nombre base eliminando sufijos de cantidad
     if (normalizedSection === 'RAW') {
-        // Solo normalizar espacios y mayúsculas, pero mantener pesos y presentaciones
-        normalizedProduct = normalizedProduct
-            .replace(/\s+/g, ' ')
+        // Normalizar espacios y caracteres especiales
+        normalizedProduct = normalizedProduct.replace(/\s+/g, ' ').trim();
+
+        // Eliminar sufijos de cantidad como X1, X50, X100, 100GRS, KG, etc.
+        // Patrones a eliminar:
+        // - X seguido de números (X1, X50, X100)
+        // - Números seguidos de GRS/GR/GRAMOS
+        // - Números seguidos de KG/KILO/KILOS
+        // - Números seguidos de UND/UNIDAD/UNIDADES
+        // - Números solos al final (ej: "OREJA 1" -> "OREJA")
+        const baseProduct = normalizedProduct
+            .replace(/\s*X\d+\s*$/i, '')           // X1, X50, X100 al final
+            .replace(/\s*\d+\s*(GRS?|GRAMOS?)\s*$/i, '') // 100GRS, 500GR al final
+            .replace(/\s*\d+\s*(KG|KILOS?)\s*$/i, '')    // 1KG, 2KILOS al final
+            .replace(/\s*\d+\s*(UND|UNIDADES?)\s*$/i, '') // 1UND, 10UNIDADES al final
+            .replace(/\s*\d+\s*$/i, '')            // Números solos al final (ej: "OREJA 1")
             .trim();
 
-        console.log(`    🔧 RAW producto (sin agrupar): "${product}" -> "${normalizedSection} - ${normalizedProduct}"`);
-        return `${normalizedSection} - ${normalizedProduct}`;
+        // Normalizar nombres comunes de productos RAW
+        const normalizedBaseProduct = normalizeRawProductName(baseProduct);
+
+        console.log(`    🔧 RAW producto (agrupado): "${product}" -> "${normalizedSection} - ${normalizedBaseProduct}"`);
+        return `${normalizedSection} - ${normalizedBaseProduct}`;
     }
 
     // Para productos que ya tienen identificadores especiales, mantenerlos
@@ -68,6 +85,33 @@ function generateGroupKey(product: string, section: string): string {
 
     // Para otros productos (PERRO, GATO, OTROS), usar el nombre procesado
     return `${normalizedSection} - ${normalizedProduct}`;
+}
+
+/**
+ * Normaliza nombres comunes de productos RAW para unificar variaciones
+ * Ejemplos:
+ * - "OREJA", "OREJAS" -> "OREJA"
+ * - "HIGADO", "HIGADOS" -> "HIGADO"
+ * - "CORAZON", "CORAZONES" -> "CORAZON"
+ */
+function normalizeRawProductName(productName: string): string {
+    const normalized = productName.trim().toUpperCase();
+
+    // Mapeo de variaciones comunes
+    const variations: { [key: string]: string } = {
+        'OREJAS': 'OREJA',
+        'HIGADOS': 'HIGADO',
+        'CORAZONES': 'CORAZON',
+        'RINONES': 'RINON',
+        'MOLLEJAS': 'MOLLEJA',
+        'LENGUAS': 'LENGUA',
+        'PULMONES': 'PULMON',
+        'BOCADOS': 'BOCADO',
+        'PATA': 'PATAS',
+        'PATAS': 'PATAS'
+    };
+
+    return variations[normalized] || normalized;
 }
 
 /**
