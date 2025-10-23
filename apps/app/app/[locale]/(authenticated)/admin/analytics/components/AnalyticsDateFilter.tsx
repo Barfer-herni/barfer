@@ -49,7 +49,7 @@ function createUTCDate(year: number, month: number, day: number, hour = 0, minut
 // Función para obtener fecha actual en UTC
 function getTodayUTC(): Date {
     const now = new Date();
-    return createUTCDate(now.getFullYear(), now.getMonth(), now.getDate());
+    return createUTCDate(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
 }
 
 function getDateRangeFromPreset(preset: string): DateRange {
