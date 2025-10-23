@@ -15,6 +15,17 @@ export function MatrixTableClient({ matrix, productNames }: MatrixTableClientPro
     const [sortColumn, setSortColumn] = useState<string | null>(null);
     const [sortDirection, setSortDirection] = useState<SortDirection>(null);
 
+    // Función helper para determinar si un producto está en gramos
+    const isProductInGrams = (productName: string): boolean => {
+        return productName.toUpperCase().includes('GRS') ||
+            productName.toUpperCase().includes('RAW');
+    };
+
+    // Función para obtener la unidad de medida de un producto
+    const getProductUnit = (productName: string): string => {
+        return isProductInGrams(productName) ? 'unidades' : 'kg';
+    };
+
     // Función para ordenar columnas
     const handleSort = (columnName: string) => {
         if (sortColumn === columnName) {
@@ -114,14 +125,16 @@ export function MatrixTableClient({ matrix, productNames }: MatrixTableClientPro
                                 )}
                             </td>
                             {productNames.map((productName) => {
-                                const kilos = row.productos[productName] || 0;
+                                const quantity = row.productos[productName] || 0;
+                                const unit = getProductUnit(productName);
                                 return (
                                     <td
                                         key={productName}
-                                        className={`px-3 py-3 text-center border-r ${kilos > 0 ? 'font-medium text-gray-900' : 'text-gray-400'
+                                        className={`px-3 py-3 text-center border-r ${quantity > 0 ? 'font-medium text-gray-900' : 'text-gray-400'
                                             }`}
+                                        title={`${quantity} ${unit}`}
                                     >
-                                        {kilos > 0 ? kilos.toLocaleString('es-AR') : '--'}
+                                        {quantity > 0 ? quantity.toLocaleString('es-AR') : '--'}
                                     </td>
                                 );
                             })}

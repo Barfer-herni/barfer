@@ -89,7 +89,7 @@ export function MatrizPageClient({ matrix, productNames, fromInicial, toInicial 
                             Matriz de Productos por Punto de Venta
                         </h1>
                         <p className="text-muted-foreground">
-                            Kilos comprados de cada producto por punto de venta. Haz clic en las columnas para ordenar.
+                            Cantidades compradas de cada producto por punto de venta. Para productos en KG se muestran kilos, para productos en gramos se muestra la cantidad. Haz clic en las columnas para ordenar.
                         </p>
                     </div>
 

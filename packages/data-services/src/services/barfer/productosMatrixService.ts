@@ -5,9 +5,9 @@ export interface ProductoMatrixData {
     puntoVentaNombre: string;
     zona: string;
     productos: {
-        [productName: string]: number; // nombre del producto -> kilos totales
+        [productName: string]: number; // nombre del producto -> kilos totales o cantidad (para productos en gramos)
     };
-    totalKilos: number;
+    totalKilos: number; // Total de kilos (solo productos en KG, no incluye cantidades de productos en gramos)
 }
 
 interface ProductoMayorista {
@@ -405,10 +405,14 @@ function extractUnitMultiplier(text: string | null | undefined): number {
 /**
  * Calcula cuántos kilos o unidades hay en un item de orden
  * - Para productos con peso en KG: extrae el peso de las opciones y lo multiplica por la cantidad
+ * - Para productos en gramos (GRS): devuelve la cantidad directamente sin convertir a kilos
  * - Para productos RAW (sin peso en KG): cuenta unidades considerando multiplicadores X1, X50, X100
  */
 function calculateItemQuantity(item: any, producto: ProductoMayorista): number {
     let total = 0;
+
+    // Detectar si el producto está en gramos por su nombre
+    const isProductInGrams = item.name && item.name.toUpperCase().includes('GRS');
 
     // Si tiene opciones, procesar cada una
     if (item.options && Array.isArray(item.options)) {
@@ -416,17 +420,23 @@ function calculateItemQuantity(item: any, producto: ProductoMayorista): number {
             const quantity = option.quantity || 0;
             const optionName = option.name || '';
 
-            // Intentar extraer kilos del nombre de la opción (ej: "5KG", "10KG")
-            const kilosFromOption = extractKilosFromWeight(optionName);
-
-            if (kilosFromOption > 0) {
-                // Si la opción tiene peso en KG, usar ese peso
-                total += kilosFromOption * quantity;
+            // Verificar si es un producto en gramos (por opción o por nombre del producto)
+            if (optionName.toUpperCase().includes('GRS') || isProductInGrams) {
+                // Para productos en gramos, devolver la cantidad directamente
+                total += quantity;
             } else {
-                // Para productos RAW, buscar multiplicador (X1, X50, X100) en el weight del producto
-                const unitMultiplier = extractUnitMultiplier(producto.weight);
-                // El peso del producto será 1 si no tiene peso definido
-                total += producto.kilos * quantity * unitMultiplier;
+                // Intentar extraer kilos del nombre de la opción (ej: "5KG", "10KG")
+                const kilosFromOption = extractKilosFromWeight(optionName);
+
+                if (kilosFromOption > 0) {
+                    // Si la opción tiene peso en KG, usar ese peso
+                    total += kilosFromOption * quantity;
+                } else {
+                    // Para productos RAW, buscar multiplicador (X1, X50, X100) en el weight del producto
+                    const unitMultiplier = extractUnitMultiplier(producto.weight);
+                    // El peso del producto será 1 si no tiene peso definido
+                    total += producto.kilos * quantity * unitMultiplier;
+                }
             }
         }
     } else {
@@ -518,7 +528,11 @@ export async function getProductosMatrix(from?: string, to?: string): Promise<{
                                     },
                                     {
                                         case: { $regexMatch: { input: "$items.options.name", regex: /GRS/i } },
-                                        then: { $divide: ["$valorNumerico", 1000] }
+                                        then: 1 // Para productos en gramos por opción, usar 1 para mantener la cantidad original
+                                    },
+                                    {
+                                        case: { $regexMatch: { input: "$items.name", regex: /GRS/i } },
+                                        then: 1 // Para productos en gramos por nombre del producto, usar 1 para mantener la cantidad original
                                     }
                                 ],
                                 default: 0
@@ -528,7 +542,7 @@ export async function getProductosMatrix(from?: string, to?: string): Promise<{
                 },
                 {
                     $addFields: {
-                        totalKilosItem: { $multiply: ["$kilosPorUnidad", "$items.options.quantity"] }
+                        totalQuantityItem: { $multiply: ["$kilosPorUnidad", "$items.options.quantity"] }
                     }
                 },
                 {
@@ -537,11 +551,11 @@ export async function getProductosMatrix(from?: string, to?: string): Promise<{
                             producto: "$items.name",
                             presentacion: "$items.options.name"
                         },
-                        totalKilos: { $sum: "$totalKilosItem" }
+                        totalQuantity: { $sum: "$totalQuantityItem" }
                     }
                 },
                 {
-                    $match: { totalKilos: { $gt: 0 } }
+                    $match: { totalQuantity: { $gt: 0 } }
                 },
                 { $sort: { "_id.producto": 1, "_id.presentacion": 1 } }
             ];
@@ -575,7 +589,7 @@ export async function getProductosMatrix(from?: string, to?: string): Promise<{
             for (const producto of productosResult) {
                 const productoName = producto._id.producto;
                 const presentacion = producto._id.presentacion;
-                const kilos = producto.totalKilos;
+                const quantity = producto.totalQuantity;
 
                 // Crear clave de agrupación
                 let groupKey: string;
@@ -594,12 +608,18 @@ export async function getProductosMatrix(from?: string, to?: string): Promise<{
                     groupKey = `${productoName.toUpperCase()}`;
                 }
 
-                // Acumular kilos
-                productosMap[groupKey] = (productosMap[groupKey] || 0) + kilos;
-                totalKilos += kilos;
+                // Acumular cantidad (kilos para productos en KG, cantidad para productos en gramos)
+                productosMap[groupKey] = (productosMap[groupKey] || 0) + quantity;
+
+                // Solo sumar al total de kilos si NO es un producto en gramos
+                const isGrams = presentacion.match(/\d+\s*GRS?/i) || productoName.match(/\d+\s*GRS?/i);
+                if (!isGrams) {
+                    totalKilos += quantity;
+                }
+
                 allProductNames.add(groupKey);
 
-                console.log(`    ✅ ${productoName} ${presentacion} → ${groupKey} (${kilos}kg)`);
+                console.log(`    ✅ ${productoName} ${presentacion} → ${groupKey} (${quantity}${isGrams ? ' unidades' : 'kg'})`);
             }
 
             matrix.push({
