@@ -82,11 +82,15 @@ function getDateRangeFromPreset(preset: string): DateRange {
             return { from: startOfThirtyDaysAgo, to: endOfToday, preset };
         case 'this-month':
             const startOfMonth = createUTCDate(year, month, 1);
-            const endOfMonth = createUTCDate(year, month + 1, 0, 23, 59, 59);
+            // Calcular el último día del mes actual correctamente
+            const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+            const endOfMonth = createUTCDate(year, month, lastDayOfMonth, 23, 59, 59);
             return { from: startOfMonth, to: endOfMonth, preset };
         case 'last-month':
             const startOfLastMonth = createUTCDate(year, month - 1, 1);
-            const endOfLastMonth = createUTCDate(year, month, 0, 23, 59, 59);
+            // Calcular el último día del mes anterior correctamente
+            const lastDayOfLastMonth = new Date(year, month, 0).getDate();
+            const endOfLastMonth = createUTCDate(year, month - 1, lastDayOfLastMonth, 23, 59, 59);
             return { from: startOfLastMonth, to: endOfLastMonth, preset };
         case 'last-3-months':
             const threeMonthsAgoDate = new Date(year, month - 3, day);
