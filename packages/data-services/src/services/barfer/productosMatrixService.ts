@@ -45,7 +45,7 @@ function normalizeProductName(name: string): string {
  * - "GARRAS DE POLLO" en sección "OTROS" -> "OTROS - GARRAS DE POLLO"
  * - "OREJA X1" en sección "RAW" -> "RAW - OREJA" (se agrupa por nombre base)
  * - "OREJA X50" en sección "RAW" -> "RAW - OREJA" (se agrupa por nombre base)
- * - "HIGADO 100GRS" en sección "RAW" -> "RAW - HIGADO" (se agrupa por nombre base)
+ * - "HIGADO 100GRS" en sección "RAW" -> "RAW - HIGADO 100GRS" (se mantiene separado por peso)
  */
 function generateGroupKey(product: string, section: string): string {
     let normalizedProduct = product.trim().toUpperCase();
@@ -56,26 +56,25 @@ function generateGroupKey(product: string, section: string): string {
         // Normalizar espacios y caracteres especiales
         normalizedProduct = normalizedProduct.replace(/\s+/g, ' ').trim();
 
-        // Eliminar sufijos de cantidad como X1, X50, X100, 100GRS, KG, etc.
-        // Patrones a eliminar:
-        // - X seguido de números (X1, X50, X100)
-        // - Números seguidos de GRS/GR/GRAMOS
-        // - Números seguidos de KG/KILO/KILOS
-        // - Números seguidos de UND/UNIDAD/UNIDADES
-        // - Números solos al final (ej: "OREJA 1" -> "OREJA")
-        const baseProduct = normalizedProduct
-            .replace(/\s*X\d+\s*$/i, '')           // X1, X50, X100 al final
-            .replace(/\s*\d+\s*(GRS?|GRAMOS?)\s*$/i, '') // 100GRS, 500GR al final
-            .replace(/\s*\d+\s*(KG|KILOS?)\s*$/i, '')    // 1KG, 2KILOS al final
-            .replace(/\s*\d+\s*(UND|UNIDADES?)\s*$/i, '') // 1UND, 10UNIDADES al final
-            .replace(/\s*\d+\s*$/i, '')            // Números solos al final (ej: "OREJA 1")
-            .trim();
+        // Solo agrupar OREJAS (X1, X50, X100 son el mismo producto)
+        // Otros productos RAW mantienen sus diferencias de peso/cantidad
+        if (normalizedProduct.includes('OREJA')) {
+            // Para orejas, eliminar sufijos de cantidad y normalizar
+            const baseProduct = normalizedProduct
+                .replace(/\s*X\d+\s*$/i, '')           // X1, X50, X100 al final
+                .replace(/\s*\d+\s*$/i, '')            // Números solos al final
+                .trim();
 
-        // Normalizar nombres comunes de productos RAW
-        const normalizedBaseProduct = normalizeRawProductName(baseProduct);
+            // Normalizar nombres comunes de productos RAW
+            const normalizedBaseProduct = normalizeRawProductName(baseProduct);
 
-        console.log(`    🔧 RAW producto (agrupado): "${product}" -> "${normalizedSection} - ${normalizedBaseProduct}"`);
-        return `${normalizedSection} - ${normalizedBaseProduct}`;
+            console.log(`    🔧 RAW producto (OREJA agrupado): "${product}" -> "${normalizedSection} - ${normalizedBaseProduct}"`);
+            return `${normalizedSection} - ${normalizedBaseProduct}`;
+        } else {
+            // Para otros productos RAW, mantener el nombre completo con peso/cantidad
+            console.log(`    🔧 RAW producto (mantenido separado): "${product}" -> "${normalizedSection} - ${normalizedProduct}"`);
+            return `${normalizedSection} - ${normalizedProduct}`;
+        }
     }
 
     // Para productos que ya tienen identificadores especiales, mantenerlos
@@ -107,8 +106,8 @@ function normalizeRawProductName(productName: string): string {
         'LENGUAS': 'LENGUA',
         'PULMONES': 'PULMON',
         'BOCADOS': 'BOCADO',
-        'PATA': 'PATAS',
-        'PATAS': 'PATAS'
+        'PATA': 'PATA',
+        'PATAS': 'PATA'
     };
 
     return variations[normalized] || normalized;
@@ -287,17 +286,7 @@ function matchItemToProduct(
         return match;
     }
 
-    // Intentar match exacto solo por nombre de producto (sin peso)
-    match = productosFiltrados.find(p =>
-        normalizeProductName(p.product) === normalizedItemName
-    );
-
-    if (match) {
-        console.log(`      ✅ Match por producto: ${match.fullName}`);
-        return match;
-    }
-
-    // Si el item tiene opciones, intentar match por opción
+    // Si el item tiene opciones, intentar match por opción PRIMERO (especialmente para RAW)
     if (item.options && Array.isArray(item.options)) {
         for (const option of item.options) {
             const optionName = option.name || '';
@@ -305,24 +294,50 @@ function matchItemToProduct(
 
             const normalizedOption = normalizeProductName(optionName);
 
-            // Match por peso en la opción
-            match = productosFiltrados.find(p =>
-                normalizeProductName(p.weight) === normalizedOption
-            );
+            // Para productos RAW, construir el nombre completo con el peso de la opción
+            if (detectedSection === 'RAW') {
+                const fullItemName = `${normalizedItemName} ${normalizedOption}`;
+                console.log(`      🔧 Construyendo nombre completo RAW: "${itemName}" + "${optionName}" = "${fullItemName}"`);
 
-            if (match) {
-                // Verificar si el nombre del item incluye el producto
-                const productWords = match.product.split(' ');
-                const allWordsMatch = productWords.every(word =>
-                    normalizedItemName.includes(word)
+                // Buscar match exacto con el nombre completo construido
+                match = productosFiltrados.find(p =>
+                    normalizeProductName(p.fullName) === fullItemName
                 );
 
-                if (allWordsMatch) {
-                    console.log(`      ✅ Match por opción: ${match.fullName}`);
+                if (match) {
+                    console.log(`      ✅ Match RAW por nombre completo: ${match.fullName}`);
                     return match;
+                }
+            } else {
+                // Para otros productos, match por peso en la opción
+                match = productosFiltrados.find(p =>
+                    normalizeProductName(p.weight) === normalizedOption
+                );
+
+                if (match) {
+                    // Verificar si el nombre del item incluye el producto
+                    const productWords = match.product.split(' ');
+                    const allWordsMatch = productWords.every(word =>
+                        normalizedItemName.includes(word)
+                    );
+
+                    if (allWordsMatch) {
+                        console.log(`      ✅ Match por opción: ${match.fullName}`);
+                        return match;
+                    }
                 }
             }
         }
+    }
+
+    // Intentar match exacto solo por nombre de producto (sin peso) - SOLO si no se encontró por opciones
+    match = productosFiltrados.find(p =>
+        normalizeProductName(p.product) === normalizedItemName
+    );
+
+    if (match) {
+        console.log(`      ✅ Match por producto: ${match.fullName}`);
+        return match;
     }
 
     // Intentar match parcial por nombre de producto y peso
@@ -424,7 +439,7 @@ function calculateItemQuantity(item: any, producto: ProductoMayorista): number {
 }
 
 /**
- * Obtiene la matriz de productos comprados por cada punto de venta
+ * Obtiene la matriz de productos comprados por cada punto de venta usando agregación MongoDB
  * @param from - Fecha inicial (opcional)
  * @param to - Fecha final (opcional)
  */
@@ -435,66 +450,12 @@ export async function getProductosMatrix(from?: string, to?: string): Promise<{
     error?: string;
 }> {
     try {
-        console.log('🔍 Iniciando cálculo de matriz de productos...');
+        console.log('🔍 Iniciando cálculo de matriz de productos con agregación MongoDB...');
 
-        const pricesCollection = await getCollection('prices');
         const puntosVentaCollection = await getCollection('puntos_venta');
         const ordersCollection = await getCollection('orders');
 
-        // 1. Obtener todos los productos mayoristas activos desde la tabla prices
-        console.log('📋 Obteniendo productos mayoristas desde tabla prices...');
-        const pricesDocs = await pricesCollection
-            .find({
-                priceType: 'MAYORISTA',
-                isActive: true
-            })
-            .toArray();
-
-        console.log(`📦 ${pricesDocs.length} registros de precios mayoristas encontrados`);
-
-        // Crear lista de productos únicos (product + weight)
-        const productosMayoristasMap = new Map<string, ProductoMayorista>();
-
-        for (const doc of pricesDocs) {
-            // Si el producto no tiene peso, usar solo el nombre
-            const weight = doc.weight || '';
-            const fullName = weight ? `${doc.product} ${weight}`.trim() : doc.product;
-            const kilos = extractKilosFromWeight(doc.weight);
-
-            // Si no tiene kilos (weight es null o no válido), usar 1kg por defecto
-            const kilosFinales = kilos > 0 ? kilos : 1;
-
-            const section = doc.section || 'OTROS';
-            const groupKey = generateGroupKey(doc.product, section);
-
-            // Usar groupKey como clave del mapa para agrupar productos sin importar peso
-            if (!productosMayoristasMap.has(groupKey)) {
-                productosMayoristasMap.set(groupKey, {
-                    fullName,
-                    product: doc.product,
-                    weight: weight || 'UNIDAD',
-                    kilos: kilosFinales,
-                    section,
-                    groupKey
-                });
-                console.log(`  ✅ Producto agregado: ${groupKey} (base: ${fullName}, section: ${section})`);
-            } else {
-                console.log(`  ⏭️  Producto ya existe, omitiendo: ${fullName} -> ${groupKey}`);
-            }
-        }
-
-        const productosMayoristas = Array.from(productosMayoristasMap.values());
-        console.log(`✅ ${productosMayoristas.length} productos únicos encontrados`);
-
-        if (productosMayoristas.length === 0) {
-            return {
-                success: true,
-                matrix: [],
-                productNames: [],
-            };
-        }
-
-        // 2. Obtener todos los puntos de venta activos
+        // 1. Obtener todos los puntos de venta activos
         const puntosVenta = await puntosVentaCollection
             .find({ activo: true })
             .toArray();
@@ -502,106 +463,144 @@ export async function getProductosMatrix(from?: string, to?: string): Promise<{
         console.log(`📍 ${puntosVenta.length} puntos de venta encontrados`);
 
         if (puntosVenta.length === 0) {
-            const sortedProducts = productosMayoristas.sort(sortProductsForMatrix);
             return {
                 success: true,
                 matrix: [],
-                productNames: sortedProducts.map(p => p.groupKey),
+                productNames: [],
             };
         }
 
         const matrix: ProductoMatrixData[] = [];
+        const allProductNames = new Set<string>();
 
-        // 3. Para cada punto de venta, calcular sus compras por producto
+        // 2. Para cada punto de venta, usar agregación para calcular productos
         for (const puntoVenta of puntosVenta) {
             console.log(`\n📦 Procesando: ${puntoVenta.nombre} (ID: ${puntoVenta._id})`);
 
-            // Buscar órdenes de este punto de venta (por _id)
             const puntoVentaId = puntoVenta._id.toString();
 
-            // Construir query con filtro de fecha opcional
-            const query: any = {
-                orderType: 'mayorista',
-                punto_de_venta: puntoVentaId,
-                status: { $in: ['pending', 'confirmed', 'delivered'] }
-            };
+            // Construir pipeline de agregación basado en tu ejemplo
+            const pipeline: any[] = [
+                {
+                    $match: {
+                        punto_de_venta: puntoVentaId,
+                        orderType: 'mayorista',
+                        status: { $in: ['pending', 'confirmed', 'delivered'] }
+                    }
+                },
+                { $unwind: "$items" },
+                { $unwind: "$items.options" },
+                {
+                    $addFields: {
+                        valorNumerico: {
+                            $toDouble: {
+                                $getField: {
+                                    field: "match",
+                                    input: {
+                                        $arrayElemAt: [
+                                            { $regexFindAll: { input: "$items.options.name", regex: /[0-9]+/ } },
+                                            0
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    $addFields: {
+                        kilosPorUnidad: {
+                            $switch: {
+                                branches: [
+                                    {
+                                        case: { $regexMatch: { input: "$items.options.name", regex: /KG/i } },
+                                        then: "$valorNumerico"
+                                    },
+                                    {
+                                        case: { $regexMatch: { input: "$items.options.name", regex: /GRS/i } },
+                                        then: { $divide: ["$valorNumerico", 1000] }
+                                    }
+                                ],
+                                default: 0
+                            }
+                        }
+                    }
+                },
+                {
+                    $addFields: {
+                        totalKilosItem: { $multiply: ["$kilosPorUnidad", "$items.options.quantity"] }
+                    }
+                },
+                {
+                    $group: {
+                        _id: {
+                            producto: "$items.name",
+                            presentacion: "$items.options.name"
+                        },
+                        totalKilos: { $sum: "$totalKilosItem" }
+                    }
+                },
+                {
+                    $match: { totalKilos: { $gt: 0 } }
+                },
+                { $sort: { "_id.producto": 1, "_id.presentacion": 1 } }
+            ];
 
             // Agregar filtro de fecha si se proporciona
             if (from || to) {
-                query.createdAt = {};
+                const dateFilter: any = {};
                 if (from) {
-                    query.createdAt.$gte = new Date(from);
+                    // Crear fecha desde string sin manipulación de zona horaria
+                    const [year, month, day] = from.split('-').map(Number);
+                    const fromDateObj = new Date(year, month - 1, day, 0, 0, 0, 0);
+                    dateFilter.$gte = fromDateObj;
                 }
                 if (to) {
-                    // Agregar un día para incluir todo el día 'to'
-                    const toDate = new Date(to);
-                    toDate.setDate(toDate.getDate() + 1);
-                    query.createdAt.$lt = toDate;
+                    // Crear fecha desde string sin manipulación de zona horaria
+                    const [year, month, day] = to.split('-').map(Number);
+                    const toDateObj = new Date(year, month - 1, day, 23, 59, 59, 999);
+                    dateFilter.$lte = toDateObj;
                 }
+                pipeline[0].$match.deliveryDay = dateFilter;
             }
 
-            const orders = await ordersCollection
-                .find(query)
-                .toArray();
+            const productosResult = await ordersCollection.aggregate(pipeline).toArray();
 
-            console.log(`  📊 ${orders.length} órdenes encontradas para punto_de_venta: ${puntoVentaId}`);
-
-            if (orders.length > 0) {
-                console.log(`  📋 IDs de órdenes: ${orders.map(o => o._id).join(', ')}`);
-            }
+            console.log(`  📊 ${productosResult.length} productos únicos encontrados para ${puntoVenta.nombre}`);
 
             const productosMap: { [key: string]: number } = {};
             let totalKilos = 0;
-            let matchedItems = 0;
-            let unmatchedItems = 0;
 
-            // 4. Procesar cada orden
-            for (const order of orders) {
-                if (!order.items || !Array.isArray(order.items)) continue;
+            // Procesar resultados y aplicar agrupación especial para orejas
+            for (const producto of productosResult) {
+                const productoName = producto._id.producto;
+                const presentacion = producto._id.presentacion;
+                const kilos = producto.totalKilos;
 
-                console.log(`    📦 Orden ${order._id} - ${order.items.length} items`);
+                // Crear clave de agrupación
+                let groupKey: string;
 
-                for (const item of order.items) {
-                    console.log(`    📝 Item: ${JSON.stringify({ name: item.name, id: item.id, options: item.options })}`);
+                // Detectar si es producto RAW
+                const isRaw = presentacion.match(/\d+\s*GRS?/i) || presentacion.match(/X\d+/i);
 
-                    // Intentar hacer match con un producto oficial
-                    const matchedProduct = matchItemToProduct(item, productosMayoristas);
-
-                    if (matchedProduct) {
-                        // calculateItemQuantity ahora retorna kilos totales directamente
-                        const kilos = calculateItemQuantity(item, matchedProduct);
-
-                        console.log(`    🔢 Cálculo detallado:`);
-                        console.log(`       - Producto matched: ${matchedProduct.fullName} (groupKey: ${matchedProduct.groupKey})`);
-                        console.log(`       - Opciones del item:`, item.options);
-                        console.log(`       - Kilos calculados: ${kilos}kg`);
-                        console.log(`       - Acumulado anterior en ${matchedProduct.groupKey}: ${productosMap[matchedProduct.groupKey] || 0}kg`);
-
-                        // Usar groupKey para agrupar todos los pesos del mismo sabor
-                        productosMap[matchedProduct.groupKey] =
-                            (productosMap[matchedProduct.groupKey] || 0) + kilos;
-
-                        console.log(`       - Nuevo acumulado en ${matchedProduct.groupKey}: ${productosMap[matchedProduct.groupKey]}kg`);
-
-                        // Solo sumar al total si el producto debe contar
-                        if (shouldCountInTotal(matchedProduct)) {
-                            totalKilos += kilos;
-                            console.log(`    ✅ Match: "${item.name}" -> "${matchedProduct.groupKey}" (${kilos}kg - CUENTA EN TOTAL)`);
-                        } else {
-                            console.log(`    ✅ Match: "${item.name}" -> "${matchedProduct.groupKey}" (${kilos}kg - NO cuenta en total)`);
-                        }
-
-                        matchedItems++;
-                    } else {
-                        unmatchedItems++;
-                        console.log(`    ⚠️  Sin match: "${item.name}"`);
-                    }
+                if (isRaw && productoName.toUpperCase().includes('OREJA')) {
+                    // Agrupar todas las orejas en una sola columna
+                    groupKey = `RAW - OREJA`;
+                } else if (isRaw) {
+                    // Otros productos RAW mantienen su presentación
+                    groupKey = `RAW - ${productoName.toUpperCase()} ${presentacion.toUpperCase()}`;
+                } else {
+                    // Productos no RAW mantienen su nombre original
+                    groupKey = `${productoName.toUpperCase()}`;
                 }
-            }
 
-            console.log(`  ✅ Total kilos: ${totalKilos}`);
-            console.log(`  ✅ Items matched: ${matchedItems}, sin match: ${unmatchedItems}`);
-            console.log(`  📦 Productos distintos: ${Object.keys(productosMap).length}`);
+                // Acumular kilos
+                productosMap[groupKey] = (productosMap[groupKey] || 0) + kilos;
+                totalKilos += kilos;
+                allProductNames.add(groupKey);
+
+                console.log(`    ✅ ${productoName} ${presentacion} → ${groupKey} (${kilos}kg)`);
+            }
 
             matrix.push({
                 puntoVentaId,
@@ -615,11 +614,10 @@ export async function getProductosMatrix(from?: string, to?: string): Promise<{
         // Ordenar por total de kilos descendente
         matrix.sort((a, b) => b.totalKilos - a.totalKilos);
 
-        // Ordenar productos según el criterio personalizado
-        const sortedProducts = productosMayoristas.sort(sortProductsForMatrix);
-        const productNames = sortedProducts.map(p => p.groupKey);
+        // Convertir Set a Array y ordenar
+        const productNames = Array.from(allProductNames).sort();
 
-        console.log(`\n✅ Matriz completada: ${matrix.length} puntos de venta, ${productNames.length} productos`);
+        console.log(`\n✅ Matriz completada: ${matrix.length} puntos de venta, ${productNames.length} productos únicos`);
 
         return {
             success: true,
