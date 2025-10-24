@@ -147,6 +147,23 @@ export async function getProductosMatrixAction(from?: string, to?: string) {
     'use server';
 
     const { getProductosMatrix } = await import('@repo/data-services');
-    return await getProductosMatrix(from, to);
+
+    // Convertir fechas from/to a year/month para obtener los productNames
+    let year: number;
+    let month: number;
+
+    if (from) {
+        const fromDate = new Date(from);
+        year = fromDate.getFullYear();
+        month = fromDate.getMonth() + 1; // JavaScript months are 0-based, we need 1-based
+    } else {
+        // Si no se proporciona fecha, usar la fecha actual
+        const now = new Date();
+        year = now.getFullYear();
+        month = now.getMonth() + 1;
+    }
+
+    // Pasar las fechas específicas para el filtrado de la matriz
+    return await getProductosMatrix(year, month, from, to);
 }
 

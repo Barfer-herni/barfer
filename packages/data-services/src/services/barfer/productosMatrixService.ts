@@ -437,8 +437,14 @@ function extractUnitMultiplier(text: string | null | undefined): number {
 function calculateItemQuantity(item: any, producto: ProductoMayorista): number {
     let total = 0;
 
-    // Detectar si el producto está en gramos por su nombre
-    const isProductInGrams = item.name && item.name.toUpperCase().includes('GRS');
+    // Detectar si el producto está en gramos por su nombre o por el producto mayorista
+    const isProductInGrams = (item.name && item.name.toUpperCase().includes('GRS')) ||
+        (producto.fullName && producto.fullName.toUpperCase().includes('GRS'));
+
+    // Debug: mostrar información del producto
+    if (isProductInGrams) {
+        console.log(`      🧮 Producto en gramos detectado: "${item.name}" -> "${producto.fullName}"`);
+    }
 
     // Detectar si es un producto BIG DOG y extraer peso del nombre del producto
     const isBigDog = item.name && item.name.toUpperCase().includes('BIG DOG');
@@ -450,9 +456,10 @@ function calculateItemQuantity(item: any, producto: ProductoMayorista): number {
             const quantity = option.quantity || 0;
             const optionName = option.name || '';
 
-            // Verificar si es un producto en gramos (por opción o por nombre del producto)
+            // Verificar si es un producto en gramos (por opción, nombre del item o producto mayorista)
             if (optionName.toUpperCase().includes('GRS') || isProductInGrams) {
                 // Para productos en gramos, devolver la cantidad directamente
+                console.log(`      🧮 Producto en gramos: opción "${optionName}" cantidad ${quantity}`);
                 total += quantity;
             } else if (isBigDog && bigDogWeight > 0) {
                 // Para productos BIG DOG, usar el peso extraído del nombre del producto
@@ -481,235 +488,396 @@ function calculateItemQuantity(item: any, producto: ProductoMayorista): number {
     return total;
 }
 
+
+
+
 /**
- * Obtiene la matriz de productos comprados por cada punto de venta usando agregación MongoDB
- * @param from - Fecha inicial (opcional)
- * @param to - Fecha final (opcional)
+ * Función de ordenamiento personalizado para las columnas de la matriz
+ * Orden específico solicitado:
+ * 1. BIG DOG POLLO, BIG DOG VACA
+ * 2. Productos de PERRO
+ * 3. Productos de GATO
+ * 4. HUESOS CARNOSOS 5KG
+ * 5. BOX COMPLEMENTOS, GARRAS, CORNALITOS 200grs, HUESOS RECREATIVOS, CALDO DE HUESOS, CORNALITOS 30grs
+ * 6. Productos RAW: HIGADO, OREJAS, POLLO, TRAQUEA
  */
-export async function getProductosMatrix(from?: string, to?: string): Promise<{
+function sortProductNamesForMatrix(productNames: string[]): string[] {
+    return productNames.sort((a, b) => {
+        const getOrderPriority = (name: string): number => {
+            const upperName = name.toUpperCase();
+
+            // 1. BIG DOG primero
+            if (upperName.includes('BIG DOG POLLO')) return 1;
+            if (upperName.includes('BIG DOG VACA')) return 2;
+
+            // 2. Productos de PERRO (excluyendo BIG DOG)
+            if (upperName.startsWith('PERRO ') && !upperName.includes('BIG DOG')) {
+                if (upperName.includes('POLLO')) return 10;
+                if (upperName.includes('CERDO')) return 11;
+                if (upperName.includes('VACA')) return 12;
+                if (upperName.includes('CORDERO')) return 13;
+                return 14; // otros perros
+            }
+
+            // 3. Productos de GATO
+            if (upperName.startsWith('GATO ')) {
+                if (upperName.includes('POLLO')) return 20;
+                if (upperName.includes('VACA')) return 21;
+                if (upperName.includes('CORDERO')) return 22;
+                return 23; // otros gatos
+            }
+
+            // 4. HUESOS CARNOSOS específico
+            if (upperName.includes('HUESOS CARNOSOS 5KG')) return 30;
+
+            // 5. Complementos y otros productos
+            if (upperName.includes('BOX COMPLEMENTOS')) return 40;
+            if (upperName.includes('GARRAS')) return 41;
+            if (upperName.includes('CORNALITOS 200GRS')) return 42;
+            if (upperName.includes('HUESOS RECREATIVOS')) return 43;
+            if (upperName.includes('CALDO DE HUESOS')) return 44;
+            if (upperName.includes('CORNALITOS 30GRS')) return 45;
+
+            // 6. Productos RAW
+            if (upperName.startsWith('RAW -')) {
+                if (upperName.includes('HIGADO 100GRS')) return 50;
+                if (upperName.includes('HIGADO 40GRS')) return 51;
+                if (upperName.includes('OREJAS')) return 52;
+                if (upperName.includes('POLLO 100GRS')) return 53;
+                if (upperName.includes('POLLO 40GRS')) return 54;
+                if (upperName.includes('TRAQUEA X1')) return 55;
+                if (upperName.includes('TRAQUEA X2')) return 56;
+                return 57; // otros RAW
+            }
+
+            // 7. Todo lo demás al final
+            return 999;
+        };
+
+        const orderA = getOrderPriority(a);
+        const orderB = getOrderPriority(b);
+
+        if (orderA !== orderB) {
+            return orderA - orderB;
+        }
+
+        // Si tienen la misma prioridad, ordenar alfabéticamente
+        return a.localeCompare(b);
+    });
+}
+
+/**
+ * Genera la matriz completa de productos con datos por punto de venta
+ */
+async function generateProductMatrix(productNames: string[], fromDate?: Date, toDate?: Date): Promise<ProductoMatrixData[]> {
+    try {
+        const puntosVentaCollection = await getCollection('puntos_venta');
+        const ordersCollection = await getCollection('orders');
+        const pricesCollection = await getCollection('prices');
+
+        // 1. Obtener productos mayoristas desde prices para matching
+        console.log('📋 Cargando productos mayoristas desde prices...');
+        const pricesDocs = await pricesCollection
+            .find({
+                priceType: 'MAYORISTA',
+                isActive: true
+            })
+            .toArray();
+
+        const productosMayoristasMap = new Map<string, ProductoMayorista>();
+
+        for (const doc of pricesDocs) {
+            const weight = doc.weight || '';
+            const fullName = weight ? `${doc.product} ${weight}`.trim() : doc.product;
+            const kilos = extractKilosFromWeight(doc.weight);
+            const kilosFinales = kilos > 0 ? kilos : 1;
+            const section = doc.section || 'OTROS';
+
+            if (!productosMayoristasMap.has(fullName)) {
+                productosMayoristasMap.set(fullName, {
+                    fullName,
+                    product: doc.product,
+                    weight: weight || 'UNIDAD',
+                    kilos: kilosFinales,
+                    section,
+                    groupKey: generateGroupKey(doc.product, section)
+                });
+            }
+        }
+
+        const productosMayoristas = Array.from(productosMayoristasMap.values());
+        console.log(`✅ ${productosMayoristas.length} productos mayoristas cargados`);
+
+        // 2. Obtener todos los puntos de venta
+        const puntosVenta = await puntosVentaCollection.find({}).toArray();
+        console.log(`🏪 ${puntosVenta.length} puntos de venta encontrados`);
+
+        // 3. Generar la matriz
+        const matrix: ProductoMatrixData[] = [];
+
+        for (const puntoVenta of puntosVenta) {
+            const puntoVentaId = puntoVenta._id.toString();
+
+            // Construir filtro de fechas
+            const dateFilter: any = {
+                punto_de_venta: puntoVentaId,
+                orderType: 'mayorista'
+            };
+
+            // Si se proporcionaron fechas específicas, usarlas
+            if (fromDate || toDate) {
+                dateFilter.deliveryDay = {};
+
+                if (fromDate) {
+                    // Inicio del día desde
+                    const startDate = new Date(fromDate);
+                    startDate.setHours(0, 0, 0, 0);
+                    dateFilter.deliveryDay.$gte = startDate;
+                }
+
+                if (toDate) {
+                    // Fin del día hasta
+                    const endDate = new Date(toDate);
+                    endDate.setHours(23, 59, 59, 999);
+                    dateFilter.deliveryDay.$lte = endDate;
+                }
+            }
+
+            const ordenes = await ordersCollection.find(dateFilter).toArray();
+
+            console.log(`🏪 ${puntoVenta.nombre} (ID: ${puntoVentaId}): ${ordenes.length} órdenes`);
+
+            // Inicializar datos del punto de venta
+            const puntoVentaData: ProductoMatrixData = {
+                puntoVentaId,
+                puntoVentaNombre: puntoVenta.nombre,
+                zona: puntoVenta.zona || 'Sin zona',
+                productos: {},
+                totalKilos: 0
+            };
+
+            // Inicializar todos los productos en 0
+            for (const productName of productNames) {
+                puntoVentaData.productos[productName] = 0;
+            }
+
+            // Procesar órdenes
+            for (const orden of ordenes) {
+                if (orden.items && Array.isArray(orden.items)) {
+                    for (const item of orden.items) {
+                        const matchedProduct = matchItemToProduct(item, productosMayoristas);
+
+                        if (matchedProduct) {
+                            const quantity = calculateItemQuantity(item, matchedProduct);
+
+                            // Generar el nombre canónico del producto para buscar en productNames
+                            const canonicalName = generateCanonicalProductName(matchedProduct);
+
+                            // Debug: mostrar información del producto
+                            console.log(`    📦 Item: "${item.name}" -> Producto: "${matchedProduct.fullName}" -> Cantidad: ${quantity} -> Nombre canónico: "${canonicalName}"`);
+
+                            // Si el producto está en la lista de productNames, agregarlo
+                            if (productNames.includes(canonicalName)) {
+                                puntoVentaData.productos[canonicalName] += quantity;
+
+                                // Solo contar en totalKilos si debe contar
+                                if (shouldCountInTotal(matchedProduct)) {
+                                    puntoVentaData.totalKilos += quantity;
+                                }
+
+                                console.log(`    ✅ Agregado: ${quantity} a "${canonicalName}" (total: ${puntoVentaData.productos[canonicalName]})`);
+                            } else {
+                                console.log(`    ❌ Producto "${canonicalName}" no está en productNames`);
+                            }
+                        }
+                    }
+                }
+            }
+
+            matrix.push(puntoVentaData);
+        }
+
+        console.log(`✅ Matriz generada con ${matrix.length} puntos de venta`);
+        return matrix;
+
+    } catch (error) {
+        console.error('Error generando matriz de productos:', error);
+        return [];
+    }
+}
+
+/**
+ * Genera el nombre canónico de un producto para matching con productNames
+ */
+function generateCanonicalProductName(producto: ProductoMayorista): string {
+    const section = producto.section.trim().toUpperCase();
+    const product = producto.product.trim().toUpperCase();
+    const weight = producto.weight.trim().toUpperCase();
+
+    let name = '';
+
+    if (section.startsWith('RAW')) {
+        // RAW - PRODUCT [WEIGHT] - pero no incluir "UNIDAD" si es el peso
+        if (weight && weight !== 'UNIDAD') {
+            name = `RAW - ${product} ${weight}`.trim();
+        } else {
+            name = `RAW - ${product}`.trim();
+        }
+    } else if (section.startsWith('BOX PERRO')) {
+        name = `BOX PERRO ${product}`.trim();
+    } else if (section.startsWith('BOX GATO')) {
+        name = `BOX GATO ${product}`.trim();
+    } else if (section.startsWith('BIG DOG')) {
+        name = `BIG DOG ${product}`.trim();
+    } else if (section) {
+        name = `${section} ${product}`.trim();
+    } else {
+        name = product;
+    }
+
+    // Unificar orejas
+    if (/RAW -\s*OREJA(S)?/i.test(name)) name = 'RAW - OREJAS';
+
+    return name.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Devuelve la matriz completa de productos con datos por punto de venta
+ * Usa el mes actual/año actual (si no hay results, usa el último month disponible en el mismo año)
+ */
+export async function getProductosMatrix(year: number, month: number, fromDate?: string, toDate?: string): Promise<{
     success: boolean;
     matrix?: ProductoMatrixData[];
-    productNames?: string[]; // Lista de todos los nombres de productos únicos
+    productNames?: string[];
     error?: string;
 }> {
     try {
-        console.log('🔍 Iniciando cálculo de matriz de productos con agregación MongoDB...');
+        const pricesCollection = await getCollection('prices');
 
-        const puntosVentaCollection = await getCollection('puntos_venta');
-        const ordersCollection = await getCollection('orders');
+        // fecha actual (en tu entorno es 2025-10-24 según lo hablamos)
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1; // 1-12
 
-        // 1. Obtener todos los puntos de venta activos
-        const puntosVenta = await puntosVentaCollection
-            .find({ activo: true })
-            .toArray();
-
-        console.log(`📍 ${puntosVenta.length} puntos de venta encontrados`);
-
-        if (puntosVenta.length === 0) {
-            return {
-                success: true,
-                matrix: [],
-                productNames: [],
+        // Helper: normalizar strings
+        const normalize = (s?: string) => {
+            if (!s) return '';
+            const accentsMap: { [k: string]: string } = {
+                'Á': 'A', 'É': 'E', 'Í': 'I', 'Ó': 'O', 'Ú': 'U', 'Ü': 'U', 'Ñ': 'N',
+                'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ü': 'u', 'ñ': 'n'
             };
+            const noAccent = s.replace(/[ÁÉÍÓÚÜÑáéíóúüñ]/g, c => accentsMap[c] || c);
+            return noAccent.toString().toUpperCase().replace(/\s+/g, ' ').trim();
+        };
+
+        // 1) Intentar traer prices del month/year actual
+        let pricesDocs = await pricesCollection.find(
+            { priceType: 'MAYORISTA', isActive: true, year: currentYear, month: currentMonth },
+            { projection: { section: 1, product: 1, weight: 1, effectiveDate: 1, createdAt: 1 } }
+        ).toArray();
+
+        // 2) Si no hay para el mes actual, buscar el último month disponible en el mismo año
+        if (!pricesDocs || pricesDocs.length === 0) {
+            // obtenemos los meses disponibles para el año actual
+            const months = await pricesCollection.aggregate([
+                { $match: { priceType: 'MAYORISTA', isActive: true, year: currentYear } },
+                { $group: { _id: "$month" } },
+                { $sort: { _id: -1 } },
+                { $limit: 1 }
+            ]).toArray();
+
+            if (months.length > 0 && months[0]._id) {
+                const lastMonthAvailable = months[0]._id;
+                pricesDocs = await pricesCollection.find(
+                    { priceType: 'MAYORISTA', isActive: true, year: currentYear, month: lastMonthAvailable },
+                    { projection: { section: 1, product: 1, weight: 1, effectiveDate: 1, createdAt: 1 } }
+                ).toArray();
+            } else {
+                // si no hay nada en el año actual, intentar traer algo de cualquier año (ultimo por fecha)
+                pricesDocs = await pricesCollection.find(
+                    { priceType: 'MAYORISTA', isActive: true },
+                    { projection: { section: 1, product: 1, weight: 1, effectiveDate: 1, createdAt: 1 } }
+                ).sort({ effectiveDate: -1, createdAt: -1 }).limit(500).toArray();
+            }
         }
 
-        const matrix: ProductoMatrixData[] = [];
-        const allProductNames = new Set<string>();
+        // 3) Deduplicar por section+product+weight tomando la versión más reciente (effectiveDate/createdAt)
+        type PriceKey = { section: string; product: string; weight: string; date: Date | null };
+        const latestMap = new Map<string, PriceKey>();
 
-        // 2. Para cada punto de venta, usar agregación para calcular productos
-        for (const puntoVenta of puntosVenta) {
-            console.log(`\n📦 Procesando: ${puntoVenta.nombre} (ID: ${puntoVenta._id})`);
+        for (const p of pricesDocs) {
+            const section = normalize(p.section || '');
+            const product = normalize(p.product || '');
+            const weight = normalize(p.weight || '');
+            const key = `${section}||${product}||${weight}`;
+            const date = p.effectiveDate ? new Date(p.effectiveDate) : (p.createdAt ? new Date(p.createdAt) : null);
 
-            const puntoVentaId = puntoVenta._id.toString();
-
-            // Construir pipeline de agregación basado en tu ejemplo
-            const pipeline: any[] = [
-                {
-                    $match: {
-                        punto_de_venta: puntoVentaId,
-                        orderType: 'mayorista',
-                        status: { $in: ['pending', 'confirmed', 'delivered'] }
-                    }
-                },
-                { $unwind: "$items" },
-                { $unwind: "$items.options" },
-                {
-                    $addFields: {
-                        valorNumerico: {
-                            $toDouble: {
-                                $getField: {
-                                    field: "match",
-                                    input: {
-                                        $arrayElemAt: [
-                                            { $regexFindAll: { input: "$items.options.name", regex: /[0-9]+/ } },
-                                            0
-                                        ]
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                {
-                    $addFields: {
-                        kilosPorUnidad: {
-                            $switch: {
-                                branches: [
-                                    {
-                                        case: { $regexMatch: { input: "$items.options.name", regex: /KG/i } },
-                                        then: "$valorNumerico"
-                                    },
-                                    {
-                                        case: { $regexMatch: { input: "$items.options.name", regex: /GRS/i } },
-                                        then: 1 // Para productos en gramos por opción, usar 1 para mantener la cantidad original
-                                    },
-                                    {
-                                        case: { $regexMatch: { input: "$items.name", regex: /GRS/i } },
-                                        then: 1 // Para productos en gramos por nombre del producto, usar 1 para mantener la cantidad original
-                                    },
-                                    {
-                                        case: { $regexMatch: { input: "$items.name", regex: /BIG DOG.*\(.*KG.*\)/i } },
-                                        then: {
-                                            $toDouble: {
-                                                $arrayElemAt: [
-                                                    {
-                                                        $getField: {
-                                                            field: "captures",
-                                                            input: {
-                                                                $regexFind: {
-                                                                    input: "$items.name",
-                                                                    regex: /(\d+)\s*KG/i
-                                                                }
-                                                            }
-                                                        }
-                                                    },
-                                                    0
-                                                ]
-                                            }
-                                        }
-                                    }
-                                ],
-                                default: 0
-                            }
-                        }
-                    }
-                },
-                {
-                    $addFields: {
-                        totalQuantityItem: { $multiply: ["$kilosPorUnidad", "$items.options.quantity"] }
-                    }
-                },
-                {
-                    $group: {
-                        _id: {
-                            producto: "$items.name",
-                            presentacion: "$items.options.name"
-                        },
-                        totalQuantity: { $sum: "$totalQuantityItem" }
-                    }
-                },
-                {
-                    $match: { totalQuantity: { $gt: 0 } }
-                },
-                { $sort: { "_id.producto": 1, "_id.presentacion": 1 } }
-            ];
-
-            // Agregar filtro de fecha si se proporciona
-            if (from || to) {
-                const dateFilter: any = {};
-                if (from) {
-                    // Crear fecha desde string sin manipulación de zona horaria
-                    const [year, month, day] = from.split('-').map(Number);
-                    const fromDateObj = new Date(year, month - 1, day, 0, 0, 0, 0);
-                    dateFilter.$gte = fromDateObj;
-                }
-                if (to) {
-                    // Crear fecha desde string sin manipulación de zona horaria
-                    const [year, month, day] = to.split('-').map(Number);
-                    const toDateObj = new Date(year, month - 1, day, 23, 59, 59, 999);
-                    dateFilter.$lte = toDateObj;
-                }
-                pipeline[0].$match.deliveryDay = dateFilter;
+            const prev = latestMap.get(key);
+            if (!prev) {
+                latestMap.set(key, { section, product, weight, date });
+            } else {
+                const prevDate = prev.date || new Date(0);
+                const curDate = date || new Date(0);
+                if (curDate > prevDate) latestMap.set(key, { section, product, weight, date });
             }
-
-            const productosResult = await ordersCollection.aggregate(pipeline).toArray();
-
-            console.log(`  📊 ${productosResult.length} productos únicos encontrados para ${puntoVenta.nombre}`);
-
-            const productosMap: { [key: string]: number } = {};
-            let totalKilos = 0;
-
-            // Procesar resultados y aplicar agrupación especial para orejas
-            for (const producto of productosResult) {
-                const productoName = producto._id.producto;
-                const presentacion = producto._id.presentacion;
-                const quantity = producto.totalQuantity;
-
-                // Crear clave de agrupación
-                let groupKey: string;
-
-                // Detectar si es producto RAW
-                const isRaw = presentacion.match(/\d+\s*GRS?/i) || presentacion.match(/X\d+/i);
-
-                // Detectar si es producto BIG DOG
-                const isBigDog = productoName.toUpperCase().includes('BIG DOG');
-
-                if (isRaw && productoName.toUpperCase().includes('OREJA')) {
-                    // Agrupar todas las orejas en una sola columna
-                    groupKey = `RAW - OREJA`;
-                } else if (isRaw) {
-                    // Otros productos RAW mantienen su presentación
-                    groupKey = `RAW - ${productoName.toUpperCase()} ${presentacion.toUpperCase()}`;
-                } else if (isBigDog) {
-                    // Para productos BIG DOG, agrupar por sabor (POLLO, VACA)
-                    groupKey = `BIG DOG ${presentacion.toUpperCase()}`;
-                } else {
-                    // Productos no RAW mantienen su nombre original
-                    groupKey = `${productoName.toUpperCase()}`;
-                }
-
-                // Acumular cantidad (kilos para productos en KG, cantidad para productos en gramos)
-                productosMap[groupKey] = (productosMap[groupKey] || 0) + quantity;
-
-                // Solo sumar al total de kilos si NO es un producto en gramos
-                const isGrams = presentacion.match(/\d+\s*GRS?/i) || productoName.match(/\d+\s*GRS?/i);
-                if (!isGrams) {
-                    totalKilos += quantity;
-                }
-
-                allProductNames.add(groupKey);
-
-                console.log(`    ✅ ${productoName} ${presentacion} → ${groupKey} (${quantity}${isGrams ? ' unidades' : 'kg'})`);
-            }
-
-            matrix.push({
-                puntoVentaId,
-                puntoVentaNombre: puntoVenta.nombre,
-                zona: puntoVenta.zona || 'N/A',
-                productos: productosMap,
-                totalKilos,
-            });
         }
 
-        // Ordenar por total de kilos descendente
-        matrix.sort((a, b) => b.totalKilos - a.totalKilos);
+        // 4) Construir nombres canónicos a partir de section/product/weight
+        const namesSet = new Set<string>();
+        for (const { section, product, weight } of latestMap.values()) {
+            let name = '';
 
-        // Convertir Set a Array y ordenar
-        const productNames = Array.from(allProductNames).sort();
+            if (section.startsWith('RAW')) {
+                // RAW - PRODUCT [WEIGHT]
+                name = `RAW - ${product}${weight ? ' ' + weight : ''}`.trim();
+            } else if (section.startsWith('BOX PERRO')) {
+                name = `BOX PERRO ${product}`.trim();
+            } else if (section.startsWith('BOX GATO')) {
+                name = `BOX GATO ${product}`.trim();
+            } else if (section.startsWith('BIG DOG')) {
+                name = `BIG DOG ${product}`.trim();
+            } else if (section) {
+                name = `${section} ${product}`.trim();
+            } else {
+                name = product;
+            }
 
-        console.log(`\n✅ Matriz completada: ${matrix.length} puntos de venta, ${productNames.length} productos únicos`);
+            // Unificar orejas
+            if (/RAW -\s*OREJA(S)?/i.test(name)) name = 'RAW - OREJAS';
 
-        return {
-            success: true,
-            matrix,
-            productNames,
-        };
-    } catch (error) {
-        console.error('❌ Error al calcular matriz de productos:', error);
-        return {
-            success: false,
-            error: 'Error al calcular la matriz de productos',
-        };
+            name = name.replace(/\s+/g, ' ').trim();
+            if (name) namesSet.add(name);
+        }
+
+        // 5) Aplicar ordenamiento personalizado a los nombres de productos
+        const productNamesUnsorted = Array.from(namesSet);
+        const productNames = sortProductNamesForMatrix(productNamesUnsorted);
+
+        console.log('productNames ordenados:', productNames);
+
+        // 6) Generar la matriz completa con datos de puntos de venta
+        // Usar fechas específicas si se proporcionan, sino usar year/month
+        let matrixFromDate: Date | undefined;
+        let matrixToDate: Date | undefined;
+
+        if (fromDate && toDate) {
+            // Usar las fechas específicas proporcionadas
+            matrixFromDate = new Date(fromDate);
+            matrixToDate = new Date(toDate);
+        } else {
+            // Convertir year/month a fechas específicas para el filtrado
+            matrixFromDate = new Date(year, month - 1, 1); // month - 1 porque JavaScript months are 0-based
+            matrixToDate = new Date(year, month, 0, 23, 59, 59); // último día del mes
+        }
+
+        const matrix = await generateProductMatrix(productNames, matrixFromDate, matrixToDate);
+
+        return { success: true, matrix, productNames };
+    } catch (err) {
+        console.error('Error en getProductNamesFromPricesCurrentMonth:', err);
+        return { success: false, error: 'Error obteniendo productNames desde prices' };
     }
 }
+
+
 

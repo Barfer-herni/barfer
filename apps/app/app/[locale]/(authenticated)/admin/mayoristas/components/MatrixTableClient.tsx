@@ -17,8 +17,7 @@ export function MatrixTableClient({ matrix, productNames }: MatrixTableClientPro
 
     // Función helper para determinar si un producto está en gramos
     const isProductInGrams = (productName: string): boolean => {
-        return productName.toUpperCase().includes('GRS') ||
-            productName.toUpperCase().includes('RAW');
+        return productName.toUpperCase().includes('GRS');
     };
 
     // Función para obtener la unidad de medida de un producto
