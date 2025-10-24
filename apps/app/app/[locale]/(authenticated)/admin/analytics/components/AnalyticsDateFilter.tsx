@@ -41,64 +41,64 @@ const DATE_PRESETS = [
     { label: 'Este año', value: 'this-year', days: 'current-year' },
 ];
 
-// Función para crear fechas en UTC para evitar problemas de timezone
-function createUTCDate(year: number, month: number, day: number, hour = 0, minute = 0, second = 0): Date {
-    return new Date(Date.UTC(year, month, day, hour, minute, second));
+// Función para crear fechas en zona horaria local para evitar problemas de timezone
+function createLocalDate(year: number, month: number, day: number, hour = 0, minute = 0, second = 0): Date {
+    return new Date(year, month, day, hour, minute, second);
 }
 
-// Función para obtener fecha actual en UTC
-function getTodayUTC(): Date {
+// Función para obtener fecha actual en zona horaria local
+function getTodayLocal(): Date {
     const now = new Date();
-    return createUTCDate(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+    return createLocalDate(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
 function getDateRangeFromPreset(preset: string): DateRange {
-    const todayUTC = getTodayUTC();
-    const year = todayUTC.getUTCFullYear();
-    const month = todayUTC.getUTCMonth();
-    const day = todayUTC.getUTCDate();
+    const todayLocal = getTodayLocal();
+    const year = todayLocal.getFullYear();
+    const month = todayLocal.getMonth();
+    const day = todayLocal.getDate();
 
-    const startOfToday = createUTCDate(year, month, day);
-    const endOfToday = createUTCDate(year, month, day, 23, 59, 59);
+    const startOfToday = createLocalDate(year, month, day);
+    const endOfToday = createLocalDate(year, month, day, 23, 59, 59);
 
     switch (preset) {
         case 'today':
             return { from: startOfToday, to: endOfToday, preset };
         case 'yesterday':
-            const yesterdayMs = todayUTC.getTime() - (24 * 60 * 60 * 1000);
+            const yesterdayMs = todayLocal.getTime() - (24 * 60 * 60 * 1000);
             const yesterdayDate = new Date(yesterdayMs);
-            const startOfYesterday = createUTCDate(yesterdayDate.getUTCFullYear(), yesterdayDate.getUTCMonth(), yesterdayDate.getUTCDate());
-            const endOfYesterday = createUTCDate(yesterdayDate.getUTCFullYear(), yesterdayDate.getUTCMonth(), yesterdayDate.getUTCDate(), 23, 59, 59);
+            const startOfYesterday = createLocalDate(yesterdayDate.getFullYear(), yesterdayDate.getMonth(), yesterdayDate.getDate());
+            const endOfYesterday = createLocalDate(yesterdayDate.getFullYear(), yesterdayDate.getMonth(), yesterdayDate.getDate(), 23, 59, 59);
             return { from: startOfYesterday, to: endOfYesterday, preset };
         case 'last-7-days':
-            const sevenDaysAgoMs = todayUTC.getTime() - (6 * 24 * 60 * 60 * 1000);
+            const sevenDaysAgoMs = todayLocal.getTime() - (6 * 24 * 60 * 60 * 1000);
             const sevenDaysAgoDate = new Date(sevenDaysAgoMs);
-            const startOfSevenDaysAgo = createUTCDate(sevenDaysAgoDate.getUTCFullYear(), sevenDaysAgoDate.getUTCMonth(), sevenDaysAgoDate.getUTCDate());
+            const startOfSevenDaysAgo = createLocalDate(sevenDaysAgoDate.getFullYear(), sevenDaysAgoDate.getMonth(), sevenDaysAgoDate.getDate());
             return { from: startOfSevenDaysAgo, to: endOfToday, preset };
         case 'last-30-days':
-            const thirtyDaysAgoMs = todayUTC.getTime() - (29 * 24 * 60 * 60 * 1000);
+            const thirtyDaysAgoMs = todayLocal.getTime() - (29 * 24 * 60 * 60 * 1000);
             const thirtyDaysAgoDate = new Date(thirtyDaysAgoMs);
-            const startOfThirtyDaysAgo = createUTCDate(thirtyDaysAgoDate.getUTCFullYear(), thirtyDaysAgoDate.getUTCMonth(), thirtyDaysAgoDate.getUTCDate());
+            const startOfThirtyDaysAgo = createLocalDate(thirtyDaysAgoDate.getFullYear(), thirtyDaysAgoDate.getMonth(), thirtyDaysAgoDate.getDate());
             return { from: startOfThirtyDaysAgo, to: endOfToday, preset };
         case 'this-month':
-            const startOfMonth = createUTCDate(year, month, 1);
+            const startOfMonth = createLocalDate(year, month, 1);
             // Calcular el último día del mes actual correctamente
             const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
-            const endOfMonth = createUTCDate(year, month, lastDayOfMonth, 23, 59, 59);
+            const endOfMonth = createLocalDate(year, month, lastDayOfMonth, 23, 59, 59);
             return { from: startOfMonth, to: endOfMonth, preset };
         case 'last-month':
-            const startOfLastMonth = createUTCDate(year, month - 1, 1);
+            const startOfLastMonth = createLocalDate(year, month - 1, 1);
             // Calcular el último día del mes anterior correctamente
             const lastDayOfLastMonth = new Date(year, month, 0).getDate();
-            const endOfLastMonth = createUTCDate(year, month - 1, lastDayOfLastMonth, 23, 59, 59);
+            const endOfLastMonth = createLocalDate(year, month - 1, lastDayOfLastMonth, 23, 59, 59);
             return { from: startOfLastMonth, to: endOfLastMonth, preset };
         case 'last-3-months':
             const threeMonthsAgoDate = new Date(year, month - 3, day);
-            const startOfThreeMonthsAgo = createUTCDate(threeMonthsAgoDate.getUTCFullYear(), threeMonthsAgoDate.getUTCMonth(), threeMonthsAgoDate.getUTCDate());
+            const startOfThreeMonthsAgo = createLocalDate(threeMonthsAgoDate.getFullYear(), threeMonthsAgoDate.getMonth(), threeMonthsAgoDate.getDate());
             return { from: startOfThreeMonthsAgo, to: endOfToday, preset };
         case 'this-year':
-            const startOfYear = createUTCDate(year, 0, 1);
-            const endOfYear = createUTCDate(year, 11, 31, 23, 59, 59);
+            const startOfYear = createLocalDate(year, 0, 1);
+            const endOfYear = createLocalDate(year, 11, 31, 23, 59, 59);
             return { from: startOfYear, to: endOfYear, preset };
         default:
             return getDateRangeFromPreset('last-30-days');
@@ -188,11 +188,12 @@ export function AnalyticsDateFilter({ compact = false, showCompare = true }: Ana
     const handleCustomDateChange = (field: 'from' | 'to', value: string) => {
         if (!value) return;
 
-        // Crear fecha UTC para evitar problemas de timezone
-        const date = new Date(value + 'T00:00:00.000Z');
+        // Crear fecha en zona horaria local para evitar problemas de timezone
+        const [year, month, day] = value.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
         const newRange: DateRange = {
             ...tempFilter.current,
-            [field]: field === 'to' ? new Date(value + 'T23:59:59.999Z') : date,
+            [field]: field === 'to' ? new Date(year, month - 1, day, 23, 59, 59) : date,
             preset: undefined // Clear preset when using custom dates
         };
 
@@ -214,10 +215,12 @@ export function AnalyticsDateFilter({ compact = false, showCompare = true }: Ana
     const handleCompareDateChange = (field: 'from' | 'to', value: string) => {
         if (!value || !tempFilter.previous) return;
 
-        const date = new Date(value + 'T00:00:00.000Z');
+        // Crear fecha en zona horaria local para evitar problemas de timezone
+        const [year, month, day] = value.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
         const newPreviousRange: DateRange = {
             ...tempFilter.previous,
-            [field]: field === 'to' ? new Date(value + 'T23:59:59.999Z') : date
+            [field]: field === 'to' ? new Date(year, month - 1, day, 23, 59, 59) : date
         };
 
         setTempFilter({
@@ -229,9 +232,17 @@ export function AnalyticsDateFilter({ compact = false, showCompare = true }: Ana
     const handleApply = () => {
         const params = new URLSearchParams();
 
+        // Función auxiliar para formatear fecha en zona horaria local
+        const formatLocalDate = (date: Date): string => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
         // Agregar parámetros del período principal
-        params.set('from', tempFilter.current.from.toISOString().split('T')[0]);
-        params.set('to', tempFilter.current.to.toISOString().split('T')[0]);
+        params.set('from', formatLocalDate(tempFilter.current.from));
+        params.set('to', formatLocalDate(tempFilter.current.to));
         if (tempFilter.current.preset) {
             params.set('preset', tempFilter.current.preset);
         }
@@ -239,8 +250,8 @@ export function AnalyticsDateFilter({ compact = false, showCompare = true }: Ana
         // Agregar parámetros de comparación si está habilitada
         if (tempFilter.compareEnabled && tempFilter.previous) {
             params.set('compare', 'true');
-            params.set('compareFrom', tempFilter.previous.from.toISOString().split('T')[0]);
-            params.set('compareTo', tempFilter.previous.to.toISOString().split('T')[0]);
+            params.set('compareFrom', formatLocalDate(tempFilter.previous.from));
+            params.set('compareTo', formatLocalDate(tempFilter.previous.to));
         }
 
         router.push(`?${params.toString()}`);

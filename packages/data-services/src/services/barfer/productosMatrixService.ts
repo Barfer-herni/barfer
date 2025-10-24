@@ -356,6 +356,32 @@ function matchItemToProduct(
         }
     }
 
+    // Match especial para BIG DOG: extraer el sabor de las opciones
+    // Ej: "BIG DOG (15kg)" con opción "POLLO" -> buscar producto "BIG DOG POLLO"
+    if (detectedSection === 'PERRO' && normalizedItemName.includes('BIG DOG')) {
+        // Para BIG DOG, el sabor está en las opciones, no en el nombre del producto
+        if (item.options && Array.isArray(item.options) && item.options.length > 0) {
+            const sabor = item.options[0].name || '';
+            const bigDogProductName = `BIG DOG ${sabor.toUpperCase()}`;
+
+            console.log(`      🐕 BIG DOG detectado: "${itemName}" con sabor "${sabor}"`);
+            console.log(`      🔍 Buscando producto: "${bigDogProductName}"`);
+
+            // Buscar el producto BIG DOG con el sabor específico
+            match = productosFiltrados.find(p =>
+                normalizeProductName(p.product) === bigDogProductName.toUpperCase()
+            );
+
+            if (match) {
+                console.log(`      ✅ Match BIG DOG: "${itemName}" -> "${match.fullName}" (sección: ${match.section})`);
+                return match;
+            } else {
+                console.log(`      ❌ No se encontró producto BIG DOG para sabor: "${sabor}"`);
+                console.log(`      Productos disponibles:`, productosFiltrados.map(p => `"${p.product}"`).slice(0, 5));
+            }
+        }
+    }
+
     // Match especial para BOX PERRO/GATO: extraer el sabor del nombre
     // Ej: "BOX PERRO POLLO" -> buscar producto "POLLO" en sección "PERRO"
     if (detectedSection === 'PERRO' || detectedSection === 'GATO') {
@@ -414,6 +440,10 @@ function calculateItemQuantity(item: any, producto: ProductoMayorista): number {
     // Detectar si el producto está en gramos por su nombre
     const isProductInGrams = item.name && item.name.toUpperCase().includes('GRS');
 
+    // Detectar si es un producto BIG DOG y extraer peso del nombre del producto
+    const isBigDog = item.name && item.name.toUpperCase().includes('BIG DOG');
+    const bigDogWeight = isBigDog ? extractKilosFromWeight(item.name) : 0;
+
     // Si tiene opciones, procesar cada una
     if (item.options && Array.isArray(item.options)) {
         for (const option of item.options) {
@@ -424,6 +454,9 @@ function calculateItemQuantity(item: any, producto: ProductoMayorista): number {
             if (optionName.toUpperCase().includes('GRS') || isProductInGrams) {
                 // Para productos en gramos, devolver la cantidad directamente
                 total += quantity;
+            } else if (isBigDog && bigDogWeight > 0) {
+                // Para productos BIG DOG, usar el peso extraído del nombre del producto
+                total += bigDogWeight * quantity;
             } else {
                 // Intentar extraer kilos del nombre de la opción (ej: "5KG", "10KG")
                 const kilosFromOption = extractKilosFromWeight(optionName);
@@ -533,6 +566,27 @@ export async function getProductosMatrix(from?: string, to?: string): Promise<{
                                     {
                                         case: { $regexMatch: { input: "$items.name", regex: /GRS/i } },
                                         then: 1 // Para productos en gramos por nombre del producto, usar 1 para mantener la cantidad original
+                                    },
+                                    {
+                                        case: { $regexMatch: { input: "$items.name", regex: /BIG DOG.*\(.*KG.*\)/i } },
+                                        then: {
+                                            $toDouble: {
+                                                $arrayElemAt: [
+                                                    {
+                                                        $getField: {
+                                                            field: "captures",
+                                                            input: {
+                                                                $regexFind: {
+                                                                    input: "$items.name",
+                                                                    regex: /(\d+)\s*KG/i
+                                                                }
+                                                            }
+                                                        }
+                                                    },
+                                                    0
+                                                ]
+                                            }
+                                        }
                                     }
                                 ],
                                 default: 0
@@ -597,12 +651,18 @@ export async function getProductosMatrix(from?: string, to?: string): Promise<{
                 // Detectar si es producto RAW
                 const isRaw = presentacion.match(/\d+\s*GRS?/i) || presentacion.match(/X\d+/i);
 
+                // Detectar si es producto BIG DOG
+                const isBigDog = productoName.toUpperCase().includes('BIG DOG');
+
                 if (isRaw && productoName.toUpperCase().includes('OREJA')) {
                     // Agrupar todas las orejas en una sola columna
                     groupKey = `RAW - OREJA`;
                 } else if (isRaw) {
                     // Otros productos RAW mantienen su presentación
                     groupKey = `RAW - ${productoName.toUpperCase()} ${presentacion.toUpperCase()}`;
+                } else if (isBigDog) {
+                    // Para productos BIG DOG, agrupar por sabor (POLLO, VACA)
+                    groupKey = `BIG DOG ${presentacion.toUpperCase()}`;
                 } else {
                     // Productos no RAW mantienen su nombre original
                     groupKey = `${productoName.toUpperCase()}`;
