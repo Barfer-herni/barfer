@@ -80,9 +80,9 @@ export function MatrixTableClient({ matrix, productNames }: MatrixTableClientPro
     };
 
     return (
-        <div className="overflow-x-auto border rounded-lg">
+        <div className="overflow-x-auto border rounded-lg max-h-[70vh] overflow-y-auto">
             <table className="w-full text-sm">
-                <thead className="bg-gray-50 sticky top-0 z-10">
+                <thead className="bg-gray-50 sticky top-0 z-20">
                     <tr>
                         <th className="px-4 py-3 text-left font-medium text-gray-700 border-r bg-gray-100 sticky left-0 z-20">
                             Punto de Venta
