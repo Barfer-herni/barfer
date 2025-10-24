@@ -441,9 +441,19 @@ function calculateItemQuantity(item: any, producto: ProductoMayorista): number {
     const isProductInGrams = (item.name && item.name.toUpperCase().includes('GRS')) ||
         (producto.fullName && producto.fullName.toUpperCase().includes('GRS'));
 
+    // Detectar si es un producto de orejas con multiplicador (X50, X100, etc.)
+    const isOrejas = (item.name && (item.name.toUpperCase().includes('OREJA') || item.name.toUpperCase().includes('OREJAS'))) ||
+        (producto.fullName && (producto.fullName.toUpperCase().includes('OREJA') || producto.fullName.toUpperCase().includes('OREJAS')));
+
+    // Extraer multiplicador de orejas del nombre del producto
+    const orejasMultiplier = isOrejas ? extractUnitMultiplier(producto.product) : 1;
+
     // Debug: mostrar información del producto
     if (isProductInGrams) {
         console.log(`      🧮 Producto en gramos detectado: "${item.name}" -> "${producto.fullName}"`);
+    }
+    if (isOrejas && orejasMultiplier > 1) {
+        console.log(`      🧮 Producto de orejas detectado: "${item.name}" -> "${producto.fullName}" (multiplicador: ${orejasMultiplier})`);
     }
 
     // Detectar si es un producto BIG DOG y extraer peso del nombre del producto
@@ -464,6 +474,10 @@ function calculateItemQuantity(item: any, producto: ProductoMayorista): number {
             } else if (isBigDog && bigDogWeight > 0) {
                 // Para productos BIG DOG, usar el peso extraído del nombre del producto
                 total += bigDogWeight * quantity;
+            } else if (isOrejas && orejasMultiplier > 1) {
+                // Para productos de orejas, usar el multiplicador del nombre del producto
+                console.log(`      🧮 Producto de orejas: cantidad ${quantity} x multiplicador ${orejasMultiplier} = ${quantity * orejasMultiplier}`);
+                total += quantity * orejasMultiplier;
             } else {
                 // Intentar extraer kilos del nombre de la opción (ej: "5KG", "10KG")
                 const kilosFromOption = extractKilosFromWeight(optionName);
