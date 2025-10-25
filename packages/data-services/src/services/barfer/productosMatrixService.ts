@@ -400,6 +400,28 @@ function matchItemToProduct(
         }
     }
 
+    // Match especial para productos con peso en el nombre (ej: "HUESOS CARNOSOS 5KG")
+    // El item viene como "HUESOS CARNOSOS" + opción "5KG"
+    if (item.options && Array.isArray(item.options)) {
+        for (const option of item.options) {
+            const optionName = option.name || '';
+            if (!optionName) continue;
+
+            // Construir nombre completo: "HUESOS CARNOSOS" + "5KG" = "HUESOS CARNOSOS 5KG"
+            const fullItemName = `${normalizedItemName} ${normalizeProductName(optionName)}`;
+
+            // Buscar match exacto con el nombre completo del producto
+            match = productosFiltrados.find(p =>
+                normalizeProductName(p.product) === fullItemName
+            );
+
+            if (match) {
+                console.log(`      ✅ Match por nombre completo con opción: "${itemName}" + "${optionName}" -> "${match.fullName}"`);
+                return match;
+            }
+        }
+    }
+
     // Último intento: match parcial solo por producto (sin requerir peso)
     for (const producto of productosFiltrados) {
         const productWords = producto.product.split(' ');
@@ -589,14 +611,26 @@ async function generateProductMatrix(productNames: string[], fromDate?: Date, to
         const ordersCollection = await getCollection('orders');
         const pricesCollection = await getCollection('prices');
 
+        // Determinar mes/año del período a consultar
+        const targetDate = fromDate || new Date();
+        const targetMonth = targetDate.getMonth() + 1;
+        const targetYear = targetDate.getFullYear();
+
         // 1. Obtener productos mayoristas desde prices para matching
-        console.log('📋 Cargando productos mayoristas desde prices...');
+        console.log(`📋 Cargando productos mayoristas desde prices (${targetMonth}/${targetYear})...`);
         const pricesDocs = await pricesCollection
             .find({
                 priceType: 'MAYORISTA',
-                isActive: true
+                isActive: true,
+                month: targetMonth,
+                year: targetYear
             })
             .toArray();
+
+        // Debug: contar productos de GATO en la query
+        const gatoDocsFromQuery = pricesDocs.filter(d => d.section === 'GATO');
+        console.log(`🔍 Documentos de GATO en la query: ${gatoDocsFromQuery.length}`);
+        console.log(`🔍 Productos GATO:`, gatoDocsFromQuery.map(d => `${d.product} ${d.weight}`));
 
         const productosMayoristasMap = new Map<string, ProductoMayorista>();
 
@@ -607,8 +641,16 @@ async function generateProductMatrix(productNames: string[], fromDate?: Date, to
             const kilosFinales = kilos > 0 ? kilos : 1;
             const section = doc.section || 'OTROS';
 
-            if (!productosMayoristasMap.has(fullName)) {
-                productosMayoristasMap.set(fullName, {
+            // Usar section + fullName como clave para evitar colisiones entre PERRO y GATO
+            const mapKey = `${section}||${fullName}`;
+
+            // Debug para GATO
+            if (section === 'GATO') {
+                console.log(`🐱 Procesando GATO: product="${doc.product}", weight="${doc.weight}", fullName="${fullName}", section="${section}", mapKey="${mapKey}"`);
+            }
+
+            if (!productosMayoristasMap.has(mapKey)) {
+                productosMayoristasMap.set(mapKey, {
                     fullName,
                     product: doc.product,
                     weight: weight || 'UNIDAD',
@@ -616,11 +658,22 @@ async function generateProductMatrix(productNames: string[], fromDate?: Date, to
                     section,
                     groupKey: generateGroupKey(doc.product, section)
                 });
+
+                // Debug para GATO
+                if (section === 'GATO') {
+                    console.log(`✅ GATO agregado al Map: "${mapKey}"`);
+                }
+            } else if (section === 'GATO') {
+                console.log(`⚠️  GATO ya existe en Map: "${mapKey}"`);
             }
         }
 
         const productosMayoristas = Array.from(productosMayoristasMap.values());
         console.log(`✅ ${productosMayoristas.length} productos mayoristas cargados`);
+
+        // Debug: mostrar productos de GATO
+        const gatoProducts = productosMayoristas.filter(p => p.section === 'GATO');
+        console.log(`🐱 Productos GATO cargados (${gatoProducts.length}):`, gatoProducts.map(p => `${p.product} ${p.weight}`));
 
         // 2. Obtener todos los puntos de venta
         const puntosVenta = await puntosVentaCollection.find({}).toArray();
