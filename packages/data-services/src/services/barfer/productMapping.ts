@@ -62,8 +62,38 @@ export function mapSelectOptionToDBFormat(selectOption: string): ProductMapping 
                 console.log(`🥩 [BACKEND] RAW. Resultado:`, result);
                 return result;
             } else if (section === 'OTROS') {
+                // Caso especial: si la sección es "OTROS" y el producto es "BOX DE COMPLEMENTOS"
+                if (product === 'BOX DE COMPLEMENTOS') {
+                    const result = {
+                        name: 'BOX DE COMPLEMENTOS',
+                        option: weight || '1 U'
+                    };
+                    console.log(`✅ [BACKEND] [OTROS] BOX DE COMPLEMENTOS detectado:`, {
+                        result,
+                        section: `"${section}"`,
+                        product: `"${product}"`,
+                        weight: `"${weight}"`,
+                        timestamp: new Date().toISOString()
+                    });
+                    return result;
+                }
+
                 const result = { name: product, option: weight || '' };
                 console.log(`🔧 [BACKEND] OTROS. Resultado:`, result);
+                return result;
+            } else if (section === 'BOX DE COMPLEMENTOS') {
+                // Caso especial: si la primera parte es "BOX DE COMPLEMENTOS", es un formato especial
+                const result = {
+                    name: 'BOX DE COMPLEMENTOS',
+                    option: product || '1 U' // "1 U" es la segunda parte
+                };
+                console.log(`✅ [BACKEND] [ESPECIAL] BOX DE COMPLEMENTOS detectado:`, {
+                    result,
+                    section: `"${section}"`,
+                    product: `"${product}"`,
+                    weight: `"${weight}"`,
+                    timestamp: new Date().toISOString()
+                });
                 return result;
             } else {
                 const result = { name: product, option: weight || '' };
@@ -228,6 +258,11 @@ export function mapSelectOptionToDBFormat(selectOption: string): ProductMapping 
 
     // Mapear Complementos
     if (normalizedSelect.includes('complementos')) {
+        // Manejar el caso específico de "BOX DE COMPLEMENTOS - 1 U - x1"
+        if (normalizedSelect.includes('box de complementos') && normalizedSelect.includes('1 u') && normalizedSelect.includes('x1')) {
+            return { name: 'BOX DE COMPLEMENTOS', option: '1 U' };
+        }
+        // Caso general de complementos
         return { name: 'BOX DE COMPLEMENTOS', option: '1 U' };
     }
 
@@ -303,18 +338,43 @@ export function mapSelectOptionToDBFormat(selectOption: string): ProductMapping 
  * @returns Array de items procesados
  */
 export function processOrderItems(items: any[]): any[] {
+    console.log(`🔍 [DEBUG] BACKEND processOrderItems - INPUT:`, {
+        items,
+        itemsCount: items?.length,
+        timestamp: new Date().toISOString()
+    });
+
     if (!items || !Array.isArray(items)) {
+        console.log(`⚠️ [DEBUG] BACKEND processOrderItems - Items inválidos, devolviendo tal como están`);
         return items;
     }
 
     return items.map((item: any, index: number) => {
+        console.log(`🔍 [DEBUG] BACKEND processOrderItems - Procesando item ${index}:`, {
+            item,
+            timestamp: new Date().toISOString()
+        });
         // Si el item tiene fullName (texto del select), convertirlo al formato de la DB
         let itemName = item.name;
         let itemId = item.id;
         let itemOptions = item.options || [];
 
         // Verificar si el name es un texto del select (contiene "barfer box", "big dog", etc.)
-        const isSelectText = item.name && (
+        // IMPORTANTE: No procesar si ya está en formato de base de datos (contiene " - " y tiene estructura correcta)
+        const isAlreadyDBFormat = item.name && item.name.includes(' - ') && (
+            item.name.includes('BOX DE COMPLEMENTOS') ||
+            item.name.includes('BOX PERRO') ||
+            item.name.includes('BOX GATO') ||
+            item.name.includes('BIG DOG') ||
+            item.name.includes('HUESOS') ||
+            item.name.includes('TRAQUEA') ||
+            item.name.includes('OREJAS') ||
+            item.name.includes('GARRAS') ||
+            item.name.includes('CORNALITOS') ||
+            item.name.includes('CALDO')
+        );
+
+        const isSelectText = item.name && !isAlreadyDBFormat && (
             item.name.toLowerCase().includes('barfer box') ||
             item.name.toLowerCase().includes('big dog') ||
             item.name.toLowerCase().includes('huesos') ||
@@ -328,6 +388,18 @@ export function processOrderItems(items: any[]): any[] {
             item.name.toLowerCase().includes('garras') ||
             item.name.toLowerCase().includes('complementos')
         );
+
+        // Debug para el caso específico de BOX DE COMPLEMENTOS
+        if (item.name && item.name.includes('COMPLEMENTOS')) {
+            console.log(`🔍 [DEBUG] BACKEND - Procesando item con COMPLEMENTOS:`, {
+                itemName: item.name,
+                isAlreadyDBFormat,
+                isSelectText,
+                fullName: item.fullName,
+                options: item.options,
+                timestamp: new Date().toISOString()
+            });
+        }
 
         if (item.fullName && item.fullName !== item.name) {
             // El fullName es diferente al name, significa que viene del select
@@ -382,6 +454,15 @@ export function processOrderItems(items: any[]): any[] {
                 quantity: option.quantity || 1
             }));
         }
+
+        console.log(`✅ [DEBUG] BACKEND processOrderItems - Item ${index} procesado:`, {
+            originalItem: item,
+            cleanItem,
+            itemName: `"${itemName}"`,
+            itemId: `"${itemId}"`,
+            itemOptions,
+            timestamp: new Date().toISOString()
+        });
 
         return cleanItem;
     });

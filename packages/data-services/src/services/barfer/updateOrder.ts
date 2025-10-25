@@ -97,8 +97,21 @@ function normalizeDeliveryDay(dateInput: string | Date | { $date: string }): Dat
 }
 
 export async function updateOrder(id: string, data: any) {
+    console.log(`🔍 [DEBUG] BACKEND updateOrder - INPUT:`, {
+        id,
+        data,
+        items: data.items,
+        timestamp: new Date().toISOString()
+    });
+
     const updateData = updateOrderSchema.parse(data);
     updateData.updatedAt = new Date();
+
+    console.log(`🔍 [DEBUG] BACKEND updateOrder - Datos parseados:`, {
+        updateData,
+        items: updateData.items,
+        timestamp: new Date().toISOString()
+    });
 
     // Normalizar el formato de deliveryDay si está presente
     if (updateData.deliveryDay) {
@@ -112,7 +125,17 @@ export async function updateOrder(id: string, data: any) {
 
     // Procesar items para limpiar campos innecesarios y asegurar formato correcto
     if (updateData.items && Array.isArray(updateData.items)) {
+        console.log(`🔍 [DEBUG] BACKEND updateOrder - Antes de processOrderItems:`, {
+            items: updateData.items,
+            timestamp: new Date().toISOString()
+        });
+
         updateData.items = processOrderItems(updateData.items);
+
+        console.log(`🔍 [DEBUG] BACKEND updateOrder - Después de processOrderItems:`, {
+            items: updateData.items,
+            timestamp: new Date().toISOString()
+        });
     }
 
     const collection = await getCollection('orders');
@@ -132,12 +155,24 @@ export async function updateOrder(id: string, data: any) {
         updateObject.deliveryDay = updateData.deliveryDay;
     }
 
+    console.log(`🔍 [DEBUG] BACKEND updateOrder - Objeto final a guardar en BD:`, {
+        updateObject,
+        items: updateObject.items,
+        timestamp: new Date().toISOString()
+    });
+
     const result = await collection.findOneAndUpdate(
         { _id: new ObjectId(id) },
         { $set: updateObject },
         { returnDocument: 'after' }
     );
     if (!result) throw new Error('Order not found');
+
+    console.log(`✅ [DEBUG] BACKEND updateOrder - Orden actualizada exitosamente:`, {
+        result: result.value,
+        items: result.value?.items,
+        timestamp: new Date().toISOString()
+    });
 
     return result.value;
 }

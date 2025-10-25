@@ -6,6 +6,13 @@ import { validateAndNormalizePhone } from './helpers';
 import { calculateOrderTotal, getPriceFromFormattedProduct, calculateOrderTotalExact, debugRawProducts } from '@repo/data-services';
 
 export async function updateOrderAction(id: string, data: any) {
+    console.log(`🔍 [DEBUG] FRONTEND updateOrderAction - INPUT:`, {
+        id,
+        data,
+        items: data.items,
+        timestamp: new Date().toISOString()
+    });
+
     try {
         // Validar y normalizar el número de teléfono si está presente
         if (data.address?.phone) {
@@ -38,9 +45,28 @@ export async function updateOrderAction(id: string, data: any) {
             console.warn('No se pudo guardar el backup:', backupError);
         }
 
+        console.log(`🔍 [DEBUG] FRONTEND updateOrderAction - Llamando a updateOrder:`, {
+            id,
+            data,
+            timestamp: new Date().toISOString()
+        });
+
         const updated = await updateOrder(id, data);
+
+        console.log(`✅ [DEBUG] FRONTEND updateOrderAction - SUCCESS:`, {
+            updated,
+            items: updated?.items,
+            timestamp: new Date().toISOString()
+        });
+
         return { success: true, order: updated };
     } catch (error) {
+        console.error(`❌ [DEBUG] FRONTEND updateOrderAction - ERROR:`, {
+            error,
+            id,
+            data,
+            timestamp: new Date().toISOString()
+        });
         return { success: false, error: (error as Error).message };
     }
 }

@@ -642,9 +642,44 @@ export const mapPriceProductToSelectOption = (section: string, product: string, 
 // Función para mapear productos de la DB hacia las opciones del select
 // NUEVA IMPLEMENTACIÓN: Usa directamente los valores de la base de datos
 export const mapDBProductToSelectOption = (dbProductName: string, dbOptionName: string): string => {
+    console.log(`🔍 [DEBUG] mapDBProductToSelectOption - INPUT:`, {
+        dbProductName: `"${dbProductName}"`,
+        dbOptionName: `"${dbOptionName}"`,
+        timestamp: new Date().toISOString()
+    });
+
     // Si ya tenemos un formato "section - product - weight", devolverlo tal como está
     if (dbProductName.includes(' - ')) {
+        console.log(`✅ [DEBUG] Ya tiene formato completo, devolver tal como está: "${dbProductName}"`);
         return dbProductName;
+    }
+
+    // DETECCIÓN DE DATOS CORRUPTOS: Si el nombre es solo una opción (ej: "1 U", "10KG", "x1")
+    // y la opción es la misma, probablemente es un dato corrupto
+    if (dbProductName === dbOptionName && (
+        dbProductName.match(/^\d+\s*[A-Z]+$/i) || // "1 U", "10KG", etc.
+        dbProductName.match(/^x\d+$/i) || // "x1", "x2", etc.
+        dbProductName.match(/^\d+$/i) // Solo números
+    )) {
+        console.warn(`🚨 [DEBUG] DATO CORRUPTO DETECTADO:`, {
+            name: `"${dbProductName}"`,
+            option: `"${dbOptionName}"`,
+            timestamp: new Date().toISOString()
+        });
+
+        // Intentar corregir basándose en la opción
+        if (dbOptionName === '1 U') {
+            console.log(`🔧 [DEBUG] Corrigiendo dato corrupto a BOX DE COMPLEMENTOS`);
+            const corrected = 'OTROS - BOX DE COMPLEMENTOS - 1 U';
+            console.log(`✅ [DEBUG] mapDBProductToSelectOption - OUTPUT (corregido): "${corrected}"`);
+            return corrected;
+        }
+
+        // Para otros casos corruptos, devolver tal como está pero con advertencia
+        console.warn(`⚠️ [DEBUG] No se puede corregir dato corrupto: "${dbProductName}"`);
+        const fallback = `${dbProductName} - ${dbOptionName}`;
+        console.log(`✅ [DEBUG] mapDBProductToSelectOption - OUTPUT (fallback): "${fallback}"`);
+        return fallback;
     }
 
     // Intentar reconstruir el formato completo "SECTION - PRODUCT - WEIGHT" desde el formato de DB
@@ -703,7 +738,10 @@ export const mapDBProductToSelectOption = (dbProductName: string, dbOptionName: 
 // Función para mapear desde la opción del select hacia el formato de la DB
 // NUEVA IMPLEMENTACIÓN: Usa directamente los valores de la base de datos
 export const mapSelectOptionToDBFormat = (selectOption: string): { name: string, option: string } => {
-    console.log(`🔍 mapSelectOptionToDBFormat - INPUT: "${selectOption}"`);
+    console.log(`🔍 [DEBUG] mapSelectOptionToDBFormat - INPUT:`, {
+        selectOption: `"${selectOption}"`,
+        timestamp: new Date().toISOString()
+    });
 
     // NUEVO: Manejar formato de productos desde la base de datos (ej: "PERRO - VACA - 10KG")
     if (selectOption.includes(' - ')) {
@@ -722,6 +760,22 @@ export const mapSelectOptionToDBFormat = (selectOption: string): { name: string,
                 weight,
                 isBigDog: product.startsWith('BIG DOG')
             });
+
+            // Caso especial: si la primera parte es "BOX DE COMPLEMENTOS", es un formato especial
+            if (section === 'BOX DE COMPLEMENTOS') {
+                const result = {
+                    name: 'BOX DE COMPLEMENTOS',
+                    option: product || '1 U' // "1 U" es la segunda parte
+                };
+                console.log(`✅ [DEBUG] [ESPECIAL] BOX DE COMPLEMENTOS detectado:`, {
+                    result,
+                    section: `"${section}"`,
+                    product: `"${product}"`,
+                    weight: `"${weight}"`,
+                    timestamp: new Date().toISOString()
+                });
+                return result;
+            }
 
             let cleanName = '';
             console.log(`🔄 section: ${section}`);
@@ -771,6 +825,12 @@ export const mapSelectOptionToDBFormat = (selectOption: string): { name: string,
                 cleanName = product; // Solo usar el nombre del producto
             }
 
+            // Caso especial: si el producto es "BOX DE COMPLEMENTOS", mantener el nombre completo
+            if (product === 'BOX DE COMPLEMENTOS') {
+                cleanName = 'BOX DE COMPLEMENTOS';
+                mappedOption = weight || '1 U';
+            }
+
             console.log(`🔄 Mapeando producto desde BD (RESULTADO FINAL):`, {
                 original: selectOption,
                 section,
@@ -785,13 +845,33 @@ export const mapSelectOptionToDBFormat = (selectOption: string): { name: string,
                 option: mappedOption // El peso o sabor como opción
             };
 
-            console.log(`✅ mapSelectOptionToDBFormat - OUTPUT:`, result);
+            console.log(`✅ [DEBUG] mapSelectOptionToDBFormat - OUTPUT:`, {
+                result,
+                original: `"${selectOption}"`,
+                cleanName: `"${cleanName}"`,
+                mappedOption: `"${mappedOption}"`,
+                timestamp: new Date().toISOString()
+            });
             return result;
         }
     }
 
     // Si no es el formato de la base de datos, es un caso de compatibilidad para datos antiguos
     console.warn(`⚠️ Producto sin formato de BD: ${selectOption}`);
+
+    // Manejar casos específicos de productos que no están en formato BD
+    const normalizedSelect = selectOption.toLowerCase().trim();
+
+    // Mapear Complementos
+    if (normalizedSelect.includes('complementos')) {
+        const result = { name: 'BOX DE COMPLEMENTOS', option: '1 U' };
+        console.log(`✅ mapSelectOptionToDBFormat - OUTPUT (complementos):`, result);
+        return result;
+    }
+
+    // Mapear otros productos específicos si es necesario
+    // ... (otros casos de compatibilidad)
+
     const fallbackResult = { name: selectOption.toUpperCase(), option: '' };
     console.log(`✅ mapSelectOptionToDBFormat - OUTPUT (fallback):`, fallbackResult);
     return fallbackResult;

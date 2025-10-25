@@ -247,18 +247,44 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             subTotal: row.original.subTotal || 0,
             shippingPrice: row.original.shippingPrice || 0,
             deliveryAreaSchedule: normalizeScheduleTime(row.original.deliveryArea?.schedule || ''),
-            items: (row.original.items || []).map((item: any) => {
+            items: (row.original.items || []).map((item: any, index: number) => {
+                console.log(`🔍 [DEBUG] Procesando item ${index} para edición:`, {
+                    item,
+                    hasFullName: !!item.fullName,
+                    timestamp: new Date().toISOString()
+                });
+
                 // Si el item no tiene fullName, generarlo desde el formato de la DB
                 if (!item.fullName) {
+                    console.log(`🔍 [DEBUG] Generando fullName para item ${index}:`, {
+                        name: `"${item.name || ''}"`,
+                        option: `"${item.options?.[0]?.name || ''}"`
+                    });
+
                     const selectOption = mapDBProductToSelectOption(
                         item.name || '',
                         item.options?.[0]?.name || ''
                     );
+
+                    console.log(`✅ [DEBUG] fullName generado para item ${index}:`, {
+                        originalName: `"${item.name || ''}"`,
+                        originalOption: `"${item.options?.[0]?.name || ''}"`,
+                        generatedFullName: `"${selectOption}"`,
+                        timestamp: new Date().toISOString()
+                    });
+
                     return {
                         ...item,
                         fullName: selectOption
                     };
                 }
+
+                console.log(`✅ [DEBUG] Item ${index} ya tiene fullName:`, {
+                    name: `"${item.name}"`,
+                    fullName: `"${item.fullName}"`,
+                    timestamp: new Date().toISOString()
+                });
+
                 return item;
             }),
             deliveryDay: row.original.deliveryDay || '',
@@ -362,16 +388,34 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             // Filtrar items: eliminar los que no tienen nombre o tienen cantidad 0
             const filteredItems = filterValidItems(editValues.items);
 
+            console.log(`🔍 [DEBUG] GUARDADO - Items filtrados:`, {
+                filteredItems,
+                timestamp: new Date().toISOString()
+            });
+
             // Procesar items para convertir fullName de vuelta al formato de la DB
-            const processedItems = filteredItems.map(item => {
+            const processedItems = filteredItems.map((item, index) => {
+                console.log(`🔍 [DEBUG] GUARDADO - Procesando item ${index}:`, {
+                    item,
+                    itemToProcess: item.fullName,
+                    timestamp: new Date().toISOString()
+                });
+
                 // Solo procesar items que fueron modificados (tienen fullName diferente a name)
                 // Items no modificados ya están en formato DB correcto
                 const itemToProcess = item.fullName;
 
                 // Solo procesar si hay fullName, es diferente del name, y parece ser una opción del select
                 if (itemToProcess && itemToProcess !== item.name && itemToProcess.includes(' - ')) {
+                    console.log(`🔄 [DEBUG] GUARDADO - Procesando item ${index} con mapSelectOptionToDBFormat:`, {
+                        itemToProcess: `"${itemToProcess}"`,
+                        originalName: `"${item.name}"`,
+                        timestamp: new Date().toISOString()
+                    });
+
                     const dbFormat = mapSelectOptionToDBFormat(itemToProcess);
-                    return {
+
+                    const processedItem = {
                         ...item,
                         id: dbFormat.name,
                         name: dbFormat.name,
@@ -380,7 +424,24 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                             name: dbFormat.option
                         }]
                     };
+
+                    console.log(`✅ [DEBUG] GUARDADO - Item ${index} procesado:`, {
+                        originalItem: item,
+                        dbFormat,
+                        processedItem,
+                        timestamp: new Date().toISOString()
+                    });
+
+                    return processedItem;
                 }
+
+                console.log(`✅ [DEBUG] GUARDADO - Item ${index} no necesita procesamiento:`, {
+                    item,
+                    reason: !itemToProcess ? 'no fullName' :
+                        itemToProcess === item.name ? 'fullName igual a name' :
+                            !itemToProcess.includes(' - ') ? 'no contiene -' : 'otro',
+                    timestamp: new Date().toISOString()
+                });
 
                 // Si no es una opción del select, mantener el item tal como está
                 return item;
@@ -418,6 +479,12 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 items: processedItems,
                 deliveryDay: editValues.deliveryDay,
             };
+
+            console.log(`🔍 [DEBUG] GUARDADO - Datos finales a enviar al backend:`, {
+                updateData,
+                processedItems,
+                timestamp: new Date().toISOString()
+            });
 
             const result = await updateOrderAction(row.id, updateData);
             if (!result.success) throw new Error(result.error || 'Error al guardar');

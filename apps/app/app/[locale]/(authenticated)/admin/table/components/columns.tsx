@@ -179,8 +179,10 @@ export const columns: ColumnDef<Order>[] = [
                         const itemName = item.name || '';
                         const hasWeightInName = /\d+KG|\d+GRS|\d+G/.test(itemName);
 
-                        // Verificar si el nombre ya incluye una cantidad (como "x100", "x50", etc.)
-                        const hasQuantityInName = /x\d+/i.test(itemName);
+                        // Verificar si el nombre ya incluye una cantidad en formato " - x\d+" al final
+                        // IMPORTANTE: No confundir con productos que tienen multiplicadores en el nombre (ej: "OREJA X50")
+                        // Solo detectar si ya tiene una cantidad separada por " - " (ej: "OREJA X50 - x2")
+                        const hasQuantityInName = /\s+-\s+x\d+$/i.test(itemName);
 
                         return (
                             <div key={`${item.id}-${index}`}>
