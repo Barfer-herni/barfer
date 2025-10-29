@@ -2,7 +2,6 @@
 
 import 'server-only';
 import { getCollection } from '@repo/database';
-import { database } from '@repo/database';
 
 export interface BalanceMonthlyData {
     mes: string;
@@ -240,33 +239,37 @@ export async function getBalanceMonthly(
                 });
             });
         }
+        // Obtener datos de salidas desde MongoDB
+        const salidasCollection = await getCollection('salidas');
+
         const salidasMatchCondition: any = {};
         if (startDate || endDate) {
-            salidasMatchCondition.fecha = {};
+            salidasMatchCondition.fechaFactura = {};
             if (startDate) {
-                salidasMatchCondition.fecha.gte = startDate;
+                salidasMatchCondition.fechaFactura.$gte = startDate;
             }
             if (endDate) {
-                salidasMatchCondition.fecha.lte = endDate;
+                salidasMatchCondition.fechaFactura.$lte = endDate;
             }
         } else {
             // Si no se especifica fecha, mostrar solo el año actual
             const currentYear = new Date().getFullYear();
-            const yearStartDate = new Date(currentYear, 0, 1);
+            const yearStartDate = new Date(currentYear - 2, 0, 1); // Dos años atrás
             const yearEndDate = new Date(currentYear, 11, 31, 23, 59, 59);
-            salidasMatchCondition.fecha = { gte: yearStartDate, lte: yearEndDate };
+            salidasMatchCondition.fechaFactura = { $gte: yearStartDate, $lte: yearEndDate };
         }
 
         // Obtener datos de salidas con desglose por tipo y marca
-        const salidasResult = await database.salida.findMany({
-            where: salidasMatchCondition,
-            select: {
-                fecha: true,
-                monto: true,
-                tipo: true,
-                marca: true
-            }
-        });
+        const salidasResult = await salidasCollection
+            .find(salidasMatchCondition, {
+                projection: {
+                    fechaFactura: 1,
+                    monto: 1,
+                    tipo: 1,
+                    marca: 1
+                }
+            })
+            .toArray();
 
         // Procesar salidas por mes con desglose
         const salidasByMonth = new Map<string, {
@@ -278,7 +281,7 @@ export async function getBalanceMonthly(
         }>();
 
         for (const salida of salidasResult) {
-            const fecha = new Date(salida.fecha);
+            const fecha = new Date(salida.fechaFactura);
             const monthKey = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
             const marca = salida.marca?.toLowerCase() || 'barfer';
             const isBarfer = marca === 'barfer';
