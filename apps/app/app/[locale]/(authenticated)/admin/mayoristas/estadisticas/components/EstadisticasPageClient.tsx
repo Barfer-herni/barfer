@@ -72,62 +72,67 @@ export function EstadisticasPageClient({ stats, fromInicial, toInicial }: Estadi
 
     return (
         <div className="h-full w-full">
-            <div className="mb-5 p-5">
+            <div className="mb-5 p-3 sm:p-5">
                 <div className="flex items-center gap-4 mb-4">
                     <Link href="/admin/mayoristas">
                         <Button variant="ghost" size="sm">
                             <ArrowLeft className="w-4 h-4 mr-2" />
-                            Volver a Puntos de Venta
+                            <span className="hidden sm:inline">Volver a Puntos de Venta</span>
+                            <span className="sm:hidden">Volver</span>
                         </Button>
                     </Link>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold">
+                        <h1 className="text-xl sm:text-2xl font-bold">
                             Estadísticas de Puntos de Venta
                         </h1>
-                        <p className="text-muted-foreground">
+                        <p className="text-sm sm:text-base text-muted-foreground">
                             Análisis detallado de compras y frecuencia por punto de venta
                         </p>
                     </div>
 
                     {/* Selector de rango de fechas */}
-                    <div className="flex items-center gap-3">
-                        <Calendar className="w-5 h-5 text-gray-500" />
-                        <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                        <Calendar className="hidden sm:block w-5 h-5 text-gray-500" />
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:flex-1">
                             <Input
                                 type="date"
                                 value={fromDate}
                                 onChange={(e) => setFromDate(e.target.value)}
-                                className="w-[150px]"
+                                className="w-full sm:w-[150px]"
                                 placeholder="Desde"
                             />
-                            <span className="text-gray-500">-</span>
+                            <span className="text-gray-500 text-center hidden sm:inline">-</span>
                             <Input
                                 type="date"
                                 value={toDate}
                                 onChange={(e) => setToDate(e.target.value)}
-                                className="w-[150px]"
+                                className="w-full sm:w-[150px]"
                                 placeholder="Hasta"
                             />
                         </div>
 
-                        <Button
-                            onClick={handleAplicarFiltro}
-                            size="sm"
-                        >
-                            Aplicar
-                        </Button>
-
-                        {(fromInicial || toInicial) && (
+                        <div className="flex gap-2">
                             <Button
-                                variant="outline"
+                                onClick={handleAplicarFiltro}
                                 size="sm"
-                                onClick={handleLimpiarFiltro}
+                                className="flex-1 sm:flex-none"
                             >
-                                Ver Todo
+                                Aplicar
                             </Button>
-                        )}
+
+                            {(fromInicial || toInicial) && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleLimpiarFiltro}
+                                    className="flex-1 sm:flex-none"
+                                >
+                                    Ver Todo
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -154,57 +159,57 @@ export function EstadisticasPageClient({ stats, fromInicial, toInicial }: Estadi
                     )}
                 </div>
             ) : (
-                <div className="px-5 space-y-6">
+                <div className="px-3 sm:px-5 space-y-6">
                     {/* Cards de resumen */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <Card className="p-6">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-blue-100 rounded-full">
-                                    <ShoppingCart className="h-6 w-6 text-blue-600" />
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                        <Card className="p-4 sm:p-6">
+                            <div className="flex flex-col md:flex-row items-center md:gap-4 gap-2">
+                                <div className="p-2 sm:p-3 bg-blue-100 rounded-full">
+                                    <ShoppingCart className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
                                 </div>
-                                <div>
-                                    <p className="text-sm text-gray-600">Puntos de Venta</p>
-                                    <p className="text-2xl font-bold">{stats.length}</p>
+                                <div className="text-center md:text-left">
+                                    <p className="text-xs sm:text-sm text-gray-600">Puntos de Venta</p>
+                                    <p className="text-xl sm:text-2xl font-bold">{stats.length}</p>
                                 </div>
                             </div>
                         </Card>
 
-                        <Card className="p-6">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-green-100 rounded-full">
-                                    <Package className="h-6 w-6 text-green-600" />
+                        <Card className="p-4 sm:p-6">
+                            <div className="flex flex-col md:flex-row items-center md:gap-4 gap-2">
+                                <div className="p-2 sm:p-3 bg-green-100 rounded-full">
+                                    <Package className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
                                 </div>
-                                <div>
-                                    <p className="text-sm text-gray-600">KG Totales</p>
-                                    <p className="text-2xl font-bold">
+                                <div className="text-center md:text-left">
+                                    <p className="text-xs sm:text-sm text-gray-600">KG Totales</p>
+                                    <p className="text-xl sm:text-2xl font-bold">
                                         {stats.reduce((sum, s) => sum + s.kgTotales, 0).toLocaleString('es-AR')}
                                     </p>
                                 </div>
                             </div>
                         </Card>
 
-                        <Card className="p-6">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-purple-100 rounded-full">
-                                    <Activity className="h-6 w-6 text-purple-600" />
+                        <Card className="p-4 sm:p-6">
+                            <div className="flex flex-col md:flex-row items-center md:gap-4 gap-2">
+                                <div className="p-2 sm:p-3 bg-purple-100 rounded-full">
+                                    <Activity className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
                                 </div>
-                                <div>
-                                    <p className="text-sm text-gray-600">Pedidos Totales</p>
-                                    <p className="text-2xl font-bold">
+                                <div className="text-center md:text-left">
+                                    <p className="text-xs sm:text-sm text-gray-600">Pedidos Totales</p>
+                                    <p className="text-xl sm:text-2xl font-bold">
                                         {stats.reduce((sum, s) => sum + s.totalPedidos, 0).toLocaleString('es-AR')}
                                     </p>
                                 </div>
                             </div>
                         </Card>
 
-                        <Card className="p-6">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-orange-100 rounded-full">
-                                    <TrendingUp className="h-6 w-6 text-orange-600" />
+                        <Card className="p-4 sm:p-6">
+                            <div className="flex flex-col md:flex-row items-center md:gap-4 gap-2">
+                                <div className="p-2 sm:p-3 bg-orange-100 rounded-full">
+                                    <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600" />
                                 </div>
-                                <div>
-                                    <p className="text-sm text-gray-600">Promedio por Pedido</p>
-                                    <p className="text-2xl font-bold">
+                                <div className="text-center md:text-left">
+                                    <p className="text-xs sm:text-sm text-gray-600">Promedio por Pedido</p>
+                                    <p className="text-xl sm:text-2xl font-bold">
                                         {stats.length > 0
                                             ? Math.round(stats.reduce((sum, s) => sum + s.promedioKgPorPedido, 0) / stats.length).toLocaleString('es-AR')
                                             : 0} kg
@@ -215,12 +220,12 @@ export function EstadisticasPageClient({ stats, fromInicial, toInicial }: Estadi
                     </div>
 
                     {/* Tabla de estadísticas */}
-                    <Card className="p-6">
-                        <h3 className="text-lg font-semibold mb-4">
+                    <Card className="p-3 sm:p-6">
+                        <h3 className="text-base sm:text-lg font-semibold mb-4">
                             Estadísticas por Punto de Venta
                             {(fromInicial || toInicial) && (
-                                <span className="text-base font-normal text-gray-500 ml-2">
-                                    - {formatDateRange()}
+                                <span className="text-sm sm:text-base font-normal text-gray-500 ml-2 block sm:inline">
+                                    {formatDateRange()}
                                 </span>
                             )}
                         </h3>

@@ -771,8 +771,8 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
             )}
 
             {/* Paginación */}
-            <div className="flex items-center justify-between border-t pt-4">
-                <div className="text-sm text-muted-foreground">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t pt-4">
+                <div className="text-xs sm:text-sm text-muted-foreground">
                     Mostrando {salidas.length} de {total} salidas totales.
                 </div>
                 <div className="flex items-center gap-2">
@@ -781,10 +781,11 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                         size="sm"
                         onClick={() => navigateToPagination(pagination.pageIndex - 1, pagination.pageSize)}
                         disabled={pagination.pageIndex === 0 || isPending}
+                        className="shrink-0"
                     >
                         Anterior
                     </Button>
-                    <div className="text-sm">
+                    <div className="text-xs sm:text-sm whitespace-nowrap px-2">
                         Página {pagination.pageIndex + 1} de {pageCount || 1}
                     </div>
                     <Button
@@ -792,6 +793,7 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                         size="sm"
                         onClick={() => navigateToPagination(pagination.pageIndex + 1, pagination.pageSize)}
                         disabled={pagination.pageIndex >= pageCount - 1 || isPending}
+                        className="shrink-0"
                     >
                         Siguiente
                     </Button>

@@ -30,7 +30,7 @@ export const columns: ColumnDef<Mayorista>[] = [
         },
         cell: ({ row }) => {
             return (
-                <div className="min-w-[180px] font-medium text-sm">
+                <div className="min-w-[120px] sm:min-w-[180px] font-medium text-xs sm:text-sm">
                     {row.getValue('nombre')}
                 </div>
             );
@@ -62,8 +62,8 @@ export const columns: ColumnDef<Mayorista>[] = [
             const zona = row.getValue('zona') as string;
             const zonaLabel = ZONA_TRANSLATIONS[zona] || zona;
             return (
-                <div className="min-w-[100px]">
-                    <Badge variant="secondary" className="text-xs">
+                <div className="min-w-[70px] sm:min-w-[100px]">
+                    <Badge variant="secondary" className="text-[10px] sm:text-xs px-1 sm:px-2">
                         {zonaLabel}
                     </Badge>
                 </div>
@@ -95,7 +95,7 @@ export const columns: ColumnDef<Mayorista>[] = [
         cell: ({ row }) => {
             const direccion = row.original.contacto?.direccion || '';
             return (
-                <div className="min-w-[180px] text-sm">
+                <div className="min-w-[120px] sm:min-w-[180px] text-xs sm:text-sm truncate max-w-[200px]">
                     {direccion || <span className="text-gray-400">--</span>}
                 </div>
             );
@@ -126,7 +126,7 @@ export const columns: ColumnDef<Mayorista>[] = [
         cell: ({ row }) => {
             const telefono = row.original.contacto?.telefono || '';
             return (
-                <div className="min-w-[130px] text-sm">
+                <div className="min-w-[90px] sm:min-w-[130px] text-xs sm:text-sm">
                     {telefono || <span className="text-gray-400">--</span>}
                 </div>
             );
@@ -164,9 +164,9 @@ export const columns: ColumnDef<Mayorista>[] = [
             const lineas = horarios.split('\n').filter(l => l.trim() !== '');
 
             return (
-                <div className="min-w-[180px] text-xs whitespace-pre-line">
+                <div className="min-w-[120px] sm:min-w-[180px] text-[10px] sm:text-xs whitespace-pre-line max-w-[200px] truncate">
                     {lineas.map((linea, index) => (
-                        <div key={index} className="py-0.5">
+                        <div key={index} className="py-0.5 truncate">
                             {linea}
                         </div>
                     ))}
@@ -208,7 +208,7 @@ export const columns: ColumnDef<Mayorista>[] = [
             });
 
             return (
-                <div className="min-w-[110px] text-sm text-center">
+                <div className="min-w-[80px] sm:min-w-[110px] text-xs sm:text-sm text-center">
                     {formatted}
                 </div>
             );
@@ -248,7 +248,7 @@ export const columns: ColumnDef<Mayorista>[] = [
             });
 
             return (
-                <div className="min-w-[110px] text-sm text-center">
+                <div className="min-w-[80px] sm:min-w-[110px] text-xs sm:text-sm text-center">
                     {formatted}
                 </div>
             );
@@ -280,16 +280,16 @@ export const columns: ColumnDef<Mayorista>[] = [
             const tieneFreezer = row.getValue('tieneFreezer') as boolean;
 
             return (
-                <div className="min-w-[120px] text-center">
+                <div className="min-w-[70px] sm:min-w-[120px] text-center">
                     {tieneFreezer ? (
-                        <div className="flex items-center justify-center gap-1">
-                            <Check className="w-4 h-4 text-green-600" />
-                            <Badge variant="default" className="bg-green-500">Sí</Badge>
+                        <div className="flex items-center justify-center gap-0.5 sm:gap-1">
+                            <Check className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
+                            <Badge variant="default" className="bg-green-500 text-[10px] sm:text-xs px-1 sm:px-2">Sí</Badge>
                         </div>
                     ) : (
-                        <div className="flex items-center justify-center gap-1">
-                            <X className="w-4 h-4 text-gray-400" />
-                            <Badge variant="secondary">No</Badge>
+                        <div className="flex items-center justify-center gap-0.5 sm:gap-1">
+                            <X className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
+                            <Badge variant="secondary" className="text-[10px] sm:text-xs px-1 sm:px-2">No</Badge>
                         </div>
                     )}
                 </div>
@@ -323,7 +323,7 @@ export const columns: ColumnDef<Mayorista>[] = [
             const tieneFreezer = row.original.tieneFreezer;
 
             return (
-                <div className="min-w-[60px] text-sm text-center">
+                <div className="min-w-[50px] sm:min-w-[60px] text-xs sm:text-sm text-center">
                     {tieneFreezer && cantidad ? (
                         <span className="font-semibold">{cantidad}</span>
                     ) : (
@@ -360,7 +360,7 @@ export const columns: ColumnDef<Mayorista>[] = [
             const tieneFreezer = row.original.tieneFreezer;
 
             return (
-                <div className="min-w-[100px] text-sm text-center">
+                <div className="min-w-[70px] sm:min-w-[100px] text-xs sm:text-sm text-center">
                     {tieneFreezer && capacidad ? (
                         `${capacidad}L`
                     ) : (
@@ -400,9 +400,9 @@ export const columns: ColumnDef<Mayorista>[] = [
             }
 
             return (
-                <div className="min-w-[180px] flex flex-wrap gap-1">
+                <div className="min-w-[120px] sm:min-w-[180px] flex flex-wrap gap-0.5 sm:gap-1">
                     {tipos.map((tipo) => (
-                        <Badge key={tipo} variant="outline" className="text-xs">
+                        <Badge key={tipo} variant="outline" className="text-[10px] sm:text-xs px-1 sm:px-2">
                             {TIPO_NEGOCIO_TRANSLATIONS[tipo] || tipo}
                         </Badge>
                     ))}

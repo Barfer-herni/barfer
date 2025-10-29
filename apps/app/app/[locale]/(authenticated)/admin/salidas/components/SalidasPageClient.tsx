@@ -53,43 +53,45 @@ export function SalidasPageClient({
         <>
             {/* Botones de navegación */}
             <div className="mb-6 px-5">
-                <div className="flex gap-2">
-                    <Button
-                        onClick={() => setActiveTab('tabla')}
-                        variant={activeTab === 'tabla' ? 'default' : 'outline'}
-                        className="flex items-center gap-2"
-                    >
-                        <Table2 className="h-4 w-4" />
-                        Tabla
-                    </Button>
-                    {canViewStatistics && (
+                <div className="overflow-x-auto scrollbar-hide -mx-5 px-5">
+                    <div className="flex gap-2 min-w-max">
                         <Button
-                            onClick={() => setActiveTab('estadisticas')}
-                            variant={activeTab === 'estadisticas' ? 'default' : 'outline'}
-                            className="flex items-center gap-2"
+                            onClick={() => setActiveTab('tabla')}
+                            variant={activeTab === 'tabla' ? 'default' : 'outline'}
+                            className="flex items-center gap-2 shrink-0"
                         >
-                            <BarChart3 className="h-4 w-4" />
-                            Estadísticas
+                            <Table2 className="h-4 w-4" />
+                            <span className="whitespace-nowrap">Tabla</span>
                         </Button>
-                    )}
-                    {canViewStatistics && (
+                        {canViewStatistics && (
+                            <Button
+                                onClick={() => setActiveTab('estadisticas')}
+                                variant={activeTab === 'estadisticas' ? 'default' : 'outline'}
+                                className="flex items-center gap-2 shrink-0"
+                            >
+                                <BarChart3 className="h-4 w-4" />
+                                <span className="whitespace-nowrap">Estadísticas</span>
+                            </Button>
+                        )}
+                        {canViewStatistics && (
+                            <Button
+                                onClick={() => setActiveTab('categorias')}
+                                variant={activeTab === 'categorias' ? 'default' : 'outline'}
+                                className="flex items-center gap-2 shrink-0"
+                            >
+                                <Tag className="h-4 w-4" />
+                                <span className="whitespace-nowrap">Categorías</span>
+                            </Button>
+                        )}
                         <Button
-                            onClick={() => setActiveTab('categorias')}
-                            variant={activeTab === 'categorias' ? 'default' : 'outline'}
-                            className="flex items-center gap-2"
+                            onClick={() => setActiveTab('proveedores')}
+                            variant={activeTab === 'proveedores' ? 'default' : 'outline'}
+                            className="flex items-center gap-2 shrink-0"
                         >
-                            <Tag className="h-4 w-4" />
-                            Categorías
+                            <Users className="h-4 w-4" />
+                            <span className="whitespace-nowrap">Proveedores</span>
                         </Button>
-                    )}
-                    <Button
-                        onClick={() => setActiveTab('proveedores')}
-                        variant={activeTab === 'proveedores' ? 'default' : 'outline'}
-                        className="flex items-center gap-2"
-                    >
-                        <Users className="h-4 w-4" />
-                        Proveedores
-                    </Button>
+                    </div>
                 </div>
             </div>
 

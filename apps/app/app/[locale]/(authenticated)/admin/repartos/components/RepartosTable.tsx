@@ -147,64 +147,58 @@ export function RepartosTable({ data: initialData, dictionary }: RepartosTablePr
     return (
         <div className="space-y-6">
             {/* Header con controles */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                {/* Navegación de mes */}
+                <div className="flex items-center gap-2 w-full lg:w-auto">
                     <Button
                         variant="outline"
                         size="sm"
                         onClick={() => changeMonth('prev')}
+                        className="shrink-0 px-2 sm:px-3"
                     >
-                        ← {dictionary.app?.admin?.repartos?.previousMonth || 'Mes anterior'}
+                        <span className="sm:hidden">←</span>
+                        <span className="hidden sm:inline">← Anterior</span>
                     </Button>
 
-                    <div className="text-xl font-semibold">
-                        {currentMonth.toLocaleDateString('es-AR', {
-                            month: 'long',
-                            year: 'numeric'
-                        })}
+                    <div className="text-sm sm:text-base lg:text-xl font-semibold text-center flex-1 lg:flex-initial px-2 min-w-0">
+                        <span className="block truncate">
+                            {currentMonth.toLocaleDateString('es-AR', {
+                                month: 'long',
+                                year: 'numeric'
+                            })}
+                        </span>
                     </div>
 
                     <Button
                         variant="outline"
                         size="sm"
                         onClick={() => changeMonth('next')}
+                        className="shrink-0 px-2 sm:px-3"
                     >
-                        {dictionary.app?.admin?.repartos?.nextMonth || 'Mes siguiente'} →
+                        <span className="sm:hidden">→</span>
+                        <span className="hidden sm:inline">Siguiente →</span>
                     </Button>
                 </div>
 
-                <div className="flex items-center space-x-2">
+                {/* Botones de acción */}
+                <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
                     <Button
                         variant="outline"
+                        size="sm"
                         onClick={initializeMissingWeeks}
                         disabled={isPending}
+                        className="flex-1 sm:flex-initial"
                     >
                         {isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                        Inicializar Semanas
+                        <span className="text-xs sm:text-sm">Inicializar</span>
                     </Button>
-
-                    {/* <Button
-                        variant="outline"
-                        onClick={async () => {
-                            const result = await cleanupOldWeeksAction();
-                            if (result.success) {
-                                // Recargar datos después de limpiar
-                                const dataResult = await getRepartosDataAction();
-                                if (dataResult.success && dataResult.data) {
-                                    setWeeksData(dataResult.data);
-                                }
-                            }
-                        }}
-                        disabled={isPending}
-                    >
-                        Limpiar Semanas Antiguas
-                    </Button> */}
 
                     {isEditing ? (
                         <>
                             <Button
+                                size="sm"
                                 onClick={saveData}
-                                className="flex items-center space-x-2"
+                                className="flex items-center gap-2 flex-1 sm:flex-initial"
                                 disabled={isPending}
                             >
                                 {isPending ? (
@@ -212,23 +206,26 @@ export function RepartosTable({ data: initialData, dictionary }: RepartosTablePr
                                 ) : (
                                     <Save className="h-4 w-4" />
                                 )}
-                                {isPending ? 'Guardando...' : (dictionary.app?.admin?.repartos?.save || 'Guardar')}
+                                <span className="text-xs sm:text-sm">{isPending ? 'Guardando...' : (dictionary.app?.admin?.repartos?.save || 'Guardar')}</span>
                             </Button>
                             <Button
                                 variant="outline"
+                                size="sm"
                                 onClick={() => setIsEditing(false)}
                                 disabled={isPending}
+                                className="flex-1 sm:flex-initial"
                             >
-                                {dictionary.app?.admin?.repartos?.cancel || 'Cancelar'}
+                                <span className="text-xs sm:text-sm">{dictionary.app?.admin?.repartos?.cancel || 'Cancelar'}</span>
                             </Button>
                         </>
                     ) : (
                         <Button
+                            size="sm"
                             onClick={() => setIsEditing(true)}
-                            className="flex items-center space-x-2"
+                            className="flex items-center gap-2 flex-1 sm:flex-initial"
                         >
                             <Plus className="h-4 w-4" />
-                            {dictionary.app?.admin?.repartos?.edit || 'Editar'}
+                            <span className="text-xs sm:text-sm">{dictionary.app?.admin?.repartos?.edit || 'Editar'}</span>
                         </Button>
                     )}
                 </div>
@@ -267,78 +264,80 @@ export function RepartosTable({ data: initialData, dictionary }: RepartosTablePr
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-6 gap-4">
-                                        {/* Columna de días */}
-                                        {days.map((dayKey, dayIndex) => (
-                                            <div key={dayKey} className="space-y-2">
-                                                {/* Header del día */}
-                                                <div className="text-center font-medium text-sm text-muted-foreground">
-                                                    {dayLabels[dayIndex]}
-                                                </div>
+                                    <div className="overflow-x-auto -mx-4 px-4">
+                                        <div className="grid grid-cols-6 gap-4 min-w-[800px]">
+                                            {/* Columna de días */}
+                                            {days.map((dayKey, dayIndex) => (
+                                                <div key={dayKey} className="space-y-2">
+                                                    {/* Header del día */}
+                                                    <div className="text-center font-medium text-sm text-muted-foreground whitespace-nowrap">
+                                                        {dayLabels[dayIndex]}
+                                                    </div>
 
-                                                {/* Filas de datos dinámicas */}
-                                                {weekData[dayKey]?.map((entry, rowIndex) => (
-                                                    <div key={entry.id} className="flex items-center space-x-2">
-                                                        {/* Input de texto */}
-                                                        <Input
-                                                            value={entry.text}
-                                                            onChange={(e) => handleTextChange(week.weekKey, dayKey, rowIndex, e.target.value)}
-                                                            placeholder={`${dayLabels[dayIndex]} ${rowIndex + 1}`}
-                                                            disabled={!isEditing}
-                                                            className="text-xs h-8 flex-1"
-                                                        />
+                                                    {/* Filas de datos dinámicas */}
+                                                    {weekData[dayKey]?.map((entry, rowIndex) => (
+                                                        <div key={entry.id} className="flex items-center space-x-2">
+                                                            {/* Input de texto */}
+                                                            <Input
+                                                                value={entry.text}
+                                                                onChange={(e) => handleTextChange(week.weekKey, dayKey, rowIndex, e.target.value)}
+                                                                placeholder={`${dayLabels[dayIndex]} ${rowIndex + 1}`}
+                                                                disabled={!isEditing}
+                                                                className="text-xs h-8 flex-1"
+                                                            />
 
-                                                        {/* Checkbox */}
-                                                        <Checkbox
-                                                            checked={entry.isCompleted}
-                                                            onCheckedChange={(checked) =>
-                                                                handleCheckboxChange(week.weekKey, dayKey, rowIndex, checked as boolean)
-                                                            }
-                                                            disabled={!isEditing}
-                                                            className="shrink-0"
-                                                        />
+                                                            {/* Checkbox */}
+                                                            <Checkbox
+                                                                checked={entry.isCompleted}
+                                                                onCheckedChange={(checked) =>
+                                                                    handleCheckboxChange(week.weekKey, dayKey, rowIndex, checked as boolean)
+                                                                }
+                                                                disabled={!isEditing}
+                                                                className="shrink-0"
+                                                            />
 
-                                                        {/* Botón de eliminar fila */}
-                                                        {isEditing && weekData[dayKey].length > 1 && (
+                                                            {/* Botón de eliminar fila */}
+                                                            {isEditing && weekData[dayKey].length > 1 && (
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={() => handleRemoveRow(week.weekKey, dayKey, rowIndex)}
+                                                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                                                >
+                                                                    ×
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    )) || (
+                                                            // Fallback para días sin datos
+                                                            [0, 1, 2].map((rowIndex) => (
+                                                                <div key={rowIndex} className="flex items-center space-x-2">
+                                                                    <Input
+                                                                        placeholder={`${dayLabels[dayIndex]} ${rowIndex + 1}`}
+                                                                        disabled
+                                                                        className="text-xs h-8 flex-1"
+                                                                    />
+                                                                    <Checkbox disabled className="shrink-0" />
+                                                                </div>
+                                                            ))
+                                                        )}
+
+                                                    {/* Botón para agregar filas - ahora abajo de las filas */}
+                                                    {isEditing && (
+                                                        <div className="flex justify-center space-x-1 mt-2">
                                                             <Button
                                                                 variant="outline"
                                                                 size="sm"
-                                                                onClick={() => handleRemoveRow(week.weekKey, dayKey, rowIndex)}
-                                                                className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                                                onClick={() => handleAddRow(week.weekKey, dayKey)}
+                                                                className="h-6 w-6 p-0"
                                                             >
-                                                                ×
+                                                                <Plus className="h-3 w-3" />
                                                             </Button>
-                                                        )}
-                                                    </div>
-                                                )) || (
-                                                        // Fallback para días sin datos
-                                                        [0, 1, 2].map((rowIndex) => (
-                                                            <div key={rowIndex} className="flex items-center space-x-2">
-                                                                <Input
-                                                                    placeholder={`${dayLabels[dayIndex]} ${rowIndex + 1}`}
-                                                                    disabled
-                                                                    className="text-xs h-8 flex-1"
-                                                                />
-                                                                <Checkbox disabled className="shrink-0" />
-                                                            </div>
-                                                        ))
+                                                        </div>
                                                     )}
-
-                                                {/* Botón para agregar filas - ahora abajo de las filas */}
-                                                {isEditing && (
-                                                    <div className="flex justify-center space-x-1 mt-2">
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => handleAddRow(week.weekKey, dayKey)}
-                                                            className="h-6 w-6 p-0"
-                                                        >
-                                                            <Plus className="h-3 w-3" />
-                                                        </Button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ))}
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
                             </CardContent>

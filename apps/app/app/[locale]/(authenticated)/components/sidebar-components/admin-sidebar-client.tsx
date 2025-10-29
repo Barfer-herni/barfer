@@ -108,34 +108,36 @@ export function AdminSidebarClient({ items, dictionary }: AdminSidebarClientProp
             </Sidebar>
 
             {/* Mobile Bottom Navigation */}
-            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 z-50">
-                <div className="flex items-center justify-around px-2 py-2">
-                    {items.map((item) => {
-                        const isActive = isActivePath(item.href);
-                        const IconComponent = ICON_MAP[item.icon as keyof typeof ICON_MAP];
-                        const mobileTitle = dictionary.app.admin.navigation[item.mobileLabel as keyof typeof dictionary.app.admin.navigation] || item.label;
+            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 z-50 overflow-hidden">
+                <div className="overflow-x-auto scrollbar-hide">
+                    <div className="flex items-center gap-1 px-2 py-2 min-w-max">
+                        {items.map((item) => {
+                            const isActive = isActivePath(item.href);
+                            const IconComponent = ICON_MAP[item.icon as keyof typeof ICON_MAP];
+                            const mobileTitle = dictionary.app.admin.navigation[item.mobileLabel as keyof typeof dictionary.app.admin.navigation] || item.label;
 
-                        return (
-                            <Link
-                                key={item.label}
-                                href={item.href}
-                                className={cn(
-                                    "flex flex-col items-center gap-1 px-3 py-2 rounded-lg min-w-0 flex-1 transition-colors",
-                                    isActive
-                                        ? "text-green-600 bg-green-50 dark:bg-green-950 dark:text-green-400"
-                                        : "text-gray-600 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-800"
-                                )}
-                            >
-                                {IconComponent && <IconComponent className={cn("h-5 w-5 shrink-0", isActive && "text-green-600 dark:text-green-400")} />}
-                                <span className={cn(
-                                    "text-xs font-medium truncate text-center leading-tight",
-                                    isActive && "text-green-600 dark:text-green-400"
-                                )}>
-                                    {mobileTitle}
-                                </span>
-                            </Link>
-                        );
-                    })}
+                            return (
+                                <Link
+                                    key={item.label}
+                                    href={item.href}
+                                    className={cn(
+                                        "flex flex-col items-center gap-1 px-3 py-2 rounded-lg min-w-[70px] transition-colors shrink-0",
+                                        isActive
+                                            ? "text-green-600 bg-green-50 dark:bg-green-950 dark:text-green-400"
+                                            : "text-gray-600 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-800"
+                                    )}
+                                >
+                                    {IconComponent && <IconComponent className={cn("h-5 w-5 shrink-0", isActive && "text-green-600 dark:text-green-400")} />}
+                                    <span className={cn(
+                                        "text-[10px] font-medium text-center leading-tight whitespace-nowrap",
+                                        isActive && "text-green-600 dark:text-green-400"
+                                    )}>
+                                        {mobileTitle}
+                                    </span>
+                                </Link>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
         </>

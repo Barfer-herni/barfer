@@ -45,13 +45,13 @@ export default async function MayoristasPage({
 
     return (
         <div className="h-full w-full">
-            <div className="mb-5 p-5">
-                <div className="flex justify-between items-center">
+            <div className="mb-5 p-3 sm:p-5">
+                <div className="flex flex-col gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold">
+                        <h1 className="text-xl sm:text-2xl font-bold">
                             Puntos de Venta Mayoristas
                         </h1>
-                        <p className="text-muted-foreground">
+                        <p className="text-sm sm:text-base text-muted-foreground">
                             Gestión de puntos de venta mayoristas y seguimiento de ventas
                         </p>
                     </div>

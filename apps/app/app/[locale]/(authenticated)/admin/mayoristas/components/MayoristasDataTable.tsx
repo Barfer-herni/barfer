@@ -256,8 +256,8 @@ export function MayoristasDataTable({
     return (
         <div className="space-y-4">
             {/* Barra de búsqueda y acciones */}
-            <div className="flex items-center gap-4">
-                <div className="relative flex-1">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="relative flex-1 w-full">
                     <Input
                         placeholder="Buscar por nombre, zona, teléfono o email..."
                         value={searchInput}
@@ -278,29 +278,34 @@ export function MayoristasDataTable({
                     </Button>
                 </div>
 
-                <Link href="/admin/mayoristas/estadisticas">
+                <Link href="/admin/mayoristas/estadisticas" className="w-full sm:w-auto">
                     <Button
                         variant="outline"
-                        className="border-purple-500 text-purple-600 hover:bg-purple-50"
+                        className="w-full sm:w-auto border-purple-500 text-purple-600 hover:bg-purple-50"
                     >
                         <BarChart3 className="w-4 h-4 mr-2" />
-                        Ver Estadísticas
+                        <span className="hidden sm:inline">Ver Estadísticas</span>
+                        <span className="sm:hidden">Estadísticas</span>
                     </Button>
                 </Link>
 
-                <Link href="/admin/mayoristas/matriz">
+                <Link href="/admin/mayoristas/matriz" className="w-full sm:w-auto">
                     <Button
                         variant="outline"
-                        className="border-blue-500 text-blue-600 hover:bg-blue-50"
+                        className="w-full sm:w-auto border-blue-500 text-blue-600 hover:bg-blue-50"
                     >
                         <Table2 className="w-4 h-4 mr-2" />
-                        Matriz de Productos
+                        <span className="hidden sm:inline">Matriz de Productos</span>
+                        <span className="sm:hidden">Matriz</span>
                     </Button>
                 </Link>
 
                 <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
                     <DialogTrigger asChild>
-                        <Button onClick={() => { resetForm(); setShowCreateModal(true); }}>
+                        <Button
+                            onClick={() => { resetForm(); setShowCreateModal(true); }}
+                            className="w-full sm:w-auto"
+                        >
                             + Crear Mayorista
                         </Button>
                     </DialogTrigger>
@@ -483,13 +488,13 @@ export function MayoristasDataTable({
             </div>
 
             {/* Tabla */}
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-x-auto">
                 <Table>
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => (
-                                    <TableHead key={header.id} className="px-4 py-3">
+                                    <TableHead key={header.id} className="px-2 sm:px-4 py-3 whitespace-nowrap">
                                         {header.isPlaceholder
                                             ? null
                                             : flexRender(
@@ -498,7 +503,7 @@ export function MayoristasDataTable({
                                             )}
                                     </TableHead>
                                 ))}
-                                <TableHead className="px-4 py-3 text-center">Acciones</TableHead>
+                                <TableHead className="px-2 sm:px-4 py-3 text-center whitespace-nowrap">Acciones</TableHead>
                             </TableRow>
                         ))}
                     </TableHeader>
@@ -507,15 +512,15 @@ export function MayoristasDataTable({
                             table.getRowModel().rows.map((row) => (
                                 <TableRow key={row.id}>
                                     {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id} className="px-4 py-3">
+                                        <TableCell key={cell.id} className="px-2 sm:px-4 py-3">
                                             {flexRender(
                                                 cell.column.columnDef.cell,
                                                 cell.getContext()
                                             )}
                                         </TableCell>
                                     ))}
-                                    <TableCell className="px-4 py-3">
-                                        <div className="flex gap-2 justify-center">
+                                    <TableCell className="px-2 sm:px-4 py-3">
+                                        <div className="flex gap-1 sm:gap-2 justify-center">
                                             <Dialog open={editingMayorista?._id === row.original._id} onOpenChange={(open) => {
                                                 if (!open) {
                                                     setEditingMayorista(null);
@@ -527,6 +532,7 @@ export function MayoristasDataTable({
                                                         size="sm"
                                                         variant="outline"
                                                         onClick={() => openEditModal(row.original)}
+                                                        className="sm:h-auto sm:w-auto sm:px-3"
                                                     >
                                                         <Pencil className="w-4 h-4" />
                                                     </Button>
@@ -708,6 +714,7 @@ export function MayoristasDataTable({
                                                 variant="destructive"
                                                 onClick={() => handleDelete(row.original._id!)}
                                                 disabled={loading}
+                                                className="sm:h-auto sm:w-auto sm:px-3"
                                             >
                                                 <Trash2 className="w-4 h-4" />
                                             </Button>
@@ -727,8 +734,8 @@ export function MayoristasDataTable({
             </div>
 
             {/* Paginación */}
-            <div className="flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="text-xs sm:text-sm text-muted-foreground">
                     Mostrando {table.getRowModel().rows.length} de {total} mayoristas.
                 </div>
                 <div className="flex items-center gap-2">
@@ -740,7 +747,7 @@ export function MayoristasDataTable({
                     >
                         Anterior
                     </Button>
-                    <div className="text-sm">
+                    <div className="text-xs sm:text-sm whitespace-nowrap">
                         Página {pagination.pageIndex + 1} de {pageCount || 1}
                     </div>
                     <Button
