@@ -276,7 +276,7 @@ export function RepartosTable({ data: initialData, dictionary }: RepartosTablePr
 
                                                     {/* Filas de datos dinámicas */}
                                                     {weekData[dayKey]?.map((entry, rowIndex) => (
-                                                        <div key={entry.id} className="flex items-center space-x-2">
+                                                        <div key={entry?.id || `${week.weekKey}-${dayKey}-${rowIndex}`} className="flex items-center space-x-2">
                                                             {/* Input de texto */}
                                                             <Input
                                                                 value={entry.text}
@@ -311,7 +311,7 @@ export function RepartosTable({ data: initialData, dictionary }: RepartosTablePr
                                                     )) || (
                                                             // Fallback para días sin datos
                                                             [0, 1, 2].map((rowIndex) => (
-                                                                <div key={rowIndex} className="flex items-center space-x-2">
+                                                                <div key={`${week.weekKey}-${dayKey}-fallback-${rowIndex}`} className="flex items-center space-x-2">
                                                                     <Input
                                                                         placeholder={`${dayLabels[dayIndex]} ${rowIndex + 1}`}
                                                                         disabled
