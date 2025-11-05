@@ -12,12 +12,19 @@ export async function getRepartosData(): Promise<RepartosData> {
         const collection = await getCollection(COLLECTION_NAME);
 
         // Buscar todos los documentos de semanas
-        const weeks = await collection.find({}).toArray();
+        const weeks = await collection.find({}).sort({ updatedAt: -1 }).toArray();
 
         const data: RepartosData = {};
+        const seenWeekKeys = new Set<string>();
+
+        // Si hay múltiples documentos para la misma semana, usar el más reciente
         weeks.forEach(week => {
             if (week.weekKey && week.data) {
-                data[week.weekKey] = week.data;
+                // Solo tomar el primer documento encontrado para cada weekKey (el más reciente por el sort)
+                if (!seenWeekKeys.has(week.weekKey)) {
+                    data[week.weekKey] = week.data;
+                    seenWeekKeys.add(week.weekKey);
+                }
             }
         });
 
@@ -34,7 +41,11 @@ export async function getRepartosData(): Promise<RepartosData> {
 export async function getRepartosByWeek(weekKey: string): Promise<WeekData | null> {
     try {
         const collection = await getCollection(COLLECTION_NAME);
-        const result = await collection.findOne({ weekKey });
+        // Si hay múltiples documentos, obtener el más reciente
+        const result = await collection.findOne(
+            { weekKey },
+            { sort: { updatedAt: -1 } }
+        );
 
         if (!result || !result.data) {
             return null;
@@ -54,20 +65,40 @@ export async function saveRepartosWeek(weekKey: string, weekData: WeekData): Pro
     try {
         const collection = await getCollection(COLLECTION_NAME);
 
-        // Usar upsert para crear o actualizar el documento de la semana
-        const result = await collection.updateOne(
-            { weekKey },
-            {
-                $set: {
-                    weekKey,
-                    data: weekData,
-                    updatedAt: new Date()
-                }
-            },
-            { upsert: true }
-        );
+        // Primero verificar si existe un documento para esta semana
+        const existing = await collection.findOne({ weekKey }, { sort: { updatedAt: -1 } });
 
-        return result.acknowledged;
+        if (existing) {
+            // Si existe, actualizar el más reciente y eliminar duplicados
+            const result = await collection.updateOne(
+                { _id: existing._id },
+                {
+                    $set: {
+                        weekKey,
+                        data: weekData,
+                        updatedAt: new Date()
+                    }
+                }
+            );
+
+            // Eliminar duplicados de la misma semana (excepto el que acabamos de actualizar)
+            await collection.deleteMany({
+                weekKey,
+                _id: { $ne: existing._id }
+            });
+
+            return result.acknowledged;
+        } else {
+            // Si no existe, crear uno nuevo
+            const result = await collection.insertOne({
+                weekKey,
+                data: weekData,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            });
+
+            return result.acknowledged;
+        }
     } catch (error) {
         console.error('Error saving repartos week:', error);
         return false;
@@ -86,14 +117,34 @@ export async function updateRepartoEntry(
     try {
         const collection = await getCollection(COLLECTION_NAME);
 
-        const result = await collection.updateOne(
+        // Primero obtener el documento actual para preservar los campos existentes
+        const currentDoc = await collection.findOne(
             { weekKey },
+            { sort: { updatedAt: -1 } } // Si hay duplicados, usar el más reciente
+        );
+
+        if (!currentDoc || !currentDoc.data || !currentDoc.data[dayKey] || !currentDoc.data[dayKey][rowIndex]) {
+            console.error('Entry not found for update');
+            return false;
+        }
+
+        // Obtener la entrada actual
+        const currentEntry = currentDoc.data[dayKey][rowIndex];
+
+        // Fusionar los campos existentes con los nuevos, preservando id y createdAt
+        const updatedEntry: RepartoEntry = {
+            ...currentEntry,
+            ...entry,
+            id: currentEntry.id, // Preservar el id original
+            createdAt: currentEntry.createdAt, // Preservar createdAt
+            updatedAt: new Date()
+        };
+
+        const result = await collection.updateOne(
+            { weekKey, _id: currentDoc._id }, // Usar _id específico para evitar actualizar duplicados
             {
                 $set: {
-                    [`data.${dayKey}.${rowIndex}`]: {
-                        ...entry,
-                        updatedAt: new Date()
-                    },
+                    [`data.${dayKey}.${rowIndex}`]: updatedEntry,
                     updatedAt: new Date()
                 }
             }
@@ -117,8 +168,11 @@ export async function toggleRepartoCompletion(
     try {
         const collection = await getCollection(COLLECTION_NAME);
 
-        // Primero obtener el estado actual
-        const current = await collection.findOne({ weekKey });
+        // Primero obtener el estado actual (usar el más reciente si hay duplicados)
+        const current = await collection.findOne(
+            { weekKey },
+            { sort: { updatedAt: -1 } }
+        );
         if (!current || !current.data || !current.data[dayKey]) {
             return false;
         }
@@ -131,7 +185,7 @@ export async function toggleRepartoCompletion(
         const newIsCompleted = !currentEntry.isCompleted;
 
         const result = await collection.updateOne(
-            { weekKey },
+            { _id: current._id }, // Usar _id específico para evitar actualizar duplicados
             {
                 $set: {
                     [`data.${dayKey}.${rowIndex}.isCompleted`]: newIsCompleted,
@@ -215,6 +269,14 @@ export async function initializeWeek(weekKey: string): Promise<boolean> {
     try {
         const collection = await getCollection(COLLECTION_NAME);
 
+        // Verificar si ya existe una semana para esta weekKey
+        const existing = await collection.findOne({ weekKey }, { sort: { updatedAt: -1 } });
+
+        if (existing) {
+            // Si ya existe, no crear duplicado, solo retornar true
+            return true;
+        }
+
         // Crear estructura inicial para la semana
         const weekData: WeekData = {
             '1': Array(3).fill(null).map(() => ({
@@ -277,8 +339,11 @@ export async function addRowToDay(weekKey: string, dayKey: string): Promise<bool
     try {
         const collection = await getCollection(COLLECTION_NAME);
 
-        // Obtener la semana actual
-        const week = await collection.findOne({ weekKey });
+        // Obtener la semana actual (usar el más reciente si hay duplicados)
+        const week = await collection.findOne(
+            { weekKey },
+            { sort: { updatedAt: -1 } }
+        );
         if (!week || !week.data) {
             return false;
         }
@@ -293,7 +358,7 @@ export async function addRowToDay(weekKey: string, dayKey: string): Promise<bool
 
         // Agregar la nueva fila al día
         const result = await collection.updateOne(
-            { weekKey },
+            { _id: week._id }, // Usar _id específico para evitar actualizar duplicados
             {
                 $push: { [`data.${dayKey}`]: newRow as any },
                 $set: { updatedAt: new Date() }
@@ -314,8 +379,11 @@ export async function removeRowFromDay(weekKey: string, dayKey: string, rowIndex
     try {
         const collection = await getCollection(COLLECTION_NAME);
 
-        // Obtener la semana actual
-        const week = await collection.findOne({ weekKey });
+        // Obtener la semana actual (usar el más reciente si hay duplicados)
+        const week = await collection.findOne(
+            { weekKey },
+            { sort: { updatedAt: -1 } }
+        );
         if (!week || !week.data || !week.data[dayKey]) {
             return false;
         }
@@ -325,32 +393,19 @@ export async function removeRowFromDay(weekKey: string, dayKey: string, rowIndex
             return false;
         }
 
-        // Eliminar la fila específica
+        // Crear un nuevo array sin la fila a eliminar
+        const filteredRows = week.data[dayKey].filter((_: any, index: number) => index !== rowIndex);
+
+        // Actualizar el documento con el array filtrado
         const result = await collection.updateOne(
-            { weekKey },
+            { _id: week._id }, // Usar _id específico para evitar actualizar duplicados
             {
-                $unset: { [`data.${dayKey}.${rowIndex}`]: "" },
-                $set: { updatedAt: new Date() }
+                $set: {
+                    [`data.${dayKey}`]: filteredRows,
+                    updatedAt: new Date()
+                }
             }
         );
-
-        // Reorganizar el array para eliminar espacios vacíos
-        if (result.acknowledged) {
-            const updatedWeek = await collection.findOne({ weekKey });
-            if (updatedWeek && updatedWeek.data && updatedWeek.data[dayKey]) {
-                const filteredRows = updatedWeek.data[dayKey].filter((row: any) => row !== null && row !== undefined);
-
-                await collection.updateOne(
-                    { weekKey },
-                    {
-                        $set: {
-                            [`data.${dayKey}`]: filteredRows,
-                            updatedAt: new Date()
-                        }
-                    }
-                );
-            }
-        }
 
         return result.acknowledged;
     } catch (error) {
@@ -392,6 +447,49 @@ export async function cleanupOldWeeks(): Promise<number> {
         return result.deletedCount;
     } catch (error) {
         console.error('Error cleaning up old weeks:', error);
+        return 0;
+    }
+}
+
+/**
+ * Limpia documentos duplicados, manteniendo solo el más reciente para cada weekKey
+ */
+export async function cleanupDuplicateWeeks(): Promise<number> {
+    try {
+        const collection = await getCollection(COLLECTION_NAME);
+
+        // Obtener todos los documentos agrupados por weekKey
+        const allWeeks = await collection.find({}).sort({ updatedAt: -1 }).toArray();
+
+        const weekKeyMap = new Map<string, any>();
+        const duplicatesToDelete: any[] = [];
+
+        // Identificar duplicados
+        allWeeks.forEach(week => {
+            if (!week.weekKey) return;
+
+            if (!weekKeyMap.has(week.weekKey)) {
+                // Primer documento encontrado (más reciente por el sort), mantenerlo
+                weekKeyMap.set(week.weekKey, week);
+            } else {
+                // Documento duplicado, agregarlo a la lista de eliminación
+                duplicatesToDelete.push(week._id);
+            }
+        });
+
+        if (duplicatesToDelete.length === 0) {
+            return 0;
+        }
+
+        // Eliminar duplicados
+        const result = await collection.deleteMany({
+            _id: { $in: duplicatesToDelete }
+        });
+
+        console.log(`Cleaned up ${result.deletedCount} duplicate weeks`);
+        return result.deletedCount;
+    } catch (error) {
+        console.error('Error cleaning up duplicate weeks:', error);
         return 0;
     }
 }

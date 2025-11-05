@@ -83,6 +83,7 @@ export {
     initializeWeek,
     getRepartosStats,
     cleanupOldWeeks,
+    cleanupDuplicateWeeks,
     addRowToDay,
     removeRowFromDay
 } from './repartosService';
