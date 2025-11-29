@@ -371,7 +371,8 @@ export async function duplicateOrderAction(id: string) {
             // Normalizar campos opcionales que pueden causar problemas de validación
             deliveryArea: {
                 ...originalOrder.deliveryArea,
-                _id: originalOrder.deliveryArea?._id || '',
+                // Solo incluir _id si existe en la orden original
+                ...(originalOrder.deliveryArea?._id && { _id: originalOrder.deliveryArea._id }),
                 sheetName: originalOrder.deliveryArea?.sheetName || '',
                 whatsappNumber: originalOrder.deliveryArea?.whatsappNumber || ''
             },
@@ -385,8 +386,10 @@ export async function duplicateOrderAction(id: string) {
                 zipCode: originalOrder.address?.zipCode || undefined,
                 reference: originalOrder.address?.reference || ''
             },
-            // Manejar coupon que puede ser null
-            coupon: originalOrder.coupon || undefined
+            // Manejar coupon: si es string (formato viejo), convertir a null; si es objeto, mantenerlo
+            coupon: (originalOrder.coupon && typeof originalOrder.coupon === 'object') 
+                ? originalOrder.coupon 
+                : undefined
         };
 
         // Crear la orden duplicada usando el servicio existente

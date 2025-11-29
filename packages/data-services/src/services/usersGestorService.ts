@@ -46,12 +46,32 @@ export async function createUserGestor(data: UserGestorCreateInput): Promise<{
     error?: string;
 }> {
     try {
-        const usersCollection = await getCollection('users_gestor');
+        console.log('🔄 Iniciando creación de usuario:', {
+            email: data.email,
+            name: data.name,
+            lastName: data.lastName,
+            role: data.role
+        });
+
+        let usersCollection;
+        try {
+            usersCollection = await getCollection('users_gestor');
+            console.log('✅ Colección users_gestor obtenida correctamente');
+        } catch (collectionError) {
+            console.error('❌ Error al obtener colección users_gestor:', collectionError);
+            throw new Error(`Error de conexión a la base de datos: ${collectionError instanceof Error ? collectionError.message : String(collectionError)}`);
+        }
 
         // Verificar si ya existe un usuario con ese email
-        const existingUser = await usersCollection.findOne({
-            email: data.email
-        });
+        let existingUser;
+        try {
+            existingUser = await usersCollection.findOne({
+                email: data.email
+            });
+        } catch (findError) {
+            console.error('❌ Error al buscar usuario existente:', findError);
+            throw new Error(`Error al verificar email: ${findError instanceof Error ? findError.message : String(findError)}`);
+        }
 
         if (existingUser) {
             return {
@@ -62,7 +82,14 @@ export async function createUserGestor(data: UserGestorCreateInput): Promise<{
         }
 
         // Hash de la contraseña
-        const hashedPassword = await bcrypt.hash(data.password, 12);
+        let hashedPassword;
+        try {
+            hashedPassword = await bcrypt.hash(data.password, 12);
+            console.log('✅ Contraseña hasheada correctamente');
+        } catch (hashError) {
+            console.error('❌ Error al hashear contraseña:', hashError);
+            throw new Error(`Error al procesar contraseña: ${hashError instanceof Error ? hashError.message : String(hashError)}`);
+        }
 
         // Asegurarse de que el permiso 'account:view_own' siempre esté presente
         const permissionsWithDefault = new Set(data.permissions || []);
@@ -80,12 +107,27 @@ export async function createUserGestor(data: UserGestorCreateInput): Promise<{
             updatedAt: now
         };
 
-        const result = await usersCollection.insertOne(newUser);
+        let result;
+        try {
+            console.log('🔄 Intentando insertar usuario en MongoDB...');
+            result = await usersCollection.insertOne(newUser);
+            console.log('✅ Usuario insertado:', { insertedId: result.insertedId });
+        } catch (insertError) {
+            console.error('❌ Error al insertar usuario:', insertError);
+            console.error('❌ Detalles del error de inserción:', {
+                name: insertError instanceof Error ? insertError.name : 'Unknown',
+                message: insertError instanceof Error ? insertError.message : String(insertError),
+                code: (insertError as any)?.code,
+                codeName: (insertError as any)?.codeName
+            });
+            throw new Error(`Error al guardar usuario en la base de datos: ${insertError instanceof Error ? insertError.message : String(insertError)}`);
+        }
 
         if (!result.insertedId) {
+            console.error('❌ insertOne no devolvió insertedId');
             return {
                 success: false,
-                message: 'Error al crear el usuario',
+                message: 'Error al crear el usuario: No se generó ID',
                 error: 'INSERT_FAILED'
             };
         }
@@ -107,9 +149,20 @@ export async function createUserGestor(data: UserGestorCreateInput): Promise<{
         };
     } catch (error) {
         console.error('Error al crear usuario:', error);
+        console.error('Error details:', {
+            name: error instanceof Error ? error.name : 'Unknown',
+            message: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : 'No stack trace',
+            data: {
+                email: data.email,
+                name: data.name,
+                lastName: data.lastName,
+                role: data.role
+            }
+        });
         return {
             success: false,
-            message: 'Error interno del servidor al crear el usuario',
+            message: error instanceof Error ? error.message : 'Error interno del servidor al crear el usuario',
             error: 'SERVER_ERROR'
         };
     }
