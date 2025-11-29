@@ -172,15 +172,78 @@ export async function getOrders({
 
         const matchQuery = finalFilters.length > 1 ? { $and: finalFilters } : finalFilters[0];
 
+        // Calcular paginación
+        const skip = pageIndex * pageSize;
+        const limit = pageSize;
+
         // Configurar ordenamiento
         const sortQuery: { [key: string]: 1 | -1 } = {};
         sorting.forEach(sort => {
             sortQuery[sort.id] = sort.desc ? -1 : 1;
         });
 
-        // Calcular paginación
-        const skip = pageIndex * pageSize;
-        const limit = pageSize;
+        // Para campos que pueden estar vacíos (como notesOwn), agregar un ordenamiento secundario
+        // para que los valores vacíos siempre vayan al final
+        if (sorting.some(s => s.id === 'notesOwn')) {
+            // MongoDB ordena null/undefined primero en orden ascendente
+            // Necesitamos usar aggregation para manejar esto correctamente
+            const sortDirection = sorting.find(s => s.id === 'notesOwn')?.desc ? -1 : 1;
+            
+            // Crear un pipeline de agregación que ponga los valores vacíos al final
+            const pipeline = [
+                { $match: matchQuery },
+                {
+                    $addFields: {
+                        // Crear un campo auxiliar: 1 si notesOwn está vacío, 0 si tiene contenido
+                        notesOwnEmpty: {
+                            $cond: {
+                                if: {
+                                    $or: [
+                                        { $eq: ['$notesOwn', null] },
+                                        { $eq: ['$notesOwn', ''] },
+                                        { $not: ['$notesOwn'] }
+                                    ]
+                                },
+                                then: 1,
+                                else: 0
+                            }
+                        }
+                    }
+                },
+                {
+                    $sort: {
+                        notesOwnEmpty: 1, // Primero los que tienen contenido (0), luego los vacíos (1)
+                        notesOwn: sortDirection // Luego ordenar por el contenido
+                    }
+                },
+                { $skip: skip },
+                { $limit: limit }
+            ];
+
+            const [ordersFromDB, countResult] = await Promise.all([
+                collection.aggregate(pipeline).toArray(),
+                collection.countDocuments(matchQuery)
+            ]);
+
+            const total = countResult;
+            const pageCount = Math.ceil(total / pageSize);
+
+            // Serializar órdenes
+            const serializedOrders = ordersFromDB.map(order => {
+                // Eliminar el campo auxiliar antes de devolver
+                const { notesOwnEmpty, ...orderWithoutAux } = order;
+                return {
+                    ...orderWithoutAux,
+                    _id: order._id.toString(),
+                };
+            }) as unknown as Order[];
+
+            return {
+                orders: serializedOrders,
+                pageCount,
+                total,
+            };
+        }
 
         // Ejecutar queries
         const [ordersFromDB, countResult] = await Promise.all([
