@@ -140,7 +140,7 @@ const getUserRole = (role?: string): Role => {
   return ROLES.USER;
 };
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest): Promise<NextResponse | Response | null | undefined> {
   // Primero aplicar middleware de internacionalización
   const i18nResponse = internationalizationMiddleware({
     headers: req.headers,
@@ -158,7 +158,7 @@ export function middleware(req: NextRequest) {
 
   // Always allow public routes
   if (isPublicRoute(pathnameWithoutLocale)) {
-    return securityHeaders();
+    return await securityHeaders();
   }
 
   // Get authentication cookie
@@ -204,7 +204,7 @@ export function middleware(req: NextRequest) {
       if (!hasAccessToRoute(pathnameWithoutLocale, userRole, userPermissions)) {
         return NextResponse.redirect(new URL(`/${locale}/access-denied`, req.url));
       }
-      return securityHeaders();
+      return await securityHeaders();
     }
 
     // If trying to access other routes, check permissions
@@ -214,7 +214,7 @@ export function middleware(req: NextRequest) {
   }
 
   // Apply security headers
-  return securityHeaders();
+  return await securityHeaders();
 }
 
 export const config = {
