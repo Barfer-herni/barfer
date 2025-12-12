@@ -22,24 +22,30 @@ import {
     getStockByPuntoEnvioAction,
     getDetalleEnvioByPuntoEnvioAction,
 } from '../actions';
-import type { DeliveryArea, Order, Stock, DetalleEnvio } from '@repo/data-services';
+import type { DeliveryArea, Order, Stock, DetalleEnvio, PuntoEnvio } from '@repo/data-services';
 import { OrdersDataTable } from '../../table/components/OrdersDataTable';
 import type { ColumnDef, PaginationState, SortingState } from '@tanstack/react-table';
 
 interface ExpressPageClientProps {
     dictionary: Dictionary;
-    initialDeliveryAreas: DeliveryArea[];
+    initialPuntosEnvio: PuntoEnvio[];
     columns: ColumnDef<any, any>[];
     canEdit: boolean;
     canDelete: boolean;
 }
 
-export function ExpressPageClient({ dictionary, initialDeliveryAreas, columns, canEdit, canDelete }: ExpressPageClientProps) {
+export function ExpressPageClient({ dictionary, initialPuntosEnvio, columns, canEdit, canDelete }: ExpressPageClientProps) {
     const router = useRouter();
     const [showAddStockModal, setShowAddStockModal] = useState(false);
     const [showCreatePuntoEnvioModal, setShowCreatePuntoEnvioModal] = useState(false);
     const [selectedPuntoEnvio, setSelectedPuntoEnvio] = useState<string>('');
-    const [deliveryAreas, setDeliveryAreas] = useState<DeliveryArea[]>(initialDeliveryAreas);
+    const [puntosEnvio, setPuntosEnvio] = useState<PuntoEnvio[]>(initialPuntosEnvio);
+    
+    // Debug: verificar datos recibidos
+    useEffect(() => {
+        console.log('ExpressPageClient - initialPuntosEnvio:', initialPuntosEnvio);
+        console.log('ExpressPageClient - puntosEnvio state:', puntosEnvio);
+    }, [initialPuntosEnvio, puntosEnvio]);
     
     // Datos de las tablas
     const [orders, setOrders] = useState<Order[]>([]);
@@ -57,13 +63,13 @@ export function ExpressPageClient({ dictionary, initialDeliveryAreas, columns, c
         desc: true,
     }]);
 
-    const handleDeliveryAreaRefresh = async () => {
+    const handlePuntosEnvioRefresh = async () => {
         router.refresh();
-        // Recargar la lista de delivery areas
-        const { getDeliveryAreasWithPuntoEnvioAction } = await import('../actions');
-        const result = await getDeliveryAreasWithPuntoEnvioAction();
-        if (result.success && result.deliveryAreas) {
-            setDeliveryAreas(result.deliveryAreas);
+        // Recargar la lista de puntos de envío
+        const { getAllPuntosEnvioAction } = await import('../actions');
+        const result = await getAllPuntosEnvioAction();
+        if (result.success && result.puntosEnvio) {
+            setPuntosEnvio(result.puntosEnvio);
         }
     };
 
@@ -128,14 +134,20 @@ export function ExpressPageClient({ dictionary, initialDeliveryAreas, columns, c
                             </label>
                             <Select value={selectedPuntoEnvio} onValueChange={setSelectedPuntoEnvio}>
                                 <SelectTrigger className="w-full max-w-md">
-                                    <SelectValue placeholder="Selecciona un punto de envío..." />
+                                    <SelectValue placeholder={puntosEnvio.length === 0 ? "No hay puntos de envío disponibles" : "Selecciona un punto de envío..."} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {deliveryAreas.map((area) => (
-                                        <SelectItem key={area._id} value={area.puntoEnvio || ''}>
-                                            {area.puntoEnvio || area.description}
+                                    {puntosEnvio.length === 0 ? (
+                                        <SelectItem value="" disabled>
+                                            No hay puntos de envío disponibles
                                         </SelectItem>
-                                    ))}
+                                    ) : (
+                                        puntosEnvio.map((punto) => (
+                                            <SelectItem key={String(punto._id)} value={punto.nombre || ''}>
+                                                {punto.nombre || 'Sin nombre'}
+                                            </SelectItem>
+                                        ))
+                                    )}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -306,7 +318,7 @@ export function ExpressPageClient({ dictionary, initialDeliveryAreas, columns, c
                 open={showCreatePuntoEnvioModal}
                 onOpenChange={setShowCreatePuntoEnvioModal}
                 onPuntoEnvioCreated={() => {
-                    handleDeliveryAreaRefresh();
+                    handlePuntosEnvioRefresh();
                 }}
             />
         </div>

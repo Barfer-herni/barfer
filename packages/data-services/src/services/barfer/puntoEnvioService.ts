@@ -76,8 +76,8 @@ export async function getAllPuntosEnvioMongo(): Promise<{
             puntosEnvio: puntosEnvio.map((punto) => ({
                 _id: punto._id.toString(),
                 nombre: punto.nombre,
-                createdAt: punto.createdAt,
-                updatedAt: punto.updatedAt,
+                createdAt: punto.createdAt instanceof Date ? punto.createdAt.toISOString() : (typeof punto.createdAt === 'string' ? punto.createdAt : new Date().toISOString()),
+                updatedAt: punto.updatedAt instanceof Date ? punto.updatedAt.toISOString() : (typeof punto.updatedAt === 'string' ? punto.updatedAt : new Date().toISOString()),
             })),
         };
     } catch (error) {

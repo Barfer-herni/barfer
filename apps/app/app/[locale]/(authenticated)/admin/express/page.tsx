@@ -1,7 +1,7 @@
 import { getDictionary } from '@repo/internationalization';
 import type { Locale } from '@repo/internationalization';
 import { ExpressPageClient } from './components/ExpressPageClient';
-import { getDeliveryAreasWithPuntoEnvioAction } from './actions';
+import { getAllPuntosEnvioAction } from './actions';
 import { getCurrentUserWithPermissions } from '@repo/auth/server-permissions';
 import { columns } from '../table/components/columns';
 
@@ -12,8 +12,12 @@ export default async function GestionEnvioExpressStockPage({
 }) {
     const { locale } = await params;
     const dictionary = await getDictionary(locale);
-    const deliveryAreasResult = await getDeliveryAreasWithPuntoEnvioAction();
-    const deliveryAreas = deliveryAreasResult.success ? (deliveryAreasResult.deliveryAreas || []) : [];
+    const puntosEnvioResult = await getAllPuntosEnvioAction();
+    const puntosEnvio = puntosEnvioResult.success ? (puntosEnvioResult.puntosEnvio || []) : [];
+    
+    // Debug en servidor
+    console.log('GestionEnvioExpressStockPage - puntosEnvioResult:', JSON.stringify(puntosEnvioResult, null, 2));
+    console.log('GestionEnvioExpressStockPage - puntosEnvio:', puntosEnvio);
 
     // Obtener permisos del usuario
     const userWithPermissions = await getCurrentUserWithPermissions();
@@ -23,7 +27,7 @@ export default async function GestionEnvioExpressStockPage({
     return (
         <ExpressPageClient
             dictionary={dictionary}
-            initialDeliveryAreas={deliveryAreas}
+            initialPuntosEnvio={puntosEnvio}
             columns={columns}
             canEdit={canEdit}
             canDelete={canDelete}

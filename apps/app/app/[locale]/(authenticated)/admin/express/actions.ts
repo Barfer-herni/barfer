@@ -8,6 +8,7 @@ import {
     getDetalleEnvioByPuntoEnvioMongo,
     getExpressOrders,
     createPuntoEnvioMongo,
+    getAllPuntosEnvioMongo,
 } from '@repo/data-services';
 
 export async function getDeliveryAreasWithPuntoEnvioAction() {
@@ -103,6 +104,18 @@ export async function createPuntoEnvioAction(data: { nombre: string }) {
         return {
             success: false,
             message: 'Error al crear el punto de envío',
+        };
+    }
+}
+
+export async function getAllPuntosEnvioAction() {
+    try {
+        return await getAllPuntosEnvioMongo();
+    } catch (error) {
+        console.error('Error getting puntos de envío:', error);
+        return {
+            success: false,
+            puntosEnvio: [],
         };
     }
 }
