@@ -15,6 +15,7 @@ import {
 import { Plus, Package, ShoppingCart, BarChart3 } from 'lucide-react';
 import { AddStockModal } from './AddStockModal';
 import { DetalleTable } from './DetalleTable';
+import { CreatePuntoEnvioModal } from './CreatePuntoEnvioModal';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@repo/design-system/components/ui/tabs';
 import {
     getExpressOrdersAction,
@@ -36,6 +37,7 @@ interface ExpressPageClientProps {
 export function ExpressPageClient({ dictionary, initialDeliveryAreas, columns, canEdit, canDelete }: ExpressPageClientProps) {
     const router = useRouter();
     const [showAddStockModal, setShowAddStockModal] = useState(false);
+    const [showCreatePuntoEnvioModal, setShowCreatePuntoEnvioModal] = useState(false);
     const [selectedPuntoEnvio, setSelectedPuntoEnvio] = useState<string>('');
     const [deliveryAreas, setDeliveryAreas] = useState<DeliveryArea[]>(initialDeliveryAreas);
     
@@ -119,21 +121,31 @@ export function ExpressPageClient({ dictionary, initialDeliveryAreas, columns, c
             <div className="px-5">
                 {/* Selector de punto de envío */}
                 <div className="mb-6">
-                    <label className="text-sm font-medium mb-2 block">
-                        Seleccionar Punto de Envío
-                    </label>
-                    <Select value={selectedPuntoEnvio} onValueChange={setSelectedPuntoEnvio}>
-                        <SelectTrigger className="w-full max-w-md">
-                            <SelectValue placeholder="Selecciona un punto de envío..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {deliveryAreas.map((area) => (
-                                <SelectItem key={area._id} value={area.puntoEnvio || ''}>
-                                    {area.puntoEnvio || area.description}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                    <div className="flex items-center gap-4">
+                        <div className="flex-1">
+                            <label className="text-sm font-medium mb-2 block">
+                                Seleccionar Punto de Envío
+                            </label>
+                            <Select value={selectedPuntoEnvio} onValueChange={setSelectedPuntoEnvio}>
+                                <SelectTrigger className="w-full max-w-md">
+                                    <SelectValue placeholder="Selecciona un punto de envío..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {deliveryAreas.map((area) => (
+                                        <SelectItem key={area._id} value={area.puntoEnvio || ''}>
+                                            {area.puntoEnvio || area.description}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="flex items-end">
+                            <Button onClick={() => setShowCreatePuntoEnvioModal(true)}>
+                                <Plus className="h-4 w-4 mr-2" />
+                                Crear Punto de Envío
+                            </Button>
+                        </div>
+                    </div>
                 </div>
 
                 {!selectedPuntoEnvio && (
@@ -289,6 +301,14 @@ export function ExpressPageClient({ dictionary, initialDeliveryAreas, columns, c
                     }}
                 />
             )}
+
+            <CreatePuntoEnvioModal
+                open={showCreatePuntoEnvioModal}
+                onOpenChange={setShowCreatePuntoEnvioModal}
+                onPuntoEnvioCreated={() => {
+                    handleDeliveryAreaRefresh();
+                }}
+            />
         </div>
     );
 }
