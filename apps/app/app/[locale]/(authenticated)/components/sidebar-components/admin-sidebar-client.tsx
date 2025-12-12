@@ -12,6 +12,7 @@ import {
     MinusCircle,
     Truck,
     Store,
+    Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -37,6 +38,7 @@ const ICON_MAP = {
     MinusCircle,
     Truck,
     Store,
+    Zap,
 } as const;
 
 type AdminSidebarClientProps = {

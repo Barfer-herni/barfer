@@ -221,7 +221,9 @@ export interface SalidasFilters {
     metodoPagoId?: string;
     tipo?: 'ORDINARIO' | 'EXTRAORDINARIO';
     tipoRegistro?: 'BLANCO' | 'NEGRO';
-    fecha?: string; // Formato ISO date string
+    fecha?: string; // Formato ISO date string (legacy)
+    fechaDesde?: Date; // Fecha de inicio del rango
+    fechaHasta?: Date; // Fecha de fin del rango
 }
 
 /**
@@ -335,8 +337,19 @@ export async function getSalidasPaginatedMongo({
             console.log(`🔍 Filtro tipo registro: ${filters.tipoRegistro}`);
         }
 
-        if (filters.fecha) {
-            // Parsear fecha y crear rango para el día completo
+        // Manejar filtros de fecha (prioridad: fechaDesde/fechaHasta > fecha)
+        if (filters.fechaDesde || filters.fechaHasta) {
+            matchConditions['fechaFactura'] = {};
+            if (filters.fechaDesde) {
+                matchConditions['fechaFactura'].$gte = filters.fechaDesde;
+                console.log(`🔍 Filtro fecha desde: ${filters.fechaDesde.toISOString()}`);
+            }
+            if (filters.fechaHasta) {
+                matchConditions['fechaFactura'].$lte = filters.fechaHasta;
+                console.log(`🔍 Filtro fecha hasta: ${filters.fechaHasta.toISOString()}`);
+            }
+        } else if (filters.fecha) {
+            // Parsear fecha y crear rango para el día completo (legacy)
             const dateObj = new Date(filters.fecha);
             const startOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0);
             const endOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 23, 59, 59, 999);

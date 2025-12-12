@@ -24,6 +24,17 @@ export * from './categoriasMongoService';
 export * from './metodosPagoMongoService';
 export * from './categoriasProveedoresMongoService';
 export * from './proveedoresMongoService';
+export {
+    createPuntoEnvioMongo,
+    getAllPuntosEnvioMongo,
+    getPuntoEnvioByIdMongo,
+    updatePuntoEnvioMongo,
+    deletePuntoEnvioMongo,
+} from './puntoEnvioMongoService';
+// stockMongoService y detalleEnvioMongoService están duplicados en barfer/stockService y barfer/detalleEnvioService
+// Se exportan desde barfer/index.ts, no desde aquí para evitar conflictos
+// export * from './stockMongoService';
+// export * from './detalleEnvioMongoService';
 
 // ==========================================
 // SERVICIOS DE BARFER E-COMMERCE (MongoDB)

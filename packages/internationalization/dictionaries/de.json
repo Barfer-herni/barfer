@@ -16,6 +16,7 @@
         "prices": "Preise",
         "outputs": "Ausgänge",
         "repartos": "Lieferkontrolle",
+        "gestionEnvioExpressStock": "Express-Versand & Lagerverwaltung",
         "accountMobile": "Konto",
         "analyticsMobile": "KPIs",
         "clientsMobile": "Kunden",
@@ -23,7 +24,8 @@
         "balanceMobile": "Bilanz",
         "pricesMobile": "Preise",
         "outputsMobile": "Ausgänge",
-        "repartosMobile": "Lieferung"
+        "repartosMobile": "Lieferung",
+        "gestionEnvioExpressStockMobile": "Express"
       },
       "repartos": {
         "title": "Lieferkontrolle",

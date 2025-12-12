@@ -23,6 +23,8 @@ import { EditSalidaModal } from './EditSalidaModal';
 import { DeleteSalidaDialog } from './DeleteSalidaDialog';
 import { SalidaMongoData } from '@repo/data-services';
 import type { PaginationState } from '@tanstack/react-table';
+import { duplicateSalidaAction } from '../actions';
+import { Copy } from 'lucide-react';
 
 // Funciones de permisos del cliente (definidas localmente)
 function hasAllCategoriesPermission(permissions: string[]): boolean {
@@ -43,11 +45,9 @@ interface SalidasTableProps {
     initialFilters?: {
         searchTerm?: string;
         categoriaId?: string;
-        marca?: string;
         metodoPagoId?: string;
         tipo?: 'ORDINARIO' | 'EXTRAORDINARIO';
         tipoRegistro?: 'BLANCO' | 'NEGRO';
-        fecha?: string;
     };
 }
 
@@ -97,11 +97,9 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
     // Estados para los filtros (inicializados desde el servidor)
     const [searchTerm, setSearchTerm] = useState(initialFilters.searchTerm || '');
     const [selectedCategoria, setSelectedCategoria] = useState(initialFilters.categoriaId || '');
-    const [selectedMarca, setSelectedMarca] = useState(initialFilters.marca || '');
     const [selectedMetodoPago, setSelectedMetodoPago] = useState(initialFilters.metodoPagoId || '');
     const [selectedTipo, setSelectedTipo] = useState(initialFilters.tipo || '');
     const [selectedTipoRegistro, setSelectedTipoRegistro] = useState(initialFilters.tipoRegistro || '');
-    const [selectedFecha, setSelectedFecha] = useState(initialFilters.fecha || '');
 
     // Estados para el ordenamiento
     const [sortField, setSortField] = useState<SortField>('fechaFactura');
@@ -133,11 +131,15 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
             // Agregar filtros no vacíos
             if (searchTerm && searchTerm.trim() !== '') params.set('searchTerm', searchTerm);
             if (selectedCategoria) params.set('categoriaId', selectedCategoria);
-            if (selectedMarca) params.set('marca', selectedMarca);
             if (selectedMetodoPago) params.set('metodoPagoId', selectedMetodoPago);
             if (selectedTipo) params.set('tipo', selectedTipo);
             if (selectedTipoRegistro) params.set('tipoRegistro', selectedTipoRegistro);
-            if (selectedFecha) params.set('fecha', selectedFecha);
+            
+            // Mantener los parámetros de fecha (from/to) que vienen del AnalyticsDateFilter
+            const currentParams = new URLSearchParams(window.location.search);
+            if (currentParams.get('from')) params.set('from', currentParams.get('from')!);
+            if (currentParams.get('to')) params.set('to', currentParams.get('to')!);
+            if (currentParams.get('preset')) params.set('preset', currentParams.get('preset')!);
 
             router.push(`${pathname}?${params.toString()}`);
         }, 500); // 500ms de debounce
@@ -147,7 +149,7 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                 clearTimeout(searchDebounceRef.current);
             }
         };
-    }, [searchTerm, selectedCategoria, selectedMarca, selectedMetodoPago, selectedTipo, selectedTipoRegistro, selectedFecha, router, pathname, pagination.pageSize]);
+    }, [searchTerm, selectedCategoria, selectedMetodoPago, selectedTipo, selectedTipoRegistro, router, pathname, pagination.pageSize]);
 
     const formatDate = (date: Date | string) => {
         // Asegurar que tenemos un objeto Date válido
@@ -228,10 +230,6 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
             .sort((a, b) => a.nombre.localeCompare(b.nombre));
         return categorias;
     }, [salidas]);
-
-    const uniqueMarcas = useMemo(() => {
-        return ['BARFER'];
-    }, []);
 
     const uniqueMetodosPago = useMemo(() => {
         const metodos = salidas
@@ -332,21 +330,17 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
     const clearFilters = () => {
         setSearchTerm('');
         setSelectedCategoria('');
-        setSelectedMarca('');
         setSelectedMetodoPago('');
         setSelectedTipo('');
         setSelectedTipoRegistro('');
-        setSelectedFecha('');
 
-        // Aplicar filtros vacíos (resetear)
+        // Aplicar filtros vacíos (resetear, pero mantener from/to del AnalyticsDateFilter)
         applyFilters({
             searchTerm: undefined,
             categoriaId: undefined,
-            marca: undefined,
             metodoPagoId: undefined,
             tipo: undefined,
             tipoRegistro: undefined,
-            fecha: undefined,
         });
     };
 
@@ -368,6 +362,33 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
     const handleDeleteSalida = (salida: SalidaMongoData) => {
         setSelectedSalida(salida);
         setIsDeleteDialogOpen(true);
+    };
+
+    const handleDuplicateSalida = async (salida: SalidaMongoData) => {
+        if (!confirm('¿Estás seguro de que quieres duplicar este gasto? Se creará una nueva salida con los mismos datos marcada como "DUPLICADO".')) {
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const result = await duplicateSalidaAction(salida._id);
+            if (!result.success) throw new Error(result.error || 'Error al duplicar');
+            if (onRefreshSalidas) {
+                onRefreshSalidas();
+            }
+            toast({
+                title: '¡Éxito!',
+                description: result.message || 'Gasto duplicado correctamente',
+            });
+        } catch (e) {
+            toast({
+                title: 'Error',
+                description: e instanceof Error ? e.message : 'Error al duplicar el gasto',
+                variant: 'destructive',
+            });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleModalClose = () => {
@@ -411,7 +432,7 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                         <Input
-                            placeholder="Buscar por detalle, categoría, proveedor, marca, método de pago o monto..."
+                            placeholder="Buscar por detalle, categoría, proveedor, método de pago o monto..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="pl-10"
@@ -431,20 +452,6 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                                     {uniqueCategorias.map(categoria => (
                                         <SelectItem key={categoria._id} value={categoria._id}>
                                             {categoria.nombre}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-
-                            {/* Marca */}
-                            <Select value={selectedMarca} onValueChange={setSelectedMarca}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Marca" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {uniqueMarcas.map(marca => (
-                                        <SelectItem key={marca} value={marca}>
-                                            {marca}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -474,10 +481,7 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                                     <SelectItem value="EXTRAORDINARIO">Extraordinario</SelectItem>
                                 </SelectContent>
                             </Select>
-                        </div>
 
-                        {/* Segunda fila: Filtros adicionales */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                             {/* Tipo de registro */}
                             <Select value={selectedTipoRegistro} onValueChange={setSelectedTipoRegistro}>
                                 <SelectTrigger>
@@ -488,27 +492,17 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                                     <SelectItem value="NEGRO">Negro</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
 
-                            {/* Fecha específica */}
-                            <Input
-                                type="date"
-                                value={selectedFecha}
-                                onChange={(e) => setSelectedFecha(e.target.value)}
-                                className="text-sm"
-                                title="Filtrar por fecha específica"
-                            />
-
-                            {/* Espacio vacío para balancear */}
-                            <div></div>
-
-                            {/* Botón de limpiar filtros */}
+                        {/* Segunda fila: Botón de limpiar filtros */}
+                        <div className="flex justify-end">
                             <Button
                                 variant="outline"
                                 onClick={clearFilters}
-                                className="flex items-center gap-2 justify-center"
+                                className="flex items-center gap-2"
                             >
                                 <X className="h-4 w-4" />
-                                Limpiar
+                                Limpiar Filtros
                             </Button>
                         </div>
                     </div>
@@ -702,6 +696,17 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                                         </TableCell>
                                         <TableCell className="w-[100px]">
                                             <div className="flex items-center justify-center gap-1">
+                                                {userPermissions.includes('outputs:create') && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => handleDuplicateSalida(salida)}
+                                                        className="h-7 w-7 p-0 hover:bg-green-50 text-green-600"
+                                                        title="Duplicar salida"
+                                                    >
+                                                        <Copy className="h-3 w-3" />
+                                                    </Button>
+                                                )}
                                                 {userPermissions.includes('outputs:edit') && (
                                                     <Button
                                                         size="sm"
@@ -724,7 +729,7 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                                                         <Trash2 className="h-3 w-3" />
                                                     </Button>
                                                 )}
-                                                {!userPermissions.includes('outputs:edit') && !userPermissions.includes('outputs:delete') && (
+                                                {!userPermissions.includes('outputs:create') && !userPermissions.includes('outputs:edit') && !userPermissions.includes('outputs:delete') && (
                                                     <span className="text-xs text-muted-foreground">Sin permisos</span>
                                                 )}
                                             </div>

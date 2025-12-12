@@ -16,6 +16,7 @@
         "prices": "Prices",
         "outputs": "Outputs",
         "repartos": "Delivery Control",
+        "gestionEnvioExpressStock": "Express Shipping & Stock Management",
         "accountMobile": "Account",
         "analyticsMobile": "KPIs",
         "clientsMobile": "Clients",
@@ -23,7 +24,8 @@
         "balanceMobile": "Balance",
         "pricesMobile": "Prices",
         "outputsMobile": "Outputs",
-        "repartosMobile": "Delivery"
+        "repartosMobile": "Delivery",
+        "gestionEnvioExpressStockMobile": "Express"
       },
       "repartos": {
         "title": "Delivery Control",

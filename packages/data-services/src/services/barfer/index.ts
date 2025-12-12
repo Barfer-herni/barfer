@@ -33,6 +33,7 @@ export * from './analytics/getQuantityStatsByMonth';
 
 // ===== ORDERS =====
 export { getOrders } from './getOrders';
+export { getExpressOrders } from './getExpressOrders';
 export { updateOrder } from './updateOrder';
 export { deleteOrder } from './deleteOrder';
 export { createOrder } from './createOrder';
@@ -144,3 +145,26 @@ export {
 export type {
     ProductoMatrixData
 } from './productosMatrixService';
+
+// ===== DELIVERY AREAS CON PUNTO DE ENVÍO =====
+export {
+    getDeliveryAreasWithPuntoEnvio
+} from './getDeliveryAreasWithPuntoEnvio';
+
+// ===== STOCK =====
+export {
+    createStockMongo,
+    getStockByPuntoEnvioMongo,
+    getStockByIdMongo,
+    updateStockMongo,
+    deleteStockMongo
+} from './stockService';
+
+// ===== DETALLE DE ENVÍO =====
+export {
+    createDetalleEnvioMongo,
+    getDetalleEnvioByPuntoEnvioMongo,
+    getDetalleEnvioByIdMongo,
+    updateDetalleEnvioMongo,
+    deleteDetalleEnvioMongo
+} from './detalleEnvioService';

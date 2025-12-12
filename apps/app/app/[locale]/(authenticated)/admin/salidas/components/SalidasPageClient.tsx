@@ -12,6 +12,7 @@ import { CategoriasManager } from './CategoriasManager';
 import { ProveedoresManager } from './ProveedoresManager';
 import { SalidaMongoData } from '@repo/data-services';
 import type { PaginationState } from '@tanstack/react-table';
+import { AnalyticsDateFilter } from '../../analytics/components/AnalyticsDateFilter';
 
 interface SalidasPageClientProps {
     salidas: SalidaMongoData[];
@@ -24,11 +25,9 @@ interface SalidasPageClientProps {
     initialFilters?: {
         searchTerm?: string;
         categoriaId?: string;
-        marca?: string;
         metodoPagoId?: string;
         tipo?: 'ORDINARIO' | 'EXTRAORDINARIO';
         tipoRegistro?: 'BLANCO' | 'NEGRO';
-        fecha?: string;
     };
 }
 
@@ -51,6 +50,11 @@ export function SalidasPageClient({
 
     return (
         <>
+            {/* Filtro de fechas */}
+            <div className="mb-6 px-5">
+                <AnalyticsDateFilter compact={true} showCompare={false} />
+            </div>
+
             {/* Botones de navegación */}
             <div className="mb-6 px-5">
                 <div className="overflow-x-auto scrollbar-hide -mx-5 px-5">

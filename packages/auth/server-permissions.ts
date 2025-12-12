@@ -380,6 +380,13 @@ export const SIDEBAR_CONFIG: SidebarItem[] = [
         icon: 'Store',
         requiredPermissions: ['mayoristas:view'],
     },
+    {
+        label: 'gestionEnvioExpressStock',
+        mobileLabel: 'gestionEnvioExpressStockMobile',
+        href: '/admin/express',
+        icon: 'Zap',
+        requiredPermissions: ['table:view'], // Usar el mismo permiso que table por ahora
+    },
 ];
 
 /**

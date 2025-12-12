@@ -77,11 +77,22 @@ export async function getSalidasPaginatedAction({
         tipo?: 'ORDINARIO' | 'EXTRAORDINARIO';
         tipoRegistro?: 'BLANCO' | 'NEGRO';
         fecha?: string;
+        fechaDesde?: Date;
+        fechaHasta?: Date;
     };
 }) {
     'use server';
 
-    const result = await getSalidasPaginatedMongo({ pageIndex, pageSize, filters });
+    // Convertir fechaDesde y fechaHasta a formato de fecha si están presentes
+    const processedFilters: any = { ...filters };
+    if (filters.fechaDesde) {
+        processedFilters.fechaDesde = filters.fechaDesde;
+    }
+    if (filters.fechaHasta) {
+        processedFilters.fechaHasta = filters.fechaHasta;
+    }
+
+    const result = await getSalidasPaginatedMongo({ pageIndex, pageSize, filters: processedFilters });
     return result;
 }
 
@@ -404,4 +415,58 @@ export async function initializeCategoriasProveedoresAction() {
         revalidatePath('/admin/salidas');
     }
     return result;
+}
+
+// Duplicar una salida
+export async function duplicateSalidaAction(id: string) {
+    'use server';
+
+    try {
+        // Verificar permisos
+        if (!await hasPermission('outputs:create')) {
+            return { success: false, error: 'No tienes permisos para duplicar salidas' };
+        }
+
+        // Obtener la salida original
+        const { getCollection, ObjectId } = await import('@repo/database');
+        const salidasCollection = await getCollection('salidas');
+        const originalSalida = await salidasCollection.findOne({ _id: new ObjectId(id) });
+
+        if (!originalSalida) {
+            return { success: false, error: 'Salida no encontrada' };
+        }
+
+        // Crear una copia de la salida con modificaciones para indicar que es duplicada
+        const duplicatedSalidaData: CreateSalidaMongoInput = {
+            fechaFactura: originalSalida.fechaFactura instanceof Date 
+                ? originalSalida.fechaFactura 
+                : new Date(originalSalida.fechaFactura),
+            detalle: `DUPLICADO - ${originalSalida.detalle || ''}`,
+            categoriaId: originalSalida.categoriaId.toString(),
+            tipo: originalSalida.tipo,
+            marca: originalSalida.marca || 'BARFER',
+            monto: originalSalida.monto,
+            metodoPagoId: originalSalida.metodoPagoId.toString(),
+            tipoRegistro: originalSalida.tipoRegistro,
+            proveedorId: originalSalida.proveedorId ? originalSalida.proveedorId.toString() : undefined,
+            fechaPago: originalSalida.fechaPago 
+                ? (originalSalida.fechaPago instanceof Date 
+                    ? originalSalida.fechaPago 
+                    : new Date(originalSalida.fechaPago))
+                : undefined,
+            comprobanteNumber: originalSalida.comprobanteNumber || undefined,
+        };
+
+        // Crear la salida duplicada usando el servicio existente
+        const result = await createSalidaMongo(duplicatedSalidaData);
+        if (!result.success) {
+            return { success: false, error: result.error || 'Error al duplicar la salida' };
+        }
+
+        revalidatePath('/admin/salidas');
+        return { success: true, salida: result.salida, message: 'Gasto duplicado correctamente' };
+    } catch (error) {
+        console.error('Error in duplicateSalidaAction:', error);
+        return { success: false, error: 'Error al duplicar la salida' };
+    }
 } 

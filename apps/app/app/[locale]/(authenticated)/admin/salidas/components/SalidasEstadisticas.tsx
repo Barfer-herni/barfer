@@ -268,21 +268,35 @@ export function SalidasEstadisticas() {
         label,
     }: {
         active?: boolean;
-        payload?: Array<{ value: number; payload: { cantidad?: number } }>;
+        payload?: Array<{ 
+            value: number; 
+            payload: { 
+                cantidad?: number;
+                name?: string;
+                porcentaje?: number;
+            } 
+        }>;
         label?: string;
     }) => {
         if (active && payload && payload.length) {
+            const data = payload[0].payload;
             return (
                 <div className="rounded border bg-white p-3 shadow-lg">
-                    <p className="font-medium">{label}</p>
+                    <p className="font-medium text-base">{data.name || label}</p>
                     <p className="text-blue-600">
                         <span className="font-medium">Monto: </span>
                         {formatCurrency(payload[0].value)}
                     </p>
-                    {payload[0].payload.cantidad && (
+                    {data.porcentaje !== undefined && (
+                        <p className="text-purple-600">
+                            <span className="font-medium">Porcentaje: </span>
+                            {data.porcentaje.toFixed(1)}%
+                        </p>
+                    )}
+                    {data.cantidad && (
                         <p className="text-green-600">
                             <span className="font-medium">Cantidad: </span>
-                            {payload[0].payload.cantidad}
+                            {data.cantidad}
                         </p>
                     )}
                 </div>
@@ -489,75 +503,82 @@ export function SalidasEstadisticas() {
 
                 {/* Tab 1: Gráfico de torta por categorías */}
                 <TabsContent value="categories" className="space-y-4">
-                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                        {/* Gráfico de torta */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <PieChartIcon className="h-5 w-5" />
-                                    Gastos por Categoría
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="h-80">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                            <Pie
-                                                data={pieChartData}
-                                                cx="50%"
-                                                cy="50%"
-                                                outerRadius={80}
-                                                dataKey="value"
-                                                label={({ porcentaje }) => `${porcentaje.toFixed(1)}%`}
-                                            >
-                                                {pieChartData.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                                ))}
-                                            </Pie>
-                                            <Tooltip content={<CustomTooltip />} />
-                                        </PieChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        {/* Ranking de categorías */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Ranking por Categoría</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-3">
-                                    {categoryStats.map((item, index) => (
-                                        <div
-                                            key={item.categoriaId}
-                                            className="flex items-center justify-between rounded-lg bg-muted/50 p-3"
+                    {/* Gráfico de torta - Ancho completo */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <PieChartIcon className="h-5 w-5" />
+                                Gastos por Categoría
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="h-[800px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={pieChartData}
+                                            cx="50%"
+                                            cy="50%"
+                                            outerRadius={280}
+                                            innerRadius={100}
+                                            dataKey="value"
+                                            label={({ porcentaje, name }) => {
+                                                // Mostrar solo porcentaje si es muy pequeño, o nombre corto + porcentaje
+                                                if (porcentaje < 1) {
+                                                    return `${porcentaje.toFixed(1)}%`;
+                                                }
+                                                return `${name}: ${porcentaje.toFixed(1)}%`;
+                                            }}
+                                            labelLine={true}
+                                            paddingAngle={3}
                                         >
-                                            <div className="flex items-center gap-3">
-                                                <div className="font-bold text-lg text-muted-foreground">
-                                                    #{index + 1}
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium">{item.categoriaNombre}</p>
-                                                    <p className="text-muted-foreground text-sm">
-                                                        {item.cantidad} transacciones
-                                                    </p>
-                                                </div>
+                                            {pieChartData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip content={<CustomTooltip />} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Ranking de categorías */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Ranking por Categoría</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-3">
+                                {categoryStats.map((item, index) => (
+                                    <div
+                                        key={item.categoriaId}
+                                        className="flex items-center justify-between rounded-lg bg-muted/50 p-3"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="font-bold text-lg text-muted-foreground">
+                                                #{index + 1}
                                             </div>
-                                            <div className="text-right">
-                                                <p className="font-bold">
-                                                    {formatCurrency(item.totalMonto)}
+                                            <div>
+                                                <p className="font-medium">{item.categoriaNombre}</p>
+                                                <p className="text-muted-foreground text-sm">
+                                                    {item.cantidad} transacciones
                                                 </p>
-                                                <Badge variant="secondary" className="text-xs">
-                                                    {item.porcentaje.toFixed(1)}%
-                                                </Badge>
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
+                                        <div className="text-right">
+                                            <p className="font-bold">
+                                                {formatCurrency(item.totalMonto)}
+                                            </p>
+                                            <Badge variant="secondary" className="text-xs">
+                                                {item.porcentaje.toFixed(1)}%
+                                            </Badge>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
                 </TabsContent>
 
                 {/* Tab 2: Ordinario vs Extraordinario */}

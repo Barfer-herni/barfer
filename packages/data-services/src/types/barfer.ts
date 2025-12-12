@@ -53,6 +53,7 @@ export interface Order {
     deliveryArea: DeliveryArea;
     orderType: 'minorista' | 'mayorista';
     deliveryDay: string;
+    puntoEnvio?: string; // Nombre del punto de envío express (conecta con DeliveryArea.puntoEnvio)
     whatsappContactedAt?: string;
     createdAt: string;
     updatedAt: string;
@@ -111,6 +112,7 @@ export interface DeliveryArea {
     sameDayDeliveryDays: string[];
     whatsappNumber: string;
     sheetName: string;
+    puntoEnvio?: string; // Nombre del punto de envío express (ej: "Córdoba")
     createdAt: string;
     updatedAt: string;
 }
@@ -400,4 +402,129 @@ export interface UpdateProductoGestorData {
     priceTypes?: PriceType[];
     isActive?: boolean;
     order?: number;
+}
+
+// ===== NOTA: PUNTO DE ENVÍO =====
+// Los puntos de envío se manejan mediante el campo `puntoEnvio` en DeliveryArea y Order
+// No hay una colección separada. El campo `puntoEnvio` conecta:
+// - DeliveryArea.puntoEnvio: Define qué delivery area es un punto de envío express
+// - Order.puntoEnvio: Conecta la orden con el punto de envío
+// - Stock.puntoEnvio: Conecta el stock con el punto de envío
+// - DetalleEnvio.puntoEnvio: Conecta el detalle con el punto de envío
+
+// ===== DETALLE DE ENVÍO =====
+// Similar a ProductQuantity, representa la cantidad de KG vendido por mes
+export interface DetalleEnvio {
+    _id: string | ObjectId;
+    puntoEnvio: string; // Nombre del punto de envío (conecta con DeliveryArea.puntoEnvio y Order.puntoEnvio)
+    fecha: string; // Formato: "YYYY-MM" (mes del registro, se guarda como 'fecha' en la BD)
+    // Productos Perro
+    pollo: number;
+    vaca: number;
+    cerdo: number;
+    cordero: number;
+    bigDogPollo: number;
+    bigDogVaca: number;
+    totalPerro: number;
+    // Productos Gato
+    gatoPollo: number;
+    gatoVaca: number;
+    gatoCordero: number;
+    totalGato: number;
+    // Otros
+    huesosCarnosos: number;
+    // Total del mes
+    totalMes: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CreateDetalleEnvioData {
+    puntoEnvio: string; // Nombre del punto de envío
+    fecha: string; // Formato: "YYYY-MM"
+    pollo?: number;
+    vaca?: number;
+    cerdo?: number;
+    cordero?: number;
+    bigDogPollo?: number;
+    bigDogVaca?: number;
+    totalPerro?: number;
+    gatoPollo?: number;
+    gatoVaca?: number;
+    gatoCordero?: number;
+    totalGato?: number;
+    huesosCarnosos?: number;
+    totalMes?: number;
+}
+
+export interface UpdateDetalleEnvioData {
+    puntoEnvio?: string;
+    fecha?: string; // Formato: "YYYY-MM"
+    month?: string; // Deprecated: usar 'fecha' en su lugar
+    pollo?: number;
+    vaca?: number;
+    cerdo?: number;
+    cordero?: number;
+    bigDogPollo?: number;
+    bigDogVaca?: number;
+    totalPerro?: number;
+    gatoPollo?: number;
+    gatoVaca?: number;
+    gatoCordero?: number;
+    totalGato?: number;
+    huesosCarnosos?: number;
+    totalMes?: number;
+}
+
+// ===== STOCK =====
+export interface Stock {
+    _id: string | ObjectId;
+    puntoEnvio: string; // Nombre del punto de envío (conecta con DeliveryArea.puntoEnvio y Order.puntoEnvio)
+    producto: string; // Nombre del producto
+    peso?: string; // Peso del producto (ej: "5KG", "10KG")
+    stockInicial: number; // Stock inicial del día
+    llevamos: number; // Cantidad que llevamos/vendimos
+    pedidosDelDia: number; // Pedidos del día
+    stockFinal: number; // Stock final calculado (stockInicial - llevamos)
+    fecha: string; // Fecha del registro de stock
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CreateStockData {
+    puntoEnvio: string; // Nombre del punto de envío
+    producto: string;
+    peso?: string;
+    stockInicial: number;
+    llevamos: number;
+    pedidosDelDia: number;
+    stockFinal?: number; // Si no se proporciona, se calcula como stockInicial - llevamos
+    fecha?: string; // Si no se proporciona, usa la fecha actual
+}
+
+export interface UpdateStockData {
+    puntoEnvio?: string;
+    producto?: string;
+    peso?: string;
+    stockInicial?: number;
+    llevamos?: number;
+    pedidosDelDia?: number;
+    stockFinal?: number;
+    fecha?: string;
+}
+
+// ===== PUNTO DE ENVÍO =====
+export interface PuntoEnvio {
+    _id: string | ObjectId;
+    nombre: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CreatePuntoEnvioData {
+    nombre: string;
+}
+
+export interface UpdatePuntoEnvioData {
+    nombre?: string;
 } 

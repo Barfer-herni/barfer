@@ -3,10 +3,16 @@ import type { Locale } from '@repo/internationalization';
 import { getSalidasPaginatedAction } from './actions';
 import { SalidasPageClient } from './components/SalidasPageClient';
 import { getCurrentUserWithPermissions, canViewSalidaStatistics } from '@repo/auth/server-permissions';
+import { subDays } from 'date-fns';
 
 interface SalidasPageProps {
     params: Promise<{ locale: Locale }>;
-    searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+    searchParams: Promise<{ 
+        [key: string]: string | string[] | undefined;
+        from?: string;
+        to?: string;
+        preset?: string;
+    }>;
 }
 
 export default async function SalidasPage({ params, searchParams }: SalidasPageProps) {
@@ -20,19 +26,28 @@ export default async function SalidasPage({ params, searchParams }: SalidasPageP
     const currentPage = Number(searchParamsResolved.page) || 1;
     const currentPageSize = Number(searchParamsResolved.pageSize) || 50;
 
+    // Convertir searchParams a fechas o usar un rango por defecto
+    const dateFilter = searchParamsResolved.from && searchParamsResolved.to ? {
+        from: new Date(searchParamsResolved.from + 'T00:00:00.000Z'),
+        to: new Date(searchParamsResolved.to + 'T23:59:59.999Z')
+    } : {
+        // Por defecto: últimos 30 días
+        from: subDays(new Date(), 30),
+        to: new Date()
+    };
+
     // Parámetros de filtros
     const filters: {
         searchTerm?: string;
         categoriaId?: string;
-        marca?: string;
         metodoPagoId?: string;
         tipo?: 'ORDINARIO' | 'EXTRAORDINARIO';
         tipoRegistro?: 'BLANCO' | 'NEGRO';
-        fecha?: string;
+        fechaDesde?: Date;
+        fechaHasta?: Date;
     } = {
         searchTerm: typeof searchParamsResolved.searchTerm === 'string' ? searchParamsResolved.searchTerm : undefined,
         categoriaId: typeof searchParamsResolved.categoriaId === 'string' ? searchParamsResolved.categoriaId : undefined,
-        marca: typeof searchParamsResolved.marca === 'string' ? searchParamsResolved.marca : undefined,
         metodoPagoId: typeof searchParamsResolved.metodoPagoId === 'string' ? searchParamsResolved.metodoPagoId : undefined,
         tipo: (searchParamsResolved.tipo === 'ORDINARIO' || searchParamsResolved.tipo === 'EXTRAORDINARIO')
             ? searchParamsResolved.tipo as 'ORDINARIO' | 'EXTRAORDINARIO'
@@ -40,7 +55,8 @@ export default async function SalidasPage({ params, searchParams }: SalidasPageP
         tipoRegistro: (searchParamsResolved.tipoRegistro === 'BLANCO' || searchParamsResolved.tipoRegistro === 'NEGRO')
             ? searchParamsResolved.tipoRegistro as 'BLANCO' | 'NEGRO'
             : undefined,
-        fecha: typeof searchParamsResolved.fecha === 'string' ? searchParamsResolved.fecha : undefined,
+        fechaDesde: dateFilter.from,
+        fechaHasta: dateFilter.to,
     };
 
     // Obtener usuario actual con permisos
