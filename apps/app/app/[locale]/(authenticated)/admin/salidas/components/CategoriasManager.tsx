@@ -87,7 +87,11 @@ export function CategoriasManager() {
 
         setIsAddingCategoria(true);
         try {
-            const result = await createCategoriaAction(newCategoriaNombre.trim());
+            console.log('[CategoriasManager] Attempting to create categoria:', newCategoriaNombre);
+            // Enviar el nombre tal como está (el backend se encarga de normalizarlo)
+            const result = await createCategoriaAction(newCategoriaNombre);
+            
+            console.log('[CategoriasManager] Create result:', result);
 
             if (result.success) {
                 toast({
@@ -97,17 +101,18 @@ export function CategoriasManager() {
                 setNewCategoriaNombre('');
                 loadCategorias(); // Recargar la lista
             } else {
+                console.error('[CategoriasManager] Create failed:', result);
                 toast({
                     title: "Error",
-                    description: result.message || "Error al crear la categoría",
+                    description: result.message || result.error || "Error al crear la categoría",
                     variant: "destructive",
                 });
             }
-        } catch (error) {
-            console.error('Error creating categoria:', error);
+        } catch (error: any) {
+            console.error('[CategoriasManager] Error creating categoria:', error);
             toast({
                 title: "Error",
-                description: "Error inesperado al crear la categoría",
+                description: error?.message || "Error inesperado al crear la categoría",
                 variant: "destructive",
             });
         } finally {

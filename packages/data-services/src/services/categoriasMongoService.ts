@@ -162,31 +162,55 @@ export async function createCategoriaMongo(data: CreateCategoriaMongoInput): Pro
     message?: string;
     error?: string;
 }> {
+    // Normalizar el nombre: trim y normalizar espacios múltiples a uno solo
+    // Definirlo fuera del try para que esté disponible en el catch
+    const normalizedNombre = data.nombre.trim().replace(/\s+/g, ' ').toUpperCase();
+
     try {
         const categoriasCollection = await getCollection('categorias');
 
-        // Verificar si ya existe una categoría con ese nombre
+        console.log('[createCategoriaMongo] Input nombre:', data.nombre);
+        console.log('[createCategoriaMongo] Normalized nombre:', normalizedNombre);
+
+        if (!normalizedNombre) {
+            return {
+                success: false,
+                message: 'El nombre de la categoría no puede estar vacío',
+                error: 'CATEGORIA_EMPTY_NAME'
+            };
+        }
+
+        // Verificar si ya existe una categoría con ese nombre (búsqueda exacta)
         const existingCategoria = await categoriasCollection.findOne({
-            nombre: data.nombre.toUpperCase()
+            nombre: normalizedNombre
         });
+
+        console.log('[createCategoriaMongo] Existing categoria found:', existingCategoria ? {
+            _id: existingCategoria._id?.toString(),
+            nombre: existingCategoria.nombre
+        } : 'NO');
 
         if (existingCategoria) {
             return {
                 success: false,
-                message: 'Ya existe una categoría con ese nombre',
+                message: `Ya existe una categoría con ese nombre: "${existingCategoria.nombre}"`,
                 error: 'CATEGORIA_ALREADY_EXISTS'
             };
         }
 
         const categoriaDoc = {
-            nombre: data.nombre.toUpperCase(),
+            nombre: normalizedNombre,
             descripcion: data.descripcion,
             isActive: data.isActive ?? true,
             createdAt: new Date(),
             updatedAt: new Date()
         };
 
+        console.log('[createCategoriaMongo] Attempting to insert:', categoriaDoc);
+
         const result = await categoriasCollection.insertOne(categoriaDoc);
+
+        console.log('[createCategoriaMongo] Insert result:', result.insertedId);
 
         const newCategoria: CategoriaMongoData = {
             _id: result.insertedId.toString(),
@@ -202,11 +226,30 @@ export async function createCategoriaMongo(data: CreateCategoriaMongoInput): Pro
             categoria: newCategoria,
             message: 'Categoría creada exitosamente'
         };
-    } catch (error) {
-        console.error('Error in createCategoriaMongo:', error);
+    } catch (error: any) {
+        console.error('[createCategoriaMongo] Error details:', {
+            message: error.message,
+            code: error.code,
+            codeName: error.codeName,
+            keyPattern: error.keyPattern,
+            keyValue: error.keyValue,
+            stack: error.stack
+        });
+        
+        // Manejar errores específicos de MongoDB
+        if (error.code === 11000 || error.codeName === 'DuplicateKey') {
+            const duplicateField = error.keyPattern ? Object.keys(error.keyPattern)[0] : 'nombre';
+            const duplicateValue = error.keyValue ? error.keyValue[duplicateField] : (normalizedNombre || data.nombre);
+            return {
+                success: false,
+                message: `Ya existe una categoría con ese nombre: "${duplicateValue}"`,
+                error: 'CATEGORIA_ALREADY_EXISTS'
+            };
+        }
+
         return {
             success: false,
-            message: 'Error al crear la categoría',
+            message: error.message || 'Error al crear la categoría',
             error: 'CREATE_CATEGORIA_MONGO_ERROR'
         };
     }
@@ -229,7 +272,18 @@ export async function updateCategoriaMongo(id: string, data: UpdateCategoriaMong
             updatedAt: new Date()
         };
 
-        if (data.nombre !== undefined) updateData.nombre = data.nombre.toUpperCase();
+        if (data.nombre !== undefined) {
+            // Normalizar el nombre: trim y normalizar espacios múltiples a uno solo
+            const normalizedNombre = data.nombre.trim().replace(/\s+/g, ' ').toUpperCase();
+            if (!normalizedNombre) {
+                return {
+                    success: false,
+                    message: 'El nombre de la categoría no puede estar vacío',
+                    error: 'CATEGORIA_EMPTY_NAME'
+                };
+            }
+            updateData.nombre = normalizedNombre;
+        }
         if (data.descripcion !== undefined) updateData.descripcion = data.descripcion;
         if (data.isActive !== undefined) updateData.isActive = data.isActive;
 
