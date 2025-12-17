@@ -710,15 +710,27 @@ export const mapDBProductToSelectOption = (dbProductName: string, dbOptionName: 
         } else {
             product = dbProductName;
         }
-    } else if (dbProductName.startsWith('HUESOS') ||
-        dbProductName.startsWith('TRAQUEA') ||
-        dbProductName.startsWith('OREJAS') ||
-        dbProductName.startsWith('GARRAS') ||
-        dbProductName.startsWith('COMPLEMENTOS') ||
-        dbProductName.startsWith('CORNALITOS') ||
-        dbProductName.startsWith('CALDO')) {
+    } else if (dbProductName.startsWith('HUESOS RECREATIVOS') ||
+        dbProductName.startsWith('BOX DE COMPLEMENTOS') ||
+        dbProductName.startsWith('HUESOS CARNOSOS') ||
+        dbProductName.startsWith('HUESO CARNOSO')) {
         section = 'OTROS';
         product = dbProductName;
+        // Estos productos no tienen peso adicional
+        weight = '';
+    } else if (dbProductName.includes('OREJA') ||
+        dbProductName.includes('TREAT') ||
+        dbProductName.includes('TRAQUEA') ||
+        dbProductName.includes('GARRAS') ||
+        dbProductName.includes('CORNALITOS') ||
+        dbProductName.includes('CALDO') ||
+        dbProductName.includes('HIGADO') ||
+        (dbProductName.includes('POLLO') && (dbProductName.includes('40GRS') || dbProductName.includes('100GRS')))) {
+        section = 'RAW';
+        product = dbProductName;
+        // Para productos RAW, el peso/cantidad ya está en el nombre del producto
+        // No agregar el dbOptionName como weight adicional
+        weight = '';
     } else {
         // No se puede reconstruir, devolver tal cual
         console.warn(`⚠️ No se puede reconstruir fullName desde DB: name="${dbProductName}", option="${dbOptionName}"`);

@@ -280,7 +280,17 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                                     onClick={async () => {
                                                         try {
                                                             const rowData = row.original as any;
-                                                            const currentItems = editValues.items || rowData.items || [];
+                                                            const allItems = editValues.items || rowData.items || [];
+                                                            
+                                                            // IMPORTANTE: Filtrar items válidos igual que al crear
+                                                            const { filterValidItems } = await import('../helpers');
+                                                            const currentItems = filterValidItems(allItems);
+                                                            
+                                                            if (currentItems.length === 0) {
+                                                                alert('No hay productos válidos para generar el PDF.');
+                                                                return;
+                                                            }
+                                                            
                                                             const currentOrderType = editValues.orderType || rowData.orderType || 'mayorista';
                                                             const currentPaymentMethod = editValues.paymentMethod || rowData.paymentMethod || '';
 
@@ -295,8 +305,67 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                                             // Mapear los items con sus precios calculados
                                                             let itemsWithPrices = currentItems;
                                                             if (priceResult.success && priceResult.itemPrices) {
-                                                                itemsWithPrices = currentItems.map((item: any, index: number) => {
-                                                                    const priceInfo = priceResult.itemPrices?.[index];
+                                                                console.log('🔍 [PDF EDIT] Mapeando precios:', {
+                                                                    itemsLength: currentItems.length,
+                                                                    pricesLength: priceResult.itemPrices.length,
+                                                                    items: currentItems.map((i: any) => ({ name: i.name, fullName: i.fullName })),
+                                                                    prices: priceResult.itemPrices.map(p => ({ name: p.name, price: p.unitPrice }))
+                                                                });
+                                                                
+                                                                // CRÍTICO: Mapear por NOMBRE, no por índice
+                                                                // itemPrices puede tener menos elementos si algunos items no encontraron precio
+                                                                itemsWithPrices = currentItems.map((item: any) => {
+                                                                    const itemFullName = item.fullName || item.name;
+                                                                    const itemName = item.name;
+                                                                    
+                                                                    console.log(`🔍 [PDF EDIT] Buscando precio para item:`, {
+                                                                        itemName,
+                                                                        itemFullName
+                                                                    });
+                                                                    
+                                                                    // Estrategia de búsqueda múltiple para encontrar el precio correcto
+                                                                    let priceInfo = priceResult.itemPrices?.find(ip => {
+                                                                        // 1. Coincidencia exacta con fullName
+                                                                        if (ip.name === itemFullName) {
+                                                                            console.log(`✅ Match exacto por fullName: ${ip.name} === ${itemFullName}`);
+                                                                            return true;
+                                                                        }
+                                                                        
+                                                                        // 2. Coincidencia exacta con name
+                                                                        if (ip.name === itemName) {
+                                                                            console.log(`✅ Match exacto por name: ${ip.name} === ${itemName}`);
+                                                                            return true;
+                                                                        }
+                                                                        
+                                                                        // 3. El precio contiene el fullName del item
+                                                                        if (itemFullName && ip.name.includes(itemFullName)) {
+                                                                            console.log(`✅ Match parcial: ${ip.name} contiene ${itemFullName}`);
+                                                                            return true;
+                                                                        }
+                                                                        
+                                                                        // 4. El fullName del item contiene el nombre del precio
+                                                                        if (itemFullName && itemFullName.includes(ip.name)) {
+                                                                            console.log(`✅ Match parcial inverso: ${itemFullName} contiene ${ip.name}`);
+                                                                            return true;
+                                                                        }
+                                                                        
+                                                                        return false;
+                                                                    });
+                                                                    
+                                                                    if (!priceInfo) {
+                                                                        console.error(`❌ [PDF EDIT] No se encontró precio para:`, {
+                                                                            itemName,
+                                                                            itemFullName,
+                                                                            availablePrices: priceResult.itemPrices?.map(p => p.name)
+                                                                        });
+                                                                    } else {
+                                                                        console.log(`✅ [PDF EDIT] Precio encontrado:`, {
+                                                                            item: itemFullName || itemName,
+                                                                            price: priceInfo.unitPrice,
+                                                                            priceEntry: priceInfo.name
+                                                                        });
+                                                                    }
+                                                                    
                                                                     return {
                                                                         ...item,
                                                                         price: priceInfo?.unitPrice || 0,
@@ -331,8 +400,14 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                                             generateMayoristaPDF(pdfData);
                                                         } catch (error) {
                                                             console.error('Error calculando precios para PDF:', error);
-                                                            // Fallback: generar PDF sin precios calculados
+                                                            // Fallback: generar PDF sin precios calculados pero con items filtrados
                                                             const rowData = row.original as any;
+                                                            const allItems = editValues.items || rowData.items || [];
+                                                            
+                                                            // Filtrar items válidos en el fallback también
+                                                            const { filterValidItems } = await import('../helpers');
+                                                            const validItems = filterValidItems(allItems);
+                                                            
                                                             const pdfData = {
                                                                 user: {
                                                                     name: editValues.userName || rowData.user?.name || '',
@@ -344,7 +419,7 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                                                     city: editValues.address?.city || rowData.address?.city || '',
                                                                     phone: editValues.address?.phone || rowData.address?.phone || ''
                                                                 },
-                                                                items: editValues.items || rowData.items || [],
+                                                                items: validItems,
                                                                 total: editValues.total || rowData.total || 0,
                                                                 deliveryDay: editValues.deliveryDay || rowData.deliveryDay || '',
                                                                 paymentMethod: editValues.paymentMethod || rowData.paymentMethod || '',
