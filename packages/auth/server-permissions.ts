@@ -384,7 +384,7 @@ export const SIDEBAR_CONFIG: SidebarItem[] = [
         label: 'gestionEnvioExpressStock',
         mobileLabel: 'gestionEnvioExpressStockMobile',
         href: '/admin/express',
-        icon: 'Zap',
+        icon: 'Bike',
         requiredPermissions: ['table:view'], // Usar el mismo permiso que table por ahora
     },
 ];

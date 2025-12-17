@@ -54,6 +54,7 @@ export interface Order {
     orderType: 'minorista' | 'mayorista';
     deliveryDay: string;
     puntoEnvio?: string; // Nombre del punto de envío express (conecta con DeliveryArea.puntoEnvio)
+    estadoEnvio?: 'pendiente' | 'pidiendo' | 'en-viaje' | 'listo'; // Estado de envío express
     whatsappContactedAt?: string;
     createdAt: string;
     updatedAt: string;

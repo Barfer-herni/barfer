@@ -9,6 +9,7 @@ import {
     getExpressOrders,
     createPuntoEnvioMongo,
     getAllPuntosEnvioMongo,
+    updateEstadoEnvio,
 } from '@repo/data-services';
 
 export async function getDeliveryAreasWithPuntoEnvioAction() {
@@ -120,3 +121,20 @@ export async function getAllPuntosEnvioAction() {
     }
 }
 
+export async function updateEstadoEnvioAction(orderId: string, estadoEnvio: 'pendiente' | 'pidiendo' | 'en-viaje' | 'listo') {
+    try {
+        const result = await updateEstadoEnvio(orderId, estadoEnvio);
+
+        if (result.success) {
+            revalidatePath('/admin/express');
+        }
+
+        return result;
+    } catch (error) {
+        console.error('Error updating estado de envío:', error);
+        return {
+            success: false,
+            error: 'Error al actualizar el estado de envío',
+        };
+    }
+}

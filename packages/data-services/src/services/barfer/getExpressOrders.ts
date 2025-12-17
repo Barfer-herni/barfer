@@ -39,6 +39,7 @@ export async function getExpressOrders(puntoEnvio?: string): Promise<Order[]> {
             notesOwn: order.notesOwn,
             orderType: order.orderType,
             puntoEnvio: order.puntoEnvio,
+            estadoEnvio: order.estadoEnvio || 'pendiente',
             createdAt: order.createdAt,
             updatedAt: order.updatedAt,
         })) as Order[];

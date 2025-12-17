@@ -64,6 +64,7 @@ const updateOrderSchema = z.object({
     shippingPrice: z.number().optional(),
     updatedAt: z.union([z.string(), z.date()]).optional(),
     deliveryDay: z.union([z.string(), z.date()]).optional(),
+    estadoEnvio: z.enum(['pendiente', 'pidiendo', 'en-viaje', 'listo']).optional(),
     // Agrega aquí otros campos editables si es necesario
 });
 

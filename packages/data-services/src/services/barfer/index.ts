@@ -35,6 +35,7 @@ export * from './analytics/getQuantityStatsByMonth';
 export { getOrders } from './getOrders';
 export { getExpressOrders } from './getExpressOrders';
 export { updateOrder } from './updateOrder';
+export { updateEstadoEnvio } from './updateEstadoEnvio';
 export { deleteOrder } from './deleteOrder';
 export { createOrder } from './createOrder';
 export { migrateClientType } from './migrateClientType';
