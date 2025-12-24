@@ -9,6 +9,7 @@ export interface DataTableProps<TData extends { _id: string }, TValue> {
     sorting: SortingState;
     canEdit?: boolean;
     canDelete?: boolean;
+    onOrderUpdated?: () => void | Promise<void>;
 }
 
 export interface EditValues {

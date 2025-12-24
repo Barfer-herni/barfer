@@ -7,8 +7,9 @@ import { Input } from '@repo/design-system/components/ui/input';
 import { STATUS_TRANSLATIONS, PAYMENT_METHOD_TRANSLATIONS } from '../../table/constants';
 import { createLocalDate, formatPhoneNumber } from '../../table/helpers';
 import { EstadoEnvioCell } from './EstadoEnvioCell';
+import { ShippingPriceCell } from './ShippingPriceCell';
 
-export const expressColumns: ColumnDef<Order>[] = [
+export const createExpressColumns = (onOrderUpdated?: () => void | Promise<void>): ColumnDef<Order>[] => [
     {
         accessorKey: 'orderType',
         header: 'Tipo Orden',
@@ -85,7 +86,7 @@ export const expressColumns: ColumnDef<Order>[] = [
             const orderId = row.original._id;
             const estadoEnvio = row.original.estadoEnvio;
             return (
-                <div className="min-w-[150px]">
+                <div className="min-w-[80px] flex items-center justify-center">
                     <EstadoEnvioCell 
                         orderId={orderId} 
                         currentEstado={estadoEnvio}
@@ -93,8 +94,8 @@ export const expressColumns: ColumnDef<Order>[] = [
                 </div>
             );
         },
-        size: 150,
-        minSize: 150,
+        size: 80,
+        minSize: 80,
     },
     {
         accessorKey: 'notesOwn',
@@ -214,6 +215,21 @@ export const expressColumns: ColumnDef<Order>[] = [
         }
     },
     {
+        accessorKey: 'shippingPrice',
+        header: () => <div className="w-full text-center">Costo de Envío</div>,
+        cell: ({ row }: CellContext<Order, unknown>) => {
+            const orderId = row.original._id;
+            const shippingPrice = row.original.shippingPrice || 0;
+            return (
+                <ShippingPriceCell 
+                    orderId={orderId} 
+                    currentPrice={shippingPrice}
+                    onUpdate={onOrderUpdated}
+                />
+            );
+        }
+    },
+    {
         accessorKey: 'notes',
         header: 'Notas',
         cell: ({ row }: CellContext<Order, unknown>) => {
@@ -270,4 +286,7 @@ export const expressColumns: ColumnDef<Order>[] = [
         }
     },
 ];
+
+// Exportar también la versión sin callback para compatibilidad
+export const expressColumns = createExpressColumns();
 

@@ -1070,7 +1070,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                                         onEditValueChange(fieldKey, numValue);
                                     }
                                 }
-                            }}
+                            }} 
                             className={`flex-1 text-xs text-center ${isCalculatingPrice ? 'bg-blue-50 border-blue-300' : ''}`}
                             disabled={isCalculatingPrice}
                         />
@@ -1087,6 +1087,31 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                             </Button>
                         )}
                     </div>
+                </TableCell>
+            );
+        }
+
+        // Renderizado especial para el campo shippingPrice (costo de envío)
+        if (cell.column.id === 'shippingPrice') {
+            return (
+                <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
+                    <Input
+                        type="number"
+                        value={editValues[fieldKey] === undefined || editValues[fieldKey] === null ? '' : editValues[fieldKey]}
+                        placeholder="0"
+                        onChange={e => {
+                            const value = e.target.value;
+                            if (value === '') {
+                                onEditValueChange(fieldKey, 0);
+                            } else {
+                                const numValue = Number(value);
+                                if (!isNaN(numValue)) {
+                                    onEditValueChange(fieldKey, numValue);
+                                }
+                            }
+                        }}
+                        className="w-full text-xs text-center"
+                    />
                 </TableCell>
             );
         }

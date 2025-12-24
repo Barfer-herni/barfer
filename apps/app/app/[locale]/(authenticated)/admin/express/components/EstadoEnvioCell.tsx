@@ -32,6 +32,13 @@ const ESTADO_LABELS: Record<EstadoEnvio, string> = {
     'listo': 'Listo',
 };
 
+const ESTADO_LABELS_SHORT: Record<EstadoEnvio, string> = {
+    'pendiente': 'Pendi',
+    'pidiendo': 'Pidie',
+    'en-viaje': 'Viaje',
+    'listo': 'Listo',
+};
+
 export function EstadoEnvioCell({ orderId, currentEstado = 'pendiente' }: EstadoEnvioCellProps) {
     const [estado, setEstado] = useState<EstadoEnvio>(currentEstado);
     const [isUpdating, setIsUpdating] = useState(false);
@@ -78,17 +85,19 @@ export function EstadoEnvioCell({ orderId, currentEstado = 'pendiente' }: Estado
     };
 
     return (
-        <div className="w-full flex items-center">
-            <Select
-                value={estado}
-                onValueChange={(value) => handleEstadoChange(value as EstadoEnvio)}
-                disabled={isUpdating}
+        <Select
+            value={estado}
+            onValueChange={(value) => handleEstadoChange(value as EstadoEnvio)}
+            disabled={isUpdating}
+        >
+            <SelectTrigger 
+                className={`h-8 text-xs font-medium ${ESTADO_COLORS[estado]} border-none w-[70px] max-w-[70px]`}
+                title={ESTADO_LABELS[estado]}
             >
-                <SelectTrigger 
-                    className={`h-8 text-xs font-medium ${ESTADO_COLORS[estado]} border-none w-[110px]`}
-                >
-                    <SelectValue />
-                </SelectTrigger>
+                <span className="flex-1 text-center truncate">
+                    {ESTADO_LABELS_SHORT[estado]}
+                </span>
+            </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="pendiente">
                         <div className="flex items-center gap-2">
@@ -116,7 +125,6 @@ export function EstadoEnvioCell({ orderId, currentEstado = 'pendiente' }: Estado
                     </SelectItem>
                 </SelectContent>
             </Select>
-        </div>
     );
 }
 

@@ -216,6 +216,7 @@ export const createDefaultOrderData = () => ({
         sheetName: '',
     },
     deliveryDay: '',
+    puntoEnvio: '', // Punto de envío para órdenes express (bank-transfer)
 });
 
 // Función para extraer el peso del nombre del producto

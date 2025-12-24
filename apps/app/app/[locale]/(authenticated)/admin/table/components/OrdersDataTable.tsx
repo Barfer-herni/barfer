@@ -51,6 +51,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     sorting,
     canEdit = false,
     canDelete = false,
+    onOrderUpdated,
 }: DataTableProps<TData, TValue>) {
     const router = useRouter();
     const pathname = usePathname();
@@ -86,6 +87,23 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
         quantity: number;
         subtotal: number;
     }>>([]);
+    const [puntosEnvio, setPuntosEnvio] = useState<Array<{ _id: string; nombre: string }>>([]);
+
+    // Cargar puntos de envío al montar el componente
+    useEffect(() => {
+        const loadPuntosEnvio = async () => {
+            try {
+                const { getAllPuntosEnvioAction } = await import('../../express/actions');
+                const result = await getAllPuntosEnvioAction();
+                if (result.success && result.puntosEnvio) {
+                    setPuntosEnvio(result.puntosEnvio.map(p => ({ _id: String(p._id), nombre: p.nombre })));
+                }
+            } catch (error) {
+                console.error('Error loading puntos de envío:', error);
+            }
+        };
+        loadPuntosEnvio();
+    }, []);
 
     // useEffect para calcular precio automáticamente en el formulario de creación
     useEffect(() => {
@@ -494,8 +512,22 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             setProductSearchFilter('');
             setShouldAutoCalculatePrice(false);
 
-            // Hacer refresh para mostrar los cambios actualizados
-            router.refresh();
+            // Si hay un callback personalizado para actualizar datos, llamarlo
+            if (onOrderUpdated) {
+                await onOrderUpdated();
+            } else {
+                // Para la tabla principal, forzar recarga completa
+                // Usar startTransition para una actualización suave
+                startTransition(() => {
+                    router.refresh();
+                });
+                
+                // También hacer un refresh adicional después de un pequeño delay
+                // para asegurar que los datos se actualicen
+                setTimeout(() => {
+                    router.refresh();
+                }, 500);
+            }
 
             updateBackupsCount(); // Actualizar contador después de guardar
         } catch (e) {
@@ -514,7 +546,24 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
         try {
             const result = await deleteOrderAction(row.id);
             if (!result.success) throw new Error(result.error || 'Error al eliminar');
-            router.refresh();
+            
+            // Si hay un callback personalizado para actualizar datos, llamarlo
+            if (onOrderUpdated) {
+                await onOrderUpdated();
+            } else {
+                // Para la tabla principal, forzar recarga completa
+                // Usar startTransition para una actualización suave
+                startTransition(() => {
+                    router.refresh();
+                });
+                
+                // También hacer un refresh adicional después de un pequeño delay
+                // para asegurar que los datos se actualicen
+                setTimeout(() => {
+                    router.refresh();
+                }, 500);
+            }
+            
             updateBackupsCount(); // Actualizar contador después de eliminar
         } catch (e) {
             alert(e instanceof Error ? e.message : 'Error al eliminar la orden');
@@ -532,7 +581,24 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
         try {
             const result = await duplicateOrderAction(row.id);
             if (!result.success) throw new Error(result.error || 'Error al duplicar');
-            router.refresh();
+            
+            // Si hay un callback personalizado para actualizar datos, llamarlo
+            if (onOrderUpdated) {
+                await onOrderUpdated();
+            } else {
+                // Para la tabla principal, forzar recarga completa
+                // Usar startTransition para una actualización suave
+                startTransition(() => {
+                    router.refresh();
+                });
+                
+                // También hacer un refresh adicional después de un pequeño delay
+                // para asegurar que los datos se actualicen
+                setTimeout(() => {
+                    router.refresh();
+                }, 500);
+            }
+            
             alert(result.message || 'Pedido duplicado correctamente');
         } catch (e) {
             alert(e instanceof Error ? e.message : 'Error al duplicar la orden');
@@ -564,6 +630,18 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 alert('El campo Fecha de Entrega es obligatorio. Debe seleccionar una fecha.');
                 setLoading(false);
                 return;
+            }
+
+            // Validar que si hay punto de envío, el método de pago sea bank-transfer
+            if (createFormData.puntoEnvio && createFormData.paymentMethod !== 'bank-transfer') {
+                alert('Las órdenes express (con punto de envío) deben tener el método de pago "bank-transfer".');
+                setLoading(false);
+                return;
+            }
+
+            // Si hay punto de envío, asegurar que el método de pago sea bank-transfer
+            if (createFormData.puntoEnvio) {
+                createFormData.paymentMethod = 'bank-transfer';
             }
 
             // Filtrar items: eliminar los que no tienen nombre o tienen cantidad 0
@@ -610,6 +688,11 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 orderDataWithFilteredItems.punto_de_venta = puntoVentaId;
             }
 
+            // Incluir el puntoEnvio si el método de pago es bank-transfer
+            if (createFormData.paymentMethod === 'bank-transfer' && createFormData.puntoEnvio) {
+                orderDataWithFilteredItems.puntoEnvio = createFormData.puntoEnvio;
+            }
+
             console.log('📦 Datos de orden a enviar:', {
                 orderType: orderDataWithFilteredItems.orderType,
                 punto_de_venta: orderDataWithFilteredItems.punto_de_venta,
@@ -620,11 +703,28 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
 
             const result = await createOrderAction(orderDataWithFilteredItems);
             if (!result.success) throw new Error(result.error || 'Error al crear');
+            
             setShowCreateModal(false);
             setCreateFormData(createDefaultOrderData());
             setSelectedMayorista(null); // Limpiar mayorista seleccionado
             setItemPrices([]); // Limpiar precios
-            router.refresh();
+            
+            // Llamar al callback si está disponible (para express)
+            if (onOrderUpdated) {
+                await onOrderUpdated();
+            } else {
+                // Para la tabla principal, forzar recarga completa
+                // Usar startTransition para una actualización suave
+                startTransition(() => {
+                    router.refresh();
+                });
+                
+                // También hacer un refresh adicional después de un pequeño delay
+                // para asegurar que los datos se actualicen
+                setTimeout(() => {
+                    router.refresh();
+                }, 500);
+            }
         } catch (e) {
             alert(e instanceof Error ? e.message : 'Error al crear la orden');
         } finally {
@@ -1188,11 +1288,42 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                     </div>
 
                                     <div className="space-y-2">
+                                        <Label>Punto de Envío *</Label>
+                                        <select
+                                            value={createFormData.puntoEnvio || ''}
+                                            onChange={(e) => {
+                                                const selectedPuntoEnvio = e.target.value;
+                                                handleCreateFormChange('puntoEnvio', selectedPuntoEnvio);
+                                                // Si se selecciona un punto de envío, establecer automáticamente bank-transfer
+                                                if (selectedPuntoEnvio) {
+                                                    handleCreateFormChange('paymentMethod', 'bank-transfer');
+                                                }
+                                            }}
+                                            className="w-full p-2 border border-gray-300 rounded-md"
+                                            required
+                                        >
+                                            <option value="">Selecciona un punto de envío...</option>
+                                            {puntosEnvio.map((punto) => (
+                                                <option key={punto._id} value={punto.nombre}>
+                                                    {punto.nombre}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
                                         <Label>Medio de Pago</Label>
                                         <select
-                                            value={createFormData.paymentMethod}
-                                            onChange={(e) => handleCreateFormChange('paymentMethod', e.target.value)}
+                                            value={createFormData.paymentMethod || 'bank-transfer'}
+                                            onChange={(e) => {
+                                                const selectedPaymentMethod = e.target.value;
+                                                handleCreateFormChange('paymentMethod', selectedPaymentMethod);
+                                                // Si se cambia el método de pago y no es bank-transfer, limpiar punto de envío
+                                                if (selectedPaymentMethod !== 'bank-transfer') {
+                                                    handleCreateFormChange('puntoEnvio', '');
+                                                }
+                                            }}
                                             className="w-full p-2 border border-gray-300 rounded-md"
+                                            disabled={!!createFormData.puntoEnvio}
                                         >
                                             {PAYMENT_METHOD_OPTIONS.map(option => (
                                                 <option key={option.value} value={option.value}>
@@ -1200,6 +1331,11 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                                 </option>
                                             ))}
                                         </select>
+                                        {createFormData.puntoEnvio && (
+                                            <p className="text-xs text-gray-500">
+                                                El método de pago está fijado en "bank-transfer" para órdenes express
+                                            </p>
+                                        )}
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Estado</Label>

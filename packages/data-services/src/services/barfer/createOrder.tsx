@@ -61,6 +61,7 @@ const createOrderSchema = z.object({
     paymentMethod: z.string(),
     orderType: z.enum(['minorista', 'mayorista']).default('minorista'),
     punto_de_venta: z.string().optional(), // ID del punto de venta (solo para mayoristas)
+    puntoEnvio: z.string().optional(), // Nombre del punto de envío (solo para órdenes express con bank-transfer)
     address: z.object({
         address: z.string(),
         city: z.string(),

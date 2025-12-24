@@ -25,16 +25,16 @@ import {
 import type { DeliveryArea, Order, Stock, DetalleEnvio, PuntoEnvio } from '@repo/data-services';
 import { OrdersDataTable } from '../../table/components/OrdersDataTable';
 import type { ColumnDef, PaginationState, SortingState } from '@tanstack/react-table';
+import { createExpressColumns } from './expressColumns';
 
 interface ExpressPageClientProps {
     dictionary: Dictionary;
     initialPuntosEnvio: PuntoEnvio[];
-    columns: ColumnDef<any, any>[];
     canEdit: boolean;
     canDelete: boolean;
 }
 
-export function ExpressPageClient({ dictionary, initialPuntosEnvio, columns, canEdit, canDelete }: ExpressPageClientProps) {
+export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, canDelete }: ExpressPageClientProps) {
     const router = useRouter();
     const [showAddStockModal, setShowAddStockModal] = useState(false);
     const [showCreatePuntoEnvioModal, setShowCreatePuntoEnvioModal] = useState(false);
@@ -212,7 +212,12 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, columns, can
                                 </Card>
                             ) : (
                                 <OrdersDataTable
-                                    columns={columns}
+                                    columns={createExpressColumns(() => {
+                                        // Recargar los datos después de actualizar una orden
+                                        if (selectedPuntoEnvio) {
+                                            loadTablasData(selectedPuntoEnvio);
+                                        }
+                                    })}
                                     data={orders}
                                     pageCount={Math.ceil(orders.length / pagination.pageSize)}
                                     total={orders.length}
@@ -220,6 +225,12 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, columns, can
                                     sorting={sorting}
                                     canEdit={canEdit}
                                     canDelete={canDelete}
+                                    onOrderUpdated={() => {
+                                        // Recargar los datos después de actualizar una orden
+                                        if (selectedPuntoEnvio) {
+                                            loadTablasData(selectedPuntoEnvio);
+                                        }
+                                    }}
                                 />
                             )}
                         </TabsContent>

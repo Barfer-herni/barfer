@@ -31,6 +31,8 @@ export async function getExpressOrders(puntoEnvio?: string): Promise<Order[]> {
             address: order.address,
             items: order.items,
             total: order.total,
+            subTotal: order.subTotal || 0,
+            shippingPrice: order.shippingPrice || 0,
             status: order.status,
             paymentMethod: order.paymentMethod,
             deliveryDay: order.deliveryDay,
