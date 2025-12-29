@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Dictionary } from '@repo/internationalization';
 import { Button } from '@repo/design-system/components/ui/button';
@@ -65,11 +65,14 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     const [productsForStock, setProductsForStock] = useState<ProductForStock[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-    const [editingStockId, setEditingStockId] = useState<string | null>(null);
-    const [editingField, setEditingField] = useState<string | null>(null);
-    const [editValue, setEditValue] = useState<string>('');
-    // Estado para mantener los cambios pendientes por fila
-    const [pendingChanges, setPendingChanges] = useState<Record<string, { stockInicial?: number; llevamos?: number }>>({});
+    // Estado local para los valores editados (sin necesidad de modo edición)
+    const [localStockValues, setLocalStockValues] = useState<Record<string, { stockInicial: number; llevamos: number }>>({});
+    // Ref para mantener los valores actuales del estado (para acceder sin setState)
+    const localStockValuesRef = useRef<Record<string, { stockInicial: number; llevamos: number }>>({});
+    // Refs para los timeouts de debounce - usar stockId como clave (no stockId-field)
+    const saveTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
+    // Refs para flags que previenen creación duplicada
+    const savingFlags = useRef<Record<string, boolean>>({});
     
     // Paginación y ordenamiento para órdenes
     const [pagination, setPagination] = useState<PaginationState>({
@@ -124,7 +127,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         }
     }, [selectedPuntoEnvio, selectedDate]);
 
-    const loadTablasData = async (puntoEnvio: string) => {
+    const loadTablasData = async (puntoEnvio: string, skipLocalUpdate = false) => {
         setIsLoading(true);
         try {
             const [ordersResult, stockResult, detalleResult] = await Promise.all([
@@ -136,8 +139,21 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
             if (ordersResult.success) {
                 setOrders(ordersResult.orders || []);
             }
-            if (stockResult.success) {
-                setStock(stockResult.stock || []);
+            if (stockResult.success && stockResult.stock) {
+                setStock(stockResult.stock);
+                // Inicializar valores locales con los datos del servidor
+                if (!skipLocalUpdate) {
+                    const initialValues: Record<string, { stockInicial: number; llevamos: number }> = {};
+                    stockResult.stock.forEach(s => {
+                        const key = String(s._id);
+                        initialValues[key] = {
+                            stockInicial: s.stockInicial,
+                            llevamos: s.llevamos,
+                        };
+                    });
+                    setLocalStockValues(initialValues);
+                    localStockValuesRef.current = initialValues;
+                }
             }
             if (detalleResult.success) {
                 setDetalle(detalleResult.detalleEnvio || []);
@@ -150,7 +166,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     };
 
     // Filtrar stock por fecha seleccionada
-    const getStockForDate = (): Stock[] => {
+    const getStockForDate = useCallback((): Stock[] => {
         if (!selectedDate) return [];
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
         return stock.filter(s => {
@@ -158,10 +174,10 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
             const stockDateStr = format(stockDate, 'yyyy-MM-dd');
             return stockDateStr === dateStr;
         });
-    };
+    }, [selectedDate, stock]);
 
     // Calcular automáticamente los pedidos del día basándose en las órdenes
-    const calculatePedidosDelDia = (): number => {
+    const calculatePedidosDelDia = useCallback((): number => {
         if (!selectedPuntoEnvio || !selectedDate) return 0;
         
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -177,202 +193,158 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         });
         
         return ordersOfDay.length;
-    };
+    }, [selectedPuntoEnvio, selectedDate, orders]);
 
-    // Función para iniciar modo de edición de una fila completa
-    const handleRowEdit = (stockId: string | null, product?: ProductForStock) => {
-        const editId = stockId || (product ? `new-${product.section}-${product.product}-${product.weight || 'no-weight'}` : null);
-        if (editId) {
-            setEditingStockId(editId);
-            // Inicializar cambios pendientes con valores actuales
-            if (stockId) {
-                const currentStock = stock.find(s => String(s._id) === stockId);
-                if (currentStock) {
-                    setPendingChanges(prev => ({
-                        ...prev,
-                        [editId]: {
-                            stockInicial: currentStock.stockInicial,
-                            llevamos: currentStock.llevamos,
-                        }
-                    }));
-                }
-            } else if (product) {
-                setPendingChanges(prev => ({
-                    ...prev,
-                    [editId]: {
-                        stockInicial: 0,
-                        llevamos: 0,
-                    }
-                }));
-            }
-        }
-    };
-
-    // Función para actualizar un valor en cambios pendientes
-    const handlePendingChange = (stockId: string, field: 'stockInicial' | 'llevamos', value: number) => {
-        setPendingChanges(prev => ({
-            ...prev,
-            [stockId]: {
-                ...prev[stockId],
-                [field]: value,
-            }
-        }));
-    };
-
-    // Función para cancelar edición
-    const handleCancelEdit = () => {
-        setEditingStockId(null);
-        setEditingField(null);
-        setEditValue('');
-        setPendingChanges({});
-    };
-
-    // Función para guardar todos los cambios pendientes de una fila
-    const handleSaveRow = async (stockId: string | null, product: ProductForStock) => {
-        const editId = stockId || (product ? `new-${product.section}-${product.product}-${product.weight || 'no-weight'}` : null);
-        if (!editId) return;
-
-        const changes = pendingChanges[editId];
-        if (!changes) {
-            handleCancelEdit();
-            return;
+    // Función para guardar automáticamente con debounce
+    const saveStockValue = useCallback((stockId: string, field: 'stockInicial' | 'llevamos', value: number, product?: ProductForStock) => {
+        // Limpiar timeout anterior si existe (usar solo stockId como clave)
+        if (saveTimeouts.current[stockId]) {
+            clearTimeout(saveTimeouts.current[stockId]);
         }
 
-        // Validar valores
-        const stockInicial = changes.stockInicial ?? 0;
-        const llevamos = changes.llevamos ?? 0;
-
-        if (stockInicial < 0 || llevamos < 0) {
-            toast({
-                title: 'Error',
-                description: 'Los valores deben ser mayores o iguales a 0',
-                variant: 'destructive',
-            });
-            return;
-        }
-
-        // Si no hay stockId, significa que es un nuevo registro
-        if (!stockId || stockId.startsWith('new-')) {
-            // Buscar si ya existe un registro para este producto en esta fecha
-            const stockForDate = getStockForDate();
-            const existingStock = stockForDate.find(s => {
-                const sProducto = (s.producto || '').toUpperCase().trim();
-                const sPeso = (s.peso || '').toUpperCase().trim();
-                const pProduct = (product.product || '').toUpperCase().trim();
-                const pWeight = (product.weight || '').toUpperCase().trim();
-                return sProducto === pProduct && sPeso === pWeight;
-            });
-
-            if (existingStock) {
-                // Si existe, actualizarlo
-                const updateData: any = {
-                    stockInicial,
-                    llevamos,
-                    stockFinal: stockInicial - llevamos,
-                };
-                try {
-                    const result = await updateStockAction(String(existingStock._id), updateData);
-                    if (result.success) {
-                        toast({
-                            title: '¡Éxito!',
-                            description: 'Stock actualizado correctamente',
-                        });
-                        if (selectedPuntoEnvio) {
-                            loadTablasData(selectedPuntoEnvio);
-                        }
-                    } else {
-                        toast({
-                            title: 'Error',
-                            description: result.message || 'Error al actualizar el stock',
-                            variant: 'destructive',
-                        });
-                    }
-                } catch (error) {
-                    toast({
-                        title: 'Error',
-                        description: 'Error al actualizar el stock',
-                        variant: 'destructive',
-                    });
+        // Actualizar estado local inmediatamente (sin recargar)
+        setLocalStockValues(prev => {
+            const updated = {
+                ...prev,
+                [stockId]: {
+                    ...prev[stockId],
+                    [field]: value,
                 }
-            } else {
-                // Si no existe, crear nuevo registro
-                if (!selectedPuntoEnvio || !selectedDate) return;
-                
-                const dateStr = format(selectedDate, 'yyyy-MM-dd');
-                // Calcular automáticamente los pedidos del día
-                const pedidosDelDiaCalculado = calculatePedidosDelDia();
-                const stockData: any = {
-                    puntoEnvio: selectedPuntoEnvio,
-                    producto: product.product,
-                    peso: product.weight || undefined,
-                    stockInicial,
-                    llevamos,
-                    pedidosDelDia: pedidosDelDiaCalculado,
-                    fecha: new Date(dateStr).toISOString(),
-                    stockFinal: stockInicial - llevamos,
-                };
-
-                try {
-                    const result = await createStockAction(stockData);
-                    if (result.success) {
-                        toast({
-                            title: '¡Éxito!',
-                            description: 'Stock creado correctamente',
-                        });
-                        if (selectedPuntoEnvio) {
-                            loadTablasData(selectedPuntoEnvio);
-                        }
-                    } else {
-                        toast({
-                            title: 'Error',
-                            description: result.message || 'Error al crear el stock',
-                            variant: 'destructive',
-                        });
-                    }
-                } catch (error) {
-                    toast({
-                        title: 'Error',
-                        description: 'Error al crear el stock',
-                        variant: 'destructive',
-                    });
-                }
-            }
-        } else {
-            // Actualizar registro existente
-            const updateData: any = {
-                stockInicial,
-                llevamos,
-                stockFinal: stockInicial - llevamos,
             };
+            
+            // Actualizar ref para acceso directo
+            localStockValuesRef.current = updated;
+            
+            // Actualizar también el estado de stock local para reflejar cambios inmediatamente
+            setStock(prevStock => {
+                const stockItem = prevStock.find(s => String(s._id) === stockId);
+                if (stockItem) {
+                    const currentValues = updated[stockId] || { stockInicial: stockItem.stockInicial, llevamos: stockItem.llevamos };
+                    return prevStock.map(s => 
+                        String(s._id) === stockId 
+                            ? { ...s, [field]: value, stockFinal: currentValues.stockInicial - currentValues.llevamos }
+                            : s
+                    );
+                }
+                return prevStock;
+            });
+            
+            return updated;
+        });
 
+        // Guardar en servidor después de 1 segundo de inactividad
+        saveTimeouts.current[stockId] = setTimeout(async () => {
             try {
-                const result = await updateStockAction(stockId, updateData);
-                if (result.success) {
-                    toast({
-                        title: '¡Éxito!',
-                        description: 'Stock actualizado correctamente',
-                    });
-                    if (selectedPuntoEnvio) {
-                        loadTablasData(selectedPuntoEnvio);
+                // Verificar si ya se está guardando este registro (evitar duplicados)
+                if (savingFlags.current[stockId]) {
+                    return;
+                }
+                
+                // Obtener valores actualizados del estado local usando ref (no setState)
+                const currentValues = localStockValuesRef.current[stockId] || {};
+                const currentStockInicial = currentValues.stockInicial ?? 0;
+                const currentLlevamos = currentValues.llevamos ?? 0;
+                const stockFinal = currentStockInicial - currentLlevamos;
+                
+                // Marcar como guardando
+                savingFlags.current[stockId] = true;
+                
+                // Guardar en servidor
+                try {
+                    if (stockId.startsWith('new-')) {
+                        // Verificar si ya existe un registro para este producto antes de crear
+                        const stockForDate = getStockForDate();
+                        if (product) {
+                            const existingStock = stockForDate.find(s => {
+                                const sProducto = (s.producto || '').toUpperCase().trim();
+                                const sPeso = (s.peso || '').toUpperCase().trim();
+                                const pProduct = (product.product || '').toUpperCase().trim();
+                                const pWeight = (product.weight || '').toUpperCase().trim();
+                                return sProducto === pProduct && sPeso === pWeight;
+                            });
+                            
+                            if (existingStock) {
+                                // Si ya existe, actualizar en lugar de crear
+                                const updateData: any = {
+                                    stockInicial: currentStockInicial,
+                                    llevamos: currentLlevamos,
+                                    stockFinal,
+                                };
+                                const result = await updateStockAction(String(existingStock._id), updateData);
+                                if (result.success && result.stock) {
+                                    const newId = String(result.stock._id);
+                                    setLocalStockValues(prevLocal => {
+                                        const { [stockId]: _, ...rest } = prevLocal;
+                                        return { ...rest, [newId]: { stockInicial: currentStockInicial, llevamos: currentLlevamos } };
+                                    });
+                                    setStock(prev => prev.map(s => 
+                                        String(s._id) === String(existingStock._id) ? result.stock! : s
+                                    ));
+                                }
+                            } else {
+                                // Crear nuevo registro solo si no existe
+                                if (!selectedPuntoEnvio || !selectedDate || !product) return;
+                                
+                                const dateStr = format(selectedDate, 'yyyy-MM-dd');
+                                const pedidosDelDiaCalculado = calculatePedidosDelDia();
+                                const stockData: any = {
+                                    puntoEnvio: selectedPuntoEnvio,
+                                    producto: product.product,
+                                    peso: product.weight || undefined,
+                                    stockInicial: currentStockInicial,
+                                    llevamos: currentLlevamos,
+                                    stockFinal,
+                                    pedidosDelDia: pedidosDelDiaCalculado,
+                                    fecha: dateStr,
+                                };
+
+                                const result = await createStockAction(stockData);
+                                if (result.success && result.stock) {
+                                    // Actualizar estado local con el nuevo ID
+                                    const newId = String(result.stock._id);
+                                    setLocalStockValues(prevLocal => {
+                                        const { [stockId]: _, ...rest } = prevLocal;
+                                        const updated = { ...rest, [newId]: { stockInicial: currentStockInicial, llevamos: currentLlevamos } };
+                                        localStockValuesRef.current = updated;
+                                        return updated;
+                                    });
+                                    setStock(prev => [...prev, result.stock!]);
+                                }
+                            }
+                        }
+                    } else {
+                        // Actualizar registro existente
+                        const updateData: any = {
+                            stockInicial: currentStockInicial,
+                            llevamos: currentLlevamos,
+                            stockFinal,
+                        };
+                        const result = await updateStockAction(stockId, updateData);
+                        if (result.success && result.stock) {
+                            // Actualizar estado local sin recargar
+                            setStock(prev => prev.map(s => 
+                                String(s._id) === stockId ? result.stock! : s
+                            ));
+                        }
                     }
-                } else {
-                    toast({
-                        title: 'Error',
-                        description: result.message || 'Error al actualizar el stock',
-                        variant: 'destructive',
-                    });
+                } catch (error) {
+                    console.error('Error saving stock:', error);
+                    // Revertir cambios locales en caso de error
+                    if (selectedPuntoEnvio) {
+                        loadTablasData(selectedPuntoEnvio, true);
+                    }
+                } finally {
+                    // Remover flag de guardando
+                    delete savingFlags.current[stockId];
                 }
             } catch (error) {
-                toast({
-                    title: 'Error',
-                    description: 'Error al actualizar el stock',
-                    variant: 'destructive',
-                });
+                console.error('Error in save timeout:', error);
+                delete savingFlags.current[stockId];
             }
-        }
+            delete saveTimeouts.current[stockId];
+        }, 1000);
+    }, [selectedPuntoEnvio, selectedDate, stock, getStockForDate, calculatePedidosDelDia]);
 
-        handleCancelEdit();
-    };
 
     // Función para crear stock si no existe
     const handleCreateStockForProduct = async (product: ProductForStock) => {
@@ -721,7 +693,6 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                         <th className="text-right p-2 font-semibold">Llevamos</th>
                                                         <th className="text-right p-2 font-semibold">Pedidos del Día</th>
                                                         <th className="text-right p-2 font-semibold">Stock Final</th>
-                                                        <th className="text-center p-2 font-semibold">Acciones</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -762,12 +733,13 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                         // Obtener el color de la fila para este producto
                                                         const rowColorClass = getProductRowColor(product.product, product.section);
 
-                                                        // Si no hay registros, mostrar una fila vacía con campos editables
+                                                        // Si no hay registros, mostrar una fila vacía con campos siempre editables
                                                         if (!uniqueStockRecord) {
                                                             const emptyId = `new-${product.section}-${product.product}-${product.weight || 'no-weight'}`;
-                                                            const isEditing = editingStockId === emptyId;
-                                                            const changes = pendingChanges[emptyId] || { stockInicial: 0, llevamos: 0 };
-                                                            const stockFinalCalculado = (changes.stockInicial ?? 0) - (changes.llevamos ?? 0);
+                                                            const localValues = localStockValues[emptyId] || { stockInicial: 0, llevamos: 0 };
+                                                            const stockInicial = localValues.stockInicial ?? 0;
+                                                            const llevamos = localValues.llevamos ?? 0;
+                                                            const stockFinalCalculado = stockInicial - llevamos;
                                                             
                                                             return (
                                                                 <tr key={`${product.section}-${product.product}-${product.weight || 'no-weight'}`} className={`border-b ${rowColorClass}`}>
@@ -775,110 +747,67 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                     <td className="p-2 font-bold">{product.product}</td>
                                                                     <td className="p-2 font-bold text-gray-600">{product.weight || '-'}</td>
                                                                     <td className="p-2 text-right">
-                                                                        {isEditing ? (
-                                                                            <div className="flex justify-end">
+                                                                        <div className="flex justify-end">
                                                                             <Input
                                                                                 type="number"
-                                                                                    min="0"
-                                                                                    value={changes.stockInicial ?? 0}
-                                                                                    onChange={(e) => {
-                                                                                        const newValue = e.target.value === '' ? 0 : Number(e.target.value) || 0;
-                                                                                        handlePendingChange(emptyId, 'stockInicial', newValue);
-                                                                                    }}
+                                                                                min="0"
+                                                                                value={stockInicial}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value === '' ? 0 : Number(e.target.value) || 0;
+                                                                                    saveStockValue(emptyId, 'stockInicial', newValue, product);
+                                                                                }}
                                                                                 onKeyDown={(e) => {
-                                                                                        if (e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
-                                                                                            const currentValue = changes.stockInicial ?? 0;
-                                                                                            if (currentValue === 0 && /[0-9]/.test(e.key)) {
-                                                                                                e.preventDefault();
-                                                                                                handlePendingChange(emptyId, 'stockInicial', Number(e.key));
-                                                                                            }
+                                                                                    if (e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
+                                                                                        if (stockInicial === 0 && /[0-9]/.test(e.key)) {
+                                                                                            e.preventDefault();
+                                                                                            saveStockValue(emptyId, 'stockInicial', Number(e.key), product);
+                                                                                        }
                                                                                     }
                                                                                 }}
                                                                                 className="w-20 h-8 text-right font-bold"
-                                                                                autoFocus
                                                                             />
-                                                                            </div>
-                                                                        ) : (
-                                                                            <span className="text-gray-400">-</span>
-                                                                        )}
+                                                                        </div>
                                                                     </td>
                                                                     <td className="p-2 text-right">
-                                                                        {isEditing ? (
-                                                                            <div className="flex justify-end">
+                                                                        <div className="flex justify-end">
                                                                             <Input
                                                                                 type="number"
-                                                                                    min="0"
-                                                                                    value={changes.llevamos ?? 0}
-                                                                                    onChange={(e) => {
-                                                                                        const newValue = e.target.value === '' ? 0 : Number(e.target.value) || 0;
-                                                                                        handlePendingChange(emptyId, 'llevamos', newValue);
-                                                                                    }}
+                                                                                min="0"
+                                                                                value={llevamos}
+                                                                                onChange={(e) => {
+                                                                                    const newValue = e.target.value === '' ? 0 : Number(e.target.value) || 0;
+                                                                                    saveStockValue(emptyId, 'llevamos', newValue, product);
+                                                                                }}
                                                                                 onKeyDown={(e) => {
-                                                                                        if (e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
-                                                                                            const currentValue = changes.llevamos ?? 0;
-                                                                                            if (currentValue === 0 && /[0-9]/.test(e.key)) {
-                                                                                                e.preventDefault();
-                                                                                                handlePendingChange(emptyId, 'llevamos', Number(e.key));
-                                                                                            }
+                                                                                    if (e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
+                                                                                        if (llevamos === 0 && /[0-9]/.test(e.key)) {
+                                                                                            e.preventDefault();
+                                                                                            saveStockValue(emptyId, 'llevamos', Number(e.key), product);
+                                                                                        }
                                                                                     }
                                                                                 }}
                                                                                 className="w-20 h-8 text-right font-bold"
                                                                             />
-                                                                            </div>
-                                                                        ) : (
-                                                                            <span className="text-gray-400">-</span>
-                                                                        )}
+                                                                        </div>
                                                                     </td>
                                                                     <td className="p-2 font-bold text-right">
                                                                         <span className="text-gray-700">{calculatePedidosDelDia()}</span>
                                                                     </td>
-                                                                    <td className="p-2 text-right font-bold">
-                                                                        {isEditing ? stockFinalCalculado : <span className="text-gray-400">-</span>}
-                                                                    </td>
-                                                                    <td className="p-2 text-center">
-                                                                        {isEditing ? (
-                                                                            <div className="flex items-center justify-center gap-2">
-                                                                                <Button
-                                                                                    size="sm"
-                                                                                    variant="default"
-                                                                                    onClick={() => handleSaveRow(null, product)}
-                                                                                    className="h-7 px-2"
-                                                                                >
-                                                                                    <Save className="h-3 w-3" />
-                                                                                </Button>
-                                                                                <Button
-                                                                                    size="sm"
-                                                                                    variant="outline"
-                                                                                    onClick={handleCancelEdit}
-                                                                                    className="h-7 px-2"
-                                                                                >
-                                                                                    <X className="h-3 w-3" />
-                                                                                </Button>
-                                                                            </div>
-                                                                        ) : (
-                                                                            <Button
-                                                                                size="sm"
-                                                                                variant="outline"
-                                                                                onClick={() => handleRowEdit(null, product)}
-                                                                                className="h-7 px-2"
-                                                                            >
-                                                                                <Edit2 className="h-3 w-3" />
-                                                                            </Button>
-                                                                        )}
-                                                                    </td>
+                                                                    <td className="p-2 text-right font-bold">{stockFinalCalculado}</td>
+                                                                    <td className="p-2 text-center"></td>
                                                                 </tr>
                                                             );
                                                         }
 
-                                                        // Mostrar solo un registro de stock por producto (el más reciente)
+                                                        // Mostrar solo un registro de stock por producto (el más reciente) - siempre editable
                                                         const stockId = String(uniqueStockRecord._id);
-                                                        const isEditing = editingStockId === stockId;
-                                                        const changes = pendingChanges[stockId];
-                                                        const displayStockInicial = isEditing ? (changes?.stockInicial ?? uniqueStockRecord.stockInicial) : uniqueStockRecord.stockInicial;
-                                                        const displayLlevamos = isEditing ? (changes?.llevamos ?? uniqueStockRecord.llevamos) : uniqueStockRecord.llevamos;
-                                                        const displayStockFinal = isEditing 
-                                                            ? (displayStockInicial - displayLlevamos)
-                                                            : uniqueStockRecord.stockFinal;
+                                                        const localValues = localStockValues[stockId] || { 
+                                                            stockInicial: uniqueStockRecord.stockInicial, 
+                                                            llevamos: uniqueStockRecord.llevamos 
+                                                        };
+                                                        const stockInicial = localValues.stockInicial ?? uniqueStockRecord.stockInicial ?? 0;
+                                                        const llevamos = localValues.llevamos ?? uniqueStockRecord.llevamos ?? 0;
+                                                        const displayStockFinal = stockInicial - llevamos;
                                                         
                                                         return (
                                                             <tr key={`${product.section}-${product.product}-${product.weight || 'no-weight'}-${stockId}`} className={`border-b ${rowColorClass}`}>
@@ -886,95 +815,54 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                 <td className="p-2 font-bold">{product.product}</td>
                                                                 <td className="p-2 font-bold text-gray-600">{product.weight || '-'}</td>
                                                                 <td className="p-2 text-right">
-                                                                    {isEditing ? (
-                                                                        <div className="flex justify-end">
+                                                                    <div className="flex justify-end">
                                                                         <Input
                                                                             type="number"
-                                                                                min="0"
-                                                                                value={displayStockInicial}
-                                                                                onChange={(e) => {
-                                                                                    const newValue = e.target.value === '' ? 0 : Number(e.target.value) || 0;
-                                                                                    handlePendingChange(stockId, 'stockInicial', newValue);
-                                                                                }}
+                                                                            min="0"
+                                                                            value={stockInicial}
+                                                                            onChange={(e) => {
+                                                                                const newValue = e.target.value === '' ? 0 : Number(e.target.value) || 0;
+                                                                                saveStockValue(stockId, 'stockInicial', newValue, product);
+                                                                            }}
                                                                             onKeyDown={(e) => {
-                                                                                    if (e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
-                                                                                        const currentValue = displayStockInicial;
-                                                                                        if (currentValue === 0 && /[0-9]/.test(e.key)) {
-                                                                                            e.preventDefault();
-                                                                                            handlePendingChange(stockId, 'stockInicial', Number(e.key));
-                                                                                        }
+                                                                                if (e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
+                                                                                    if (stockInicial === 0 && /[0-9]/.test(e.key)) {
+                                                                                        e.preventDefault();
+                                                                                        saveStockValue(stockId, 'stockInicial', Number(e.key), product);
+                                                                                    }
                                                                                 }
                                                                             }}
                                                                             className="w-20 h-8 text-right font-bold"
-                                                                            autoFocus
                                                                         />
-                                                                        </div>
-                                                                    ) : (
-                                                                        <span className="font-bold">{uniqueStockRecord.stockInicial}</span>
-                                                                    )}
+                                                                    </div>
                                                                 </td>
                                                                 <td className="p-2 text-right">
-                                                                    {isEditing ? (
-                                                                        <div className="flex justify-end">
+                                                                    <div className="flex justify-end">
                                                                         <Input
                                                                             type="number"
-                                                                                min="0"
-                                                                                value={displayLlevamos}
-                                                                                onChange={(e) => {
-                                                                                    const newValue = e.target.value === '' ? 0 : Number(e.target.value) || 0;
-                                                                                    handlePendingChange(stockId, 'llevamos', newValue);
-                                                                                }}
+                                                                            min="0"
+                                                                            value={llevamos}
+                                                                            onChange={(e) => {
+                                                                                const newValue = e.target.value === '' ? 0 : Number(e.target.value) || 0;
+                                                                                saveStockValue(stockId, 'llevamos', newValue, product);
+                                                                            }}
                                                                             onKeyDown={(e) => {
-                                                                                    if (e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
-                                                                                        const currentValue = displayLlevamos;
-                                                                                        if (currentValue === 0 && /[0-9]/.test(e.key)) {
-                                                                                            e.preventDefault();
-                                                                                            handlePendingChange(stockId, 'llevamos', Number(e.key));
-                                                                                        }
+                                                                                if (e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
+                                                                                    if (llevamos === 0 && /[0-9]/.test(e.key)) {
+                                                                                        e.preventDefault();
+                                                                                        saveStockValue(stockId, 'llevamos', Number(e.key), product);
+                                                                                    }
                                                                                 }
                                                                             }}
                                                                             className="w-20 h-8 text-right font-bold"
                                                                         />
-                                                                        </div>
-                                                                    ) : (
-                                                                        <span className="font-bold">{uniqueStockRecord.llevamos}</span>
-                                                                    )}
+                                                                    </div>
                                                                 </td>
                                                                 <td className="p-2 font-bold text-right">
                                                                     <span className="text-gray-700">{calculatePedidosDelDia()}</span>
                                                                 </td>
                                                                 <td className="p-2 text-right font-bold">{displayStockFinal}</td>
-                                                                <td className="p-2 text-center">
-                                                                    {isEditing ? (
-                                                                        <div className="flex items-center justify-center gap-2">
-                                                                            <Button
-                                                                                size="sm"
-                                                                                variant="default"
-                                                                                onClick={() => handleSaveRow(stockId, product)}
-                                                                                className="h-7 px-2"
-                                                                            >
-                                                                                <Save className="h-3 w-3" />
-                                                                            </Button>
-                                                                            <Button
-                                                                                size="sm"
-                                                                                variant="outline"
-                                                                                onClick={handleCancelEdit}
-                                                                                className="h-7 px-2"
-                                                                            >
-                                                                                <X className="h-3 w-3" />
-                                                                            </Button>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <Button
-                                                                            size="sm"
-                                                                            variant="outline"
-                                                                            onClick={() => handleRowEdit(stockId, product)}
-                                                                            className="h-7 px-2"
-                                                                        >
-                                                                            <Edit2 className="h-3 w-3" />
-                                                                        </Button>
-                                                                    )}
-                                                                </td>
+                                                                <td className="p-2 text-center"></td>
                                                             </tr>
                                                         );
                                                     })}
