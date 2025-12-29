@@ -42,9 +42,10 @@ interface ExpressPageClientProps {
     initialPuntosEnvio: PuntoEnvio[];
     canEdit: boolean;
     canDelete: boolean;
+    isAdmin?: boolean;
 }
 
-export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, canDelete }: ExpressPageClientProps) {
+export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, canDelete, isAdmin = true }: ExpressPageClientProps) {
     const router = useRouter();
     const [showAddStockModal, setShowAddStockModal] = useState(false);
     const [showCreatePuntoEnvioModal, setShowCreatePuntoEnvioModal] = useState(false);
@@ -104,6 +105,13 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
             setPuntosEnvio(result.puntosEnvio);
         }
     };
+
+    // Si no es admin y hay puntos de envío, seleccionar automáticamente (solo debería haber uno)
+    useEffect(() => {
+        if (!isAdmin && puntosEnvio.length > 0 && !selectedPuntoEnvio) {
+            setSelectedPuntoEnvio(puntosEnvio[0].nombre || '');
+        }
+    }, [isAdmin, puntosEnvio, selectedPuntoEnvio]);
 
     // Cargar datos cuando se selecciona un punto de envío o cambia la fecha
     useEffect(() => {
@@ -524,7 +532,11 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                             <label className="text-sm font-medium mb-2 block">
                                 Seleccionar Punto de Envío
                             </label>
-                            <Select value={selectedPuntoEnvio} onValueChange={setSelectedPuntoEnvio}>
+                            <Select 
+                                value={selectedPuntoEnvio} 
+                                onValueChange={setSelectedPuntoEnvio}
+                                disabled={!isAdmin && puntosEnvio.length > 0}
+                            >
                                 <SelectTrigger className="w-full max-w-md">
                                     <SelectValue placeholder={puntosEnvio.length === 0 ? "No hay puntos de envío disponibles" : "Selecciona un punto de envío..."} />
                                 </SelectTrigger>
@@ -543,12 +555,14 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                 </SelectContent>
                             </Select>
                         </div>
+                        {isAdmin && (
                         <div className="flex items-end">
                             <Button onClick={() => setShowCreatePuntoEnvioModal(true)}>
                                 <Plus className="h-4 w-4 mr-2" />
                                 Crear Punto de Envío
                             </Button>
                         </div>
+                        )}
                     </div>
                 </div>
 
@@ -564,7 +578,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
 
                 {selectedPuntoEnvio && (
                     <Tabs defaultValue="orders" className="w-full">
-                        <TabsList className="grid w-full grid-cols-3">
+                        <TabsList className={isAdmin ? "grid w-full grid-cols-3" : "grid w-full grid-cols-2"}>
                             <TabsTrigger value="orders" className="flex items-center gap-2">
                                 <ShoppingCart className="h-4 w-4" />
                                 Órdenes ({orders.length})
@@ -573,10 +587,12 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                 <Package className="h-4 w-4" />
                                 Stock ({stock.length})
                             </TabsTrigger>
+                            {isAdmin && (
                             <TabsTrigger value="detalle" className="flex items-center gap-2">
                                 <BarChart3 className="h-4 w-4" />
                                 Detalle ({detalle.length})
                             </TabsTrigger>
+                            )}
                         </TabsList>
 
                         <TabsContent value="orders" className="mt-6">
@@ -652,6 +668,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                     </Button>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-auto p-0" align="end">
+                                                    <div className="flex flex-col">
                                                     <Calendar
                                                         mode="single"
                                                         selected={selectedDate}
@@ -659,11 +676,22 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                         initialFocus
                                                         locale={es}
                                                     />
+                                                        <div className="border-t p-3">
+                                                            <Button
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => setSelectedDate(new Date())}
+                                                                className="w-full"
+                                                            >
+                                                                Hoy
+                                                            </Button>
+                                                        </div>
+                                                    </div>
                                                 </PopoverContent>
                                             </Popover>
                                             <Button onClick={() => setShowAddStockModal(true)} disabled={!selectedPuntoEnvio}>
                                                 <Plus className="h-4 w-4 mr-2" />
-                                                Agregar Stock
+                                                Agregar producto
                                             </Button>
                                         </div>
                                     </div>
@@ -749,26 +777,26 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                     <td className="p-2 text-right">
                                                                         {isEditing ? (
                                                                             <div className="flex justify-end">
-                                                                                <Input
-                                                                                    type="number"
+                                                                            <Input
+                                                                                type="number"
                                                                                     min="0"
                                                                                     value={changes.stockInicial ?? 0}
                                                                                     onChange={(e) => {
                                                                                         const newValue = e.target.value === '' ? 0 : Number(e.target.value) || 0;
                                                                                         handlePendingChange(emptyId, 'stockInicial', newValue);
                                                                                     }}
-                                                                                    onKeyDown={(e) => {
+                                                                                onKeyDown={(e) => {
                                                                                         if (e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
                                                                                             const currentValue = changes.stockInicial ?? 0;
                                                                                             if (currentValue === 0 && /[0-9]/.test(e.key)) {
                                                                                                 e.preventDefault();
                                                                                                 handlePendingChange(emptyId, 'stockInicial', Number(e.key));
                                                                                             }
-                                                                                        }
-                                                                                    }}
-                                                                                    className="w-20 h-8 text-right font-bold"
-                                                                                    autoFocus
-                                                                                />
+                                                                                    }
+                                                                                }}
+                                                                                className="w-20 h-8 text-right font-bold"
+                                                                                autoFocus
+                                                                            />
                                                                             </div>
                                                                         ) : (
                                                                             <span className="text-gray-400">-</span>
@@ -777,25 +805,25 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                     <td className="p-2 text-right">
                                                                         {isEditing ? (
                                                                             <div className="flex justify-end">
-                                                                                <Input
-                                                                                    type="number"
+                                                                            <Input
+                                                                                type="number"
                                                                                     min="0"
                                                                                     value={changes.llevamos ?? 0}
                                                                                     onChange={(e) => {
                                                                                         const newValue = e.target.value === '' ? 0 : Number(e.target.value) || 0;
                                                                                         handlePendingChange(emptyId, 'llevamos', newValue);
                                                                                     }}
-                                                                                    onKeyDown={(e) => {
+                                                                                onKeyDown={(e) => {
                                                                                         if (e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
                                                                                             const currentValue = changes.llevamos ?? 0;
                                                                                             if (currentValue === 0 && /[0-9]/.test(e.key)) {
                                                                                                 e.preventDefault();
                                                                                                 handlePendingChange(emptyId, 'llevamos', Number(e.key));
                                                                                             }
-                                                                                        }
-                                                                                    }}
-                                                                                    className="w-20 h-8 text-right font-bold"
-                                                                                />
+                                                                                    }
+                                                                                }}
+                                                                                className="w-20 h-8 text-right font-bold"
+                                                                            />
                                                                             </div>
                                                                         ) : (
                                                                             <span className="text-gray-400">-</span>
@@ -860,26 +888,26 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                 <td className="p-2 text-right">
                                                                     {isEditing ? (
                                                                         <div className="flex justify-end">
-                                                                            <Input
-                                                                                type="number"
+                                                                        <Input
+                                                                            type="number"
                                                                                 min="0"
                                                                                 value={displayStockInicial}
                                                                                 onChange={(e) => {
                                                                                     const newValue = e.target.value === '' ? 0 : Number(e.target.value) || 0;
                                                                                     handlePendingChange(stockId, 'stockInicial', newValue);
                                                                                 }}
-                                                                                onKeyDown={(e) => {
+                                                                            onKeyDown={(e) => {
                                                                                     if (e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
                                                                                         const currentValue = displayStockInicial;
                                                                                         if (currentValue === 0 && /[0-9]/.test(e.key)) {
                                                                                             e.preventDefault();
                                                                                             handlePendingChange(stockId, 'stockInicial', Number(e.key));
                                                                                         }
-                                                                                    }
-                                                                                }}
-                                                                                className="w-20 h-8 text-right font-bold"
-                                                                                autoFocus
-                                                                            />
+                                                                                }
+                                                                            }}
+                                                                            className="w-20 h-8 text-right font-bold"
+                                                                            autoFocus
+                                                                        />
                                                                         </div>
                                                                     ) : (
                                                                         <span className="font-bold">{uniqueStockRecord.stockInicial}</span>
@@ -888,25 +916,25 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                 <td className="p-2 text-right">
                                                                     {isEditing ? (
                                                                         <div className="flex justify-end">
-                                                                            <Input
-                                                                                type="number"
+                                                                        <Input
+                                                                            type="number"
                                                                                 min="0"
                                                                                 value={displayLlevamos}
                                                                                 onChange={(e) => {
                                                                                     const newValue = e.target.value === '' ? 0 : Number(e.target.value) || 0;
                                                                                     handlePendingChange(stockId, 'llevamos', newValue);
                                                                                 }}
-                                                                                onKeyDown={(e) => {
+                                                                            onKeyDown={(e) => {
                                                                                     if (e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
                                                                                         const currentValue = displayLlevamos;
                                                                                         if (currentValue === 0 && /[0-9]/.test(e.key)) {
                                                                                             e.preventDefault();
                                                                                             handlePendingChange(stockId, 'llevamos', Number(e.key));
                                                                                         }
-                                                                                    }
-                                                                                }}
-                                                                                className="w-20 h-8 text-right font-bold"
-                                                                            />
+                                                                                }
+                                                                            }}
+                                                                            className="w-20 h-8 text-right font-bold"
+                                                                        />
                                                                         </div>
                                                                     ) : (
                                                                         <span className="font-bold">{uniqueStockRecord.llevamos}</span>
@@ -958,6 +986,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                             </Card>
                         </TabsContent>
 
+                        {isAdmin && (
                         <TabsContent value="detalle" className="mt-6">
                             {isLoading ? (
                                 <Card>
@@ -971,6 +1000,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                 <DetalleTable data={detalle} />
                             )}
                         </TabsContent>
+                        )}
                     </Tabs>
                 )}
             </div>

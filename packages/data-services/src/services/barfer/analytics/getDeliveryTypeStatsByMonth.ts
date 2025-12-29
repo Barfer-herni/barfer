@@ -704,7 +704,6 @@ export async function getDeliveryTypeStatsByMonthSimple(startDate?: Date, endDat
                     monthStats.wholesaleOrders++;
                     monthStats.wholesaleRevenue += total;
                     monthStats.wholesaleWeight += 25; // Estimación simple
-                    console.log(`🏪 Debug: Orden mayorista procesada - Mes: ${monthKey}, Total: ${total}`);
                 } else if (isSameDay) {
                     monthStats.sameDayOrders++;
                     monthStats.sameDayRevenue += total;

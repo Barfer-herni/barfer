@@ -14,6 +14,7 @@ export interface UserGestor {
     role: UserRole;
     password?: string; // Opcional - solo se incluye internamente para verificación
     permissions: string[];
+    puntoEnvio?: string; // Punto de envío asignado al usuario
     createdAt?: Date | string;
     updatedAt?: Date | string;
 }
@@ -25,6 +26,7 @@ export interface UserGestorCreateInput {
     role: UserRole;
     password: string;
     permissions?: string[];
+    puntoEnvio?: string; // Punto de envío asignado al usuario
 }
 
 export interface UserGestorUpdateInput {
@@ -34,6 +36,7 @@ export interface UserGestorUpdateInput {
     role?: UserRole;
     password?: string;
     permissions?: string[];
+    puntoEnvio?: string; // Punto de envío asignado al usuario
 }
 
 /**
@@ -96,7 +99,7 @@ export async function createUserGestor(data: UserGestorCreateInput): Promise<{
         permissionsWithDefault.add('account:view_own');
 
         const now = new Date();
-        const newUser = {
+        const newUser: any = {
             email: data.email,
             name: data.name,
             lastName: data.lastName,
@@ -106,6 +109,11 @@ export async function createUserGestor(data: UserGestorCreateInput): Promise<{
             createdAt: now,
             updatedAt: now
         };
+        
+        // Agregar puntoEnvio si se proporciona
+        if (data.puntoEnvio) {
+            newUser.puntoEnvio = data.puntoEnvio;
+        }
 
         let result;
         try {
@@ -143,6 +151,7 @@ export async function createUserGestor(data: UserGestorCreateInput): Promise<{
                 lastName: newUser.lastName,
                 role: newUser.role,
                 permissions: newUser.permissions,
+                puntoEnvio: newUser.puntoEnvio,
                 createdAt: newUser.createdAt,
                 updatedAt: newUser.updatedAt
             }
@@ -192,6 +201,7 @@ export async function getUserGestorById(userId: string): Promise<UserGestor | nu
             lastName: user.lastName,
             role: user.role,
             permissions: Array.isArray(user.permissions) ? user.permissions : [],
+            puntoEnvio: user.puntoEnvio || undefined,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt
         };
@@ -225,6 +235,7 @@ export async function getUserGestorByEmail(email: string): Promise<(UserGestor &
             role: user.role,
             password: user.password, // Incluir password para verificación
             permissions: Array.isArray(user.permissions) ? user.permissions : [],
+            puntoEnvio: user.puntoEnvio || undefined,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt
         };
@@ -259,6 +270,7 @@ export async function getAllUsersGestor(excludeUserId?: string): Promise<UserGes
             lastName: user.lastName,
             role: user.role,
             permissions: Array.isArray(user.permissions) ? user.permissions : [],
+            puntoEnvio: user.puntoEnvio || undefined,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt
         }));
@@ -287,6 +299,7 @@ export async function updateUserGestor(
         if (data.email !== undefined) updateData.email = data.email;
         if (data.role !== undefined) updateData.role = data.role;
         if (data.permissions !== undefined) updateData.permissions = data.permissions;
+        if (data.puntoEnvio !== undefined) updateData.puntoEnvio = data.puntoEnvio;
 
         // Solo hashear la contraseña si se proporciona una nueva
         if (data.password) {
@@ -313,6 +326,7 @@ export async function updateUserGestor(
             lastName: user.lastName,
             role: user.role,
             permissions: Array.isArray(user.permissions) ? user.permissions : [],
+            puntoEnvio: user.puntoEnvio || undefined,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt
         };

@@ -173,6 +173,7 @@ export async function getCurrentUser() {
                 email: user.email,
                 role: user.role,
                 permissions: Array.isArray(user.permissions) ? user.permissions : [],
+                puntoEnvio: user.puntoEnvio,
             };
         } catch (parseError) {
             console.error('Error al analizar el token:', parseError);

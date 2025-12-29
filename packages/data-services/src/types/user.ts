@@ -8,6 +8,7 @@ export interface UserData {
     email: string;
     role: string;
     permissions: string[]; // Array de permisos específicos
+    puntoEnvio?: string; // Punto de envío asignado al usuario
     createdAt: Date;
     updatedAt: Date;
 }
@@ -20,6 +21,7 @@ export interface UserFormData {
     lastName: string;
     email: string;
     password: string;
+    puntoEnvio?: string; // Punto de envío asignado al usuario
 }
 
 /**

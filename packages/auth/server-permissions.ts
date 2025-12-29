@@ -61,6 +61,11 @@ export type Permission =
     | 'mayoristas:delete'
     | 'mayoristas:view_statistics'
     | 'mayoristas:view_matrix'
+    // Express
+    | 'express:view'
+    | 'express:create'
+    | 'express:edit'
+    | 'express:delete'
 
 // Permisos por defecto para admins (siempre tienen todos)
 export const ADMIN_PERMISSIONS: Permission[] = [
@@ -104,6 +109,10 @@ export const ADMIN_PERMISSIONS: Permission[] = [
     'mayoristas:delete',
     'mayoristas:view_statistics',
     'mayoristas:view_matrix',
+    'express:view',
+    'express:create',
+    'express:edit',
+    'express:delete',
 ];
 
 /**
@@ -385,7 +394,7 @@ export const SIDEBAR_CONFIG: SidebarItem[] = [
         mobileLabel: 'gestionEnvioExpressStockMobile',
         href: '/admin/express',
         icon: 'Bike',
-        requiredPermissions: ['table:view'], // Usar el mismo permiso que table por ahora
+        requiredPermissions: ['express:view'],
     },
 ];
 

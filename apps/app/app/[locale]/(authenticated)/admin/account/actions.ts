@@ -37,6 +37,7 @@ const userSchema = z.object({
     password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres').optional().or(z.literal('')),
     role: z.enum(['admin', 'user']),
     permissions: z.array(z.string()),
+    puntoEnvio: z.string().optional(),
 });
 
 export async function updateProfile(userId: string, formData: FormData) {
@@ -94,7 +95,10 @@ export async function changePassword(userId: string, formData: FormData) {
 
 export async function createUser(formData: FormData) {
     try {
+        console.log('🔵 createUser action llamado');
+        
         if (!await hasPermission('account:manage_users')) {
+            console.log('❌ Sin permisos para crear usuarios');
             return { success: false, message: 'No tienes permisos para crear usuarios.' };
         }
 
@@ -105,17 +109,31 @@ export async function createUser(formData: FormData) {
             password: formData.get('password'),
             role: formData.get('role'),
             permissions: JSON.parse(formData.get('permissions') as string || '[]'),
+            puntoEnvio: formData.get('puntoEnvio') || undefined,
         };
+
+        console.log('🟡 Datos parseados:', { ...data, password: data.password ? '[REDACTED]' : undefined });
 
         const validated = userSchema.safeParse(data);
         if (!validated.success) {
+            console.log('❌ Validación falló:', validated.error.errors);
             return { success: false, message: validated.error.errors[0].message };
         }
         if (!validated.data.password) {
+            console.log('❌ Password faltante');
             return { success: false, message: "La contraseña es requerida para nuevos usuarios." };
         }
 
-        const result = await createUserService({ ...validated.data, role: validated.data.role as UserRole, password: validated.data.password });
+        console.log('🟢 Llamando a createUserService');
+
+        const result = await createUserService({ 
+            ...validated.data, 
+            role: validated.data.role as UserRole, 
+            password: validated.data.password,
+            puntoEnvio: validated.data.puntoEnvio || undefined
+        });
+
+        console.log('🟣 Resultado de createUserService:', { success: result.success, message: result.message });
 
         if (!result.success) {
             return { success: false, message: result.message || 'Error al crear el usuario' };
@@ -125,7 +143,8 @@ export async function createUser(formData: FormData) {
         return { success: true, message: 'Usuario creado exitosamente' };
 
     } catch (error) {
-        return { success: false, message: 'Error al crear el usuario' };
+        console.error('🔴 Error creating user:', error);
+        return { success: false, message: error instanceof Error ? error.message : 'Error al crear el usuario' };
     }
 }
 
@@ -142,6 +161,7 @@ export async function updateUser(userId: string, formData: FormData) {
             password: formData.get('password'),
             role: formData.get('role'),
             permissions: JSON.parse(formData.get('permissions') as string || '[]'),
+            puntoEnvio: formData.get('puntoEnvio') || undefined,
         };
 
         const validated = userSchema.safeParse(data);
@@ -149,7 +169,15 @@ export async function updateUser(userId: string, formData: FormData) {
             return { success: false, message: validated.error.errors[0].message };
         }
 
-        await updateUserService(userId, { ...validated.data, role: validated.data.role as UserRole, password: validated.data.password || '' });
+        await updateUserService(userId, {
+            name: validated.data.name,
+            lastName: validated.data.lastName,
+            email: validated.data.email,
+            role: validated.data.role as UserRole,
+            permissions: validated.data.permissions,
+            ...(validated.data.password ? { password: validated.data.password } : {}),
+            ...(validated.data.puntoEnvio ? { puntoEnvio: validated.data.puntoEnvio } : {}),
+        } as Parameters<typeof updateUserService>[1]);
 
         revalidatePath('/admin/account');
         return { success: true, message: 'Usuario actualizado exitosamente' };

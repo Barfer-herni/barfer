@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/design-system/components/ui/card';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Input } from '@repo/design-system/components/ui/input';
@@ -13,7 +14,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@repo/design-system/hooks/use-toast';
 import { User, Mail, Plus, Edit, Trash2, AlertCircle } from 'lucide-react';
 import type { UserData } from '@repo/data-services/src/types/user';
-import type { UserRole } from '@repo/data-services';
+import type { UserRole, PuntoEnvio } from '@repo/data-services';
 import type { Dictionary } from '@repo/internationalization';
 import { createUser, updateUser, deleteUser } from '../actions';
 
@@ -25,10 +26,12 @@ interface UsersSectionProps {
 
 export function UsersSection({ users, currentUser, dictionary }: UsersSectionProps) {
     const { toast } = useToast();
+    const router = useRouter();
     const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<UserData | null>(null);
     const [deleteUserDialog, setDeleteUserDialog] = useState<{ open: boolean; user: UserData | null }>({ open: false, user: null });
     const [isPending, startTransition] = useTransition();
+    const [puntosEnvio, setPuntosEnvio] = useState<PuntoEnvio[]>([]);
 
     const [userForm, setUserForm] = useState({
         name: '',
@@ -37,7 +40,24 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
         password: '',
         role: 'user' as UserRole,
         permissions: [] as string[],
+        puntoEnvio: '',
     });
+
+    // Cargar puntos de envío
+    useEffect(() => {
+        const loadPuntosEnvio = async () => {
+            try {
+                const { getAllPuntosEnvioAction } = await import('../../express/actions');
+                const result = await getAllPuntosEnvioAction();
+                if (result.success && result.puntosEnvio) {
+                    setPuntosEnvio(result.puntosEnvio);
+                }
+            } catch (error) {
+                console.error('Error loading puntos de envío:', error);
+            }
+        };
+        loadPuntosEnvio();
+    }, []);
 
     const handleCreateUser = () => {
         setEditingUser(null);
@@ -64,6 +84,7 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
                 'outputs:delete',      // Eliminar salidas
                 'outputs:view_statistics', // Ver estadísticas de salidas
             ], // Permisos básicos por defecto para usuarios normales
+            puntoEnvio: '',
         });
         setIsUserDialogOpen(true);
     };
@@ -77,48 +98,77 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
             password: '',
             role: user.role as UserRole,
             permissions: user.permissions || [],
+            puntoEnvio: user.puntoEnvio || '',
         });
         setIsUserDialogOpen(true);
     };
 
     const handleUserSubmit = async () => {
+        console.log('🔵 handleUserSubmit llamado', { editingUser: !!editingUser, userForm });
+        
         // Validaciones básicas del lado del cliente para UX
         if (!userForm.name || !userForm.lastName || !userForm.email) {
+            console.log('❌ Validación fallida: nombre, apellido o email faltante');
             toast({ title: "Error", description: "Nombre, apellido y email son requeridos", variant: "destructive" });
             return;
         }
         if (!editingUser && !userForm.password) {
+            console.log('❌ Validación fallida: contraseña faltante para nuevo usuario');
             toast({ title: "Error", description: "La contraseña es requerida para nuevos usuarios", variant: "destructive" });
             return;
         }
         if (userForm.password && userForm.password.length < 6) {
+            console.log('❌ Validación fallida: contraseña muy corta', { passwordLength: userForm.password.length });
             toast({ title: "Error", description: "La contraseña debe tener al menos 6 caracteres", variant: "destructive" });
             return;
         }
+        
+        console.log('✅ Todas las validaciones pasaron, procediendo con startTransition');
 
         startTransition(async () => {
-            const formData = new FormData();
-            formData.append('name', userForm.name);
-            formData.append('lastName', userForm.lastName);
-            formData.append('email', userForm.email);
-            formData.append('password', userForm.password);
-            formData.append('role', userForm.role);
-            formData.append('permissions', JSON.stringify(userForm.permissions));
+            console.log('🟡 startTransition ejecutado');
+            try {
+                const formData = new FormData();
+                formData.append('name', userForm.name);
+                formData.append('lastName', userForm.lastName);
+                formData.append('email', userForm.email);
+                formData.append('password', userForm.password);
+                formData.append('role', userForm.role);
+                formData.append('permissions', JSON.stringify(userForm.permissions));
+                if (userForm.puntoEnvio && userForm.puntoEnvio !== '__none__') {
+                    formData.append('puntoEnvio', userForm.puntoEnvio);
+                }
 
-            const result = editingUser
-                ? await updateUser(editingUser.id, formData)
-                : await createUser(formData);
-
-            if (result.success) {
-                toast({
-                    title: "Éxito",
-                    description: result.message,
+                console.log('🟢 Llamando a createUser/updateUser', { 
+                    isEditing: !!editingUser,
+                    formDataEntries: Array.from(formData.entries())
                 });
-                setIsUserDialogOpen(false);
-            } else {
+
+                const result = editingUser
+                    ? await updateUser(editingUser.id, formData)
+                    : await createUser(formData);
+
+                console.log('🟣 Resultado recibido', result);
+
+                if (result.success) {
+                    toast({
+                        title: "Éxito",
+                        description: result.message,
+                    });
+                    setIsUserDialogOpen(false);
+                    router.refresh();
+                } else {
+                    toast({
+                        title: "Error",
+                        description: result.message,
+                        variant: "destructive",
+                    });
+                }
+            } catch (error) {
+                console.error('🔴 Error en handleUserSubmit:', error);
                 toast({
                     title: "Error",
-                    description: result.message,
+                    description: error instanceof Error ? error.message : 'Error desconocido',
                     variant: "destructive",
                 });
             }
@@ -134,6 +184,7 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
                     description: result.message,
                 });
                 setDeleteUserDialog({ open: false, user: null });
+                router.refresh();
             } else {
                 toast({
                     title: "Error",
@@ -309,6 +360,29 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
                                     <SelectItem value="user">Usuario</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="user-puntoEnvio">Punto de Envío (opcional)</Label>
+                            <Select
+                                value={userForm.puntoEnvio || '__none__'}
+                                onValueChange={(value) => setUserForm(prev => ({ ...prev, puntoEnvio: value === '__none__' ? '' : value }))}
+                                disabled={isPending}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Ninguno (ver todos los puntos de envío)" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="__none__">Ninguno (ver todos los puntos de envío)</SelectItem>
+                                    {puntosEnvio.filter(p => p.nombre && p.nombre.trim() !== '').map((punto) => (
+                                        <SelectItem key={String(punto._id)} value={punto.nombre!}>
+                                            {punto.nombre}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                                Si se asigna un punto de envío, el usuario solo verá órdenes y stock de ese punto
+                            </p>
                         </div>
                         <div className="space-y-2">
                             <Label>Permisos del Usuario</Label>
@@ -562,6 +636,60 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
                                     </div>
                                 </div>
 
+                                {/* Permisos de Express */}
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="h-2 w-2 rounded-full bg-teal-500"></div>
+                                        <Label className="text-sm font-medium text-teal-700 dark:text-teal-400">Permisos de Express</Label>
+                                    </div>
+                                    <div className="ml-4 space-y-2">
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                checked={userForm.permissions.includes('express:view')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) setUserForm(prev => ({ ...prev, permissions: [...prev.permissions, 'express:view'] }));
+                                                    else setUserForm(prev => ({ ...prev, permissions: prev.permissions.filter(p => p !== 'express:view') }));
+                                                }}
+                                                disabled={isPending}
+                                            />
+                                            <Label className="text-sm">Ver Express</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                checked={userForm.permissions.includes('express:create')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) setUserForm(prev => ({ ...prev, permissions: [...prev.permissions, 'express:create'] }));
+                                                    else setUserForm(prev => ({ ...prev, permissions: prev.permissions.filter(p => p !== 'express:create') }));
+                                                }}
+                                                disabled={isPending}
+                                            />
+                                            <Label className="text-sm">Crear Express</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                checked={userForm.permissions.includes('express:edit')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) setUserForm(prev => ({ ...prev, permissions: [...prev.permissions, 'express:edit'] }));
+                                                    else setUserForm(prev => ({ ...prev, permissions: prev.permissions.filter(p => p !== 'express:edit') }));
+                                                }}
+                                                disabled={isPending}
+                                            />
+                                            <Label className="text-sm">Editar Express</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <Switch
+                                                checked={userForm.permissions.includes('express:delete')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) setUserForm(prev => ({ ...prev, permissions: [...prev.permissions, 'express:delete'] }));
+                                                    else setUserForm(prev => ({ ...prev, permissions: prev.permissions.filter(p => p !== 'express:delete') }));
+                                                }}
+                                                disabled={isPending}
+                                            />
+                                            <Label className="text-sm">Eliminar Express</Label>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* Permisos de Puntos de Venta */}
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-2">
@@ -650,7 +778,15 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
                         <Button variant="outline" onClick={() => setIsUserDialogOpen(false)} disabled={isPending}>
                             Cancelar
                         </Button>
-                        <Button onClick={handleUserSubmit} disabled={isPending}>
+                        <Button 
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleUserSubmit();
+                            }} 
+                            disabled={isPending}
+                        >
                             {isPending ? (
                                 editingUser ? 'Actualizando...' : 'Creando...'
                             ) : (
