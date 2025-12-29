@@ -884,6 +884,15 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                         </div>
                                     </CardContent>
                                 </Card>
+                            ) : detalle.length === 0 ? (
+                                <Card>
+                                    <CardContent className="py-8">
+                                        <div className="text-center text-muted-foreground">
+                                            <p>No hay datos de detalle disponibles para el punto de envío seleccionado.</p>
+                                            <p className="text-sm mt-2">Los datos de detalle se generan automáticamente cuando se procesan los envíos.</p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
                             ) : (
                                 <DetalleTable data={detalle} />
                             )}
