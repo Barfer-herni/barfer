@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@repo/design-system/components/ui/button';
 import {
     Dialog,
@@ -19,11 +19,14 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@repo/design-system/lib/utils';
+import { getProductsForStockAction, getPedidosDelDiaAction } from '../actions';
+import type { ProductForStock } from '@repo/data-services';
 
 interface AddStockModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     puntoEnvio: string;
+    defaultDate?: Date;
     onStockCreated: () => void;
 }
 
@@ -31,18 +34,61 @@ export function AddStockModal({
     open,
     onOpenChange,
     puntoEnvio,
+    defaultDate,
     onStockCreated,
 }: AddStockModalProps) {
     const [isLoading, setIsLoading] = useState(false);
+    const [productsForStock, setProductsForStock] = useState<ProductForStock[]>([]);
     const [formData, setFormData] = useState({
         producto: '',
         peso: '',
         stockInicial: 0,
         llevamos: 0,
         pedidosDelDia: 0,
-        fecha: new Date(),
+        fecha: defaultDate || new Date(),
     });
+
+    // Actualizar fecha cuando cambia defaultDate
+    useEffect(() => {
+        if (defaultDate) {
+            setFormData(prev => ({ ...prev, fecha: defaultDate }));
+        }
+    }, [defaultDate]);
+
+    // Calcular automáticamente los pedidos del día cuando cambia la fecha
+    useEffect(() => {
+        const calculatePedidosDelDia = async () => {
+            if (formData.fecha && puntoEnvio) {
+                try {
+                    const result = await getPedidosDelDiaAction(puntoEnvio, formData.fecha);
+                    if (result.success) {
+                        setFormData(prev => ({ ...prev, pedidosDelDia: result.count }));
+                    }
+                } catch (error) {
+                    console.error('Error calculating pedidos del día:', error);
+                }
+            }
+        };
+        calculatePedidosDelDia();
+    }, [formData.fecha, puntoEnvio]);
     const [errors, setErrors] = useState<Record<string, string>>({});
+
+    // Cargar productos al abrir el modal
+    useEffect(() => {
+        if (open) {
+            const loadProducts = async () => {
+                try {
+                    const result = await getProductsForStockAction();
+                    if (result.success && result.products) {
+                        setProductsForStock(result.products);
+                    }
+                } catch (error) {
+                    console.error('Error loading products for stock:', error);
+                }
+            };
+            loadProducts();
+        }
+    }, [open]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -99,6 +145,11 @@ export function AddStockModal({
                     pedidosDelDia: 0,
                     fecha: new Date(),
                 });
+                // Limpiar también el select
+                const productoSelect = document.getElementById('producto') as HTMLSelectElement;
+                if (productoSelect) {
+                    productoSelect.value = '';
+                }
                 setErrors({});
 
                 onStockCreated();
@@ -139,31 +190,48 @@ export function AddStockModal({
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
                                 <Label htmlFor="producto">Producto *</Label>
-                                <Input
+                                <select
                                     id="producto"
-                                    placeholder="Ej: Pollo"
-                                    value={formData.producto}
+                                    value={productsForStock.find(p => p.product === formData.producto && p.weight === formData.peso)?.formattedName || ''}
                                     onChange={(e) => {
-                                        setFormData({ ...formData, producto: e.target.value });
+                                        const selectedProduct = productsForStock.find(p => p.formattedName === e.target.value);
+                                        if (selectedProduct) {
+                                            setFormData({ 
+                                                ...formData, 
+                                                producto: selectedProduct.product,
+                                                peso: selectedProduct.weight || ''
+                                            });
+                                        }
                                         setErrors({ ...errors, producto: '' });
                                     }}
-                                    className={errors.producto ? 'border-red-500' : ''}
+                                    className={`w-full p-2 border border-gray-300 rounded-md ${errors.producto ? 'border-red-500' : ''}`}
                                     disabled={isLoading}
-                                />
+                                    required
+                                >
+                                    <option value="">Selecciona un producto...</option>
+                                    {productsForStock.map((product) => (
+                                        <option key={product.formattedName} value={product.formattedName}>
+                                            {product.formattedName}
+                                        </option>
+                                    ))}
+                                </select>
                                 {errors.producto && (
                                     <span className="text-red-500 text-sm">{errors.producto}</span>
                                 )}
                             </div>
 
                             <div className="grid gap-2">
-                                <Label htmlFor="peso">Peso (opcional)</Label>
+                                <Label htmlFor="peso">Peso/Sabor</Label>
                                 <Input
                                     id="peso"
                                     placeholder="Ej: 5KG"
                                     value={formData.peso}
                                     onChange={(e) => setFormData({ ...formData, peso: e.target.value })}
                                     disabled={isLoading}
+                                    readOnly
+                                    className="bg-gray-50"
                                 />
+                                <span className="text-xs text-gray-500">Se completa automáticamente al seleccionar el producto</span>
                             </div>
                         </div>
 
@@ -221,9 +289,11 @@ export function AddStockModal({
                                         setFormData({ ...formData, pedidosDelDia: Number(e.target.value) });
                                         setErrors({ ...errors, pedidosDelDia: '' });
                                     }}
-                                    className={errors.pedidosDelDia ? 'border-red-500' : ''}
+                                    className={errors.pedidosDelDia ? 'border-red-500' : 'bg-gray-50'}
                                     disabled={isLoading}
+                                    readOnly
                                 />
+                                <span className="text-xs text-gray-500">Calculado automáticamente según las órdenes del día</span>
                                 {errors.pedidosDelDia && (
                                     <span className="text-red-500 text-sm">{errors.pedidosDelDia}</span>
                                 )}
@@ -249,7 +319,11 @@ export function AddStockModal({
                                         <Calendar
                                             mode="single"
                                             selected={formData.fecha}
-                                            onSelect={(date) => date && setFormData({ ...formData, fecha: date })}
+                                            onSelect={(date) => {
+                                                if (date) {
+                                                    setFormData({ ...formData, fecha: date });
+                                                }
+                                            }}
                                             initialFocus
                                             locale={es}
                                         />

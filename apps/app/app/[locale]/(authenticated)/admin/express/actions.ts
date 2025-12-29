@@ -10,6 +10,9 @@ import {
     createPuntoEnvioMongo,
     getAllPuntosEnvioMongo,
     updateEstadoEnvio,
+    getProductsForStock,
+    updateStockMongo,
+    countOrdersByDay,
 } from '@repo/data-services';
 
 export async function getDeliveryAreasWithPuntoEnvioAction() {
@@ -135,6 +138,61 @@ export async function updateEstadoEnvioAction(orderId: string, estadoEnvio: 'pen
         return {
             success: false,
             error: 'Error al actualizar el estado de envío',
+        };
+    }
+}
+
+export async function getProductsForStockAction() {
+    try {
+        return await getProductsForStock();
+    } catch (error) {
+        console.error('Error getting products for stock:', error);
+        return {
+            success: false,
+            products: [],
+            error: 'Error al obtener los productos para stock',
+        };
+    }
+}
+
+export async function updateStockAction(
+    id: string,
+    data: {
+        stockInicial?: number;
+        llevamos?: number;
+        pedidosDelDia?: number;
+        stockFinal?: number;
+    }
+) {
+    try {
+        const result = await updateStockMongo(id, data);
+
+        if (result.success) {
+            revalidatePath('/admin/express');
+        }
+
+        return result;
+    } catch (error) {
+        console.error('Error updating stock:', error);
+        return {
+            success: false,
+            message: 'Error al actualizar el stock',
+        };
+    }
+}
+
+export async function getPedidosDelDiaAction(puntoEnvio: string, date: Date) {
+    try {
+        const count = await countOrdersByDay(puntoEnvio, date);
+        return {
+            success: true,
+            count,
+        };
+    } catch (error) {
+        console.error('Error getting pedidos del día:', error);
+        return {
+            success: false,
+            count: 0,
         };
     }
 }

@@ -98,6 +98,24 @@ export const createExpressColumns = (onOrderUpdated?: () => void | Promise<void>
         minSize: 80,
     },
     {
+        accessorKey: 'shippingPrice',
+        header: () => <div className="w-full text-center">Costo de Envío</div>,
+        cell: ({ row }: CellContext<Order, unknown>) => {
+            const orderId = row.original._id;
+            const shippingPrice = row.original.shippingPrice || 0;
+            return (
+                <ShippingPriceCell 
+                    orderId={orderId} 
+                    currentPrice={shippingPrice}
+                    onUpdate={onOrderUpdated}
+                />
+            );
+        },
+        size: 100,
+        minSize: 90,
+        maxSize: 120,
+    },
+    {
         accessorKey: 'notesOwn',
         header: 'Notas propias',
         cell: ({ row }: CellContext<Order, unknown>) => {
@@ -215,21 +233,6 @@ export const createExpressColumns = (onOrderUpdated?: () => void | Promise<void>
         }
     },
     {
-        accessorKey: 'shippingPrice',
-        header: () => <div className="w-full text-center">Costo de Envío</div>,
-        cell: ({ row }: CellContext<Order, unknown>) => {
-            const orderId = row.original._id;
-            const shippingPrice = row.original.shippingPrice || 0;
-            return (
-                <ShippingPriceCell 
-                    orderId={orderId} 
-                    currentPrice={shippingPrice}
-                    onUpdate={onOrderUpdated}
-                />
-            );
-        }
-    },
-    {
         accessorKey: 'notes',
         header: 'Notas',
         cell: ({ row }: CellContext<Order, unknown>) => {
@@ -253,8 +256,10 @@ export const createExpressColumns = (onOrderUpdated?: () => void | Promise<void>
             }
 
             const allNotes = [notes, addressInfo].filter(Boolean).join(' / ');
-            return <div className="min-w-[200px] text-sm whitespace-normal break-words">{allNotes || 'N/A'}</div>;
-        }
+            return <div className="min-w-[220px] text-sm whitespace-normal break-words">{allNotes || 'N/A'}</div>;
+        },
+        size: 220,
+        minSize: 200,
     },
     {
         accessorKey: 'user.email',
@@ -264,26 +269,28 @@ export const createExpressColumns = (onOrderUpdated?: () => void | Promise<void>
                 return (
                     <Input
                         value={row.original.user?.email || ''}
-                        className="min-w-[10px] text-xs"
+                        className="min-w-[150px] text-xs"
                         readOnly
                     />
                 );
             }
             const user = row.original.user as Order['user'];
-            if (!user || !user.email) return <div className="min-w-[10px] text-sm">N/A</div>;
+            if (!user || !user.email) return <div className="min-w-[150px] text-sm">N/A</div>;
 
             const emailParts = user.email.split('@');
             const displayEmail = emailParts[0] + '@';
 
             return (
                 <div
-                    className="min-w-[10px] max-w-[60px] text-xs truncate"
+                    className="min-w-[150px] max-w-[200px] text-xs truncate"
                     title={user.email}
                 >
                     {displayEmail}
                 </div>
             );
-        }
+        },
+        size: 150,
+        minSize: 150,
     },
 ];
 

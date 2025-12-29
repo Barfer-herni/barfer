@@ -39,6 +39,7 @@ export { updateEstadoEnvio } from './updateEstadoEnvio';
 export { deleteOrder } from './deleteOrder';
 export { createOrder } from './createOrder';
 export { migrateClientType } from './migrateClientType';
+export { countOrdersByDay } from './countOrdersByDay';
 
 // ===== CLIENT MANAGEMENT =====
 export { markWhatsAppContacted, getWhatsAppContactStatus } from './markWhatsAppContacted';
@@ -58,7 +59,8 @@ export {
     getPriceHistory as getBarferPriceHistory,
     getPriceStats as getBarferPriceStats,
     initializeBarferPrices,
-    initializePricesForPeriod
+    initializePricesForPeriod,
+    getProductsForSelect
 } from './pricesService';
 export { getPricesByMonth, getPriceEvolution, comparePricesPeriods, getMostVolatilePrices, getPriceChangesSummary } from './priceHistoryService';
 export { normalizePricesCapitalization, removeDuplicatePrices } from './normalizePricesCapitalization';
@@ -169,3 +171,7 @@ export {
     updateDetalleEnvioMongo,
     deleteDetalleEnvioMongo
 } from './detalleEnvioService';
+
+// ===== PRODUCTOS PARA STOCK =====
+export { getProductsForStock } from './getProductsForStock';
+export type { ProductForStock } from './getProductsForStock';
