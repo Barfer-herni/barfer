@@ -176,20 +176,64 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         });
     }, [selectedDate, stock]);
 
-    // Calcular automáticamente los pedidos del día basándose en las órdenes
-    const calculatePedidosDelDia = useCallback((): number => {
-        if (!selectedPuntoEnvio || !selectedDate) return 0;
+    // Calcular automáticamente los pedidos del día para un producto específico
+    const calculatePedidosDelDia = useCallback((product?: ProductForStock): number => {
+        if (!selectedPuntoEnvio || !selectedDate || !product) return 0;
         
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
         
-        // Filtrar órdenes del día para este punto de envío
+        // Filtrar órdenes del día para este punto de envío que contengan el producto específico
         const ordersOfDay = orders.filter(order => {
             if (!order.puntoEnvio || order.puntoEnvio !== selectedPuntoEnvio) return false;
             
             // Comparar por fecha de creación (sin importar el estado)
             const orderDate = new Date(order.createdAt);
             const orderDateStr = format(orderDate, 'yyyy-MM-dd');
-            return orderDateStr === dateStr;
+            if (orderDateStr !== dateStr) return false;
+            
+            // Verificar si la orden contiene el producto específico
+            if (!order.items || order.items.length === 0) return false;
+            
+            const productName = (product.product || '').toUpperCase().trim();
+            const productWeight = product.weight ? (product.weight || '').toUpperCase().trim().replace(/\s+/g, '') : null;
+            
+            return order.items.some((item: any) => {
+                const itemProduct = (item.name || '').toUpperCase().trim();
+                
+                // Extraer el nombre del producto de item.name
+                // item.name puede ser "BOX PERRO POLLO", "BOX GATO POLLO", "BIG DOG POLLO", etc.
+                // product.product es solo "POLLO", "VACA", etc.
+                let extractedProductName = itemProduct;
+                
+                // Remover prefijos comunes
+                extractedProductName = extractedProductName.replace(/^BOX\s+PERRO\s+/i, '');
+                extractedProductName = extractedProductName.replace(/^BOX\s+GATO\s+/i, '');
+                extractedProductName = extractedProductName.replace(/^BIG\s+DOG\s+/i, '');
+                extractedProductName = extractedProductName.replace(/\s+\d+KG.*$/i, ''); // Remover peso del nombre si está
+                extractedProductName = extractedProductName.trim();
+                
+                // Comparar nombre del producto extraído con product.product
+                if (extractedProductName !== productName && itemProduct !== productName && !itemProduct.includes(productName)) {
+                    return false;
+                }
+                
+                // Si hay peso especificado en el producto, comparar también el peso
+                if (productWeight) {
+                    // El peso normalmente está en item.options[0].name (ej: "5KG")
+                    if (item.options && item.options.length > 0) {
+                        const itemWeight = (item.options[0]?.name || '').toUpperCase().trim().replace(/\s+/g, '');
+                        if (itemWeight === productWeight) return true;
+                    }
+                    
+                    // También buscar el peso en el nombre del producto (ej: "BOX PERRO POLLO 5KG")
+                    if (itemProduct.replace(/\s+/g, '').includes(productWeight)) return true;
+                    
+                    return false;
+                }
+                
+                // Si no hay peso especificado en el producto, considerar que coincide solo con el nombre
+                return true;
+            });
         });
         
         return ordersOfDay.length;
@@ -285,9 +329,9 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                 // Crear nuevo registro solo si no existe
                                 if (!selectedPuntoEnvio || !selectedDate || !product) return;
                                 
-                                const dateStr = format(selectedDate, 'yyyy-MM-dd');
-                                const pedidosDelDiaCalculado = calculatePedidosDelDia();
-                                const stockData: any = {
+                                    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+                                    const pedidosDelDiaCalculado = calculatePedidosDelDia(product);
+                                    const stockData: any = {
                                     puntoEnvio: selectedPuntoEnvio,
                                     producto: product.product,
                                     peso: product.weight || undefined,
@@ -351,6 +395,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         if (!selectedPuntoEnvio || !selectedDate) return;
 
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
+        const pedidosDelDiaCalculado = calculatePedidosDelDia(product);
         
         try {
             const result = await createStockAction({
@@ -359,7 +404,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 peso: product.weight || undefined,
                 stockInicial: 0,
                 llevamos: 0,
-                pedidosDelDia: 0,
+                pedidosDelDia: pedidosDelDiaCalculado,
                 stockFinal: 0,
                 fecha: new Date(dateStr).toISOString(),
             });
@@ -859,7 +904,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                     </div>
                                                                 </td>
                                                                 <td className="p-2 font-bold text-right">
-                                                                    <span className="text-gray-700">{calculatePedidosDelDia()}</span>
+                                                                    <span className="text-gray-700">{calculatePedidosDelDia(product)}</span>
                                                                 </td>
                                                                 <td className="p-2 text-right font-bold">{displayStockFinal}</td>
                                                                 <td className="p-2 text-center"></td>
