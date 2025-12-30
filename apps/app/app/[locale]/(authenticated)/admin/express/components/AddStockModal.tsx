@@ -118,7 +118,7 @@ export function AddStockModal({
 
         try {
             const { createStockAction } = await import('../actions');
-            
+
             const result = await createStockAction({
                 puntoEnvio,
                 producto: formData.producto.trim(),
@@ -127,7 +127,7 @@ export function AddStockModal({
                 llevamos: formData.llevamos,
                 pedidosDelDia: formData.pedidosDelDia,
                 stockFinal: formData.stockInicial - formData.llevamos,
-                fecha: formData.fecha.toISOString(),
+                fecha: format(formData.fecha, 'yyyy-MM-dd'),
             });
 
             if (result.success) {
@@ -196,8 +196,8 @@ export function AddStockModal({
                                     onChange={(e) => {
                                         const selectedProduct = productsForStock.find(p => p.formattedName === e.target.value);
                                         if (selectedProduct) {
-                                            setFormData({ 
-                                                ...formData, 
+                                            setFormData({
+                                                ...formData,
                                                 producto: selectedProduct.product,
                                                 peso: selectedProduct.weight || ''
                                             });

@@ -198,8 +198,9 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         if (!selectedDate) return [];
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
         return stock.filter(s => {
-            const stockDate = new Date(s.fecha);
-            const stockDateStr = format(stockDate, 'yyyy-MM-dd');
+            // Comparar directamente el string de fecha (primeros 10 caracteres)
+            // para evitar problemas de zona horaria
+            const stockDateStr = String(s.fecha).substring(0, 10);
             return stockDateStr === dateStr;
         });
     }, [selectedDate, stock]);
@@ -364,7 +365,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                     llevamos: currentLlevamos,
                                     stockFinal,
                                     pedidosDelDia: pedidosDelDiaCalculado,
-                                    fecha: dateStr,
+                                    fecha: dateStr, // Enviar formato YYYY-MM-DD
                                 };
 
                                 const result = await createStockAction(stockData);
@@ -446,7 +447,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 llevamos: 0,
                 pedidosDelDia: pedidosDelDiaCalculado,
                 stockFinal: 0,
-                fecha: new Date(dateStr).toISOString(),
+                fecha: dateStr, // Enviar formato YYYY-MM-DD
             });
 
             if (result.success) {
