@@ -12,19 +12,22 @@ import { ShippingPriceCell } from './ShippingPriceCell';
 export const createExpressColumns = (onOrderUpdated?: () => void | Promise<void>): ColumnDef<Order>[] => [
     {
         accessorKey: 'orderType',
-        header: 'Tipo Orden',
+        header: 'Tipo',
         cell: ({ row }: CellContext<Order, unknown>) => {
             const orderType = row.getValue('orderType') as Order['orderType'];
             const isWholesale = orderType === 'mayorista';
             return (
                 <Badge
                     variant={isWholesale ? 'destructive' : 'secondary'}
-                    className="text-xs"
+                    className="text-[10px] px-1 h-5"
                 >
-                    {orderType === 'mayorista' ? 'Mayorista' : 'Minorista'}
+                    {orderType === 'mayorista' ? 'M' : 'Min'}
                 </Badge>
             );
-        }
+        },
+        size: 50,
+        minSize: 40,
+        maxSize: 60,
     },
     {
         accessorKey: 'deliveryDay',
@@ -69,7 +72,7 @@ export const createExpressColumns = (onOrderUpdated?: () => void | Promise<void>
 
             return (
                 <div className={`flex h-full w-full items-center justify-center text-center ${bgColor} rounded-sm`} style={{ minWidth: 60, maxWidth: 70 }}>
-                    <span className="font-semibold">
+                    <span className="font-semibold text-xs">
                         {formatted}
                     </span>
                 </div>
@@ -81,15 +84,16 @@ export const createExpressColumns = (onOrderUpdated?: () => void | Promise<void>
     },
     {
         accessorKey: 'estadoEnvio',
-        header: 'Estado de Envío',
+        header: 'Est. Envío',
         cell: ({ row }: CellContext<Order, unknown>) => {
             const orderId = row.original._id;
             const estadoEnvio = row.original.estadoEnvio;
             return (
                 <div className="min-w-[80px] flex items-center justify-center">
-                    <EstadoEnvioCell 
-                        orderId={orderId} 
+                    <EstadoEnvioCell
+                        orderId={orderId}
                         currentEstado={estadoEnvio}
+                        onUpdate={onOrderUpdated}
                     />
                 </div>
             );
@@ -99,28 +103,28 @@ export const createExpressColumns = (onOrderUpdated?: () => void | Promise<void>
     },
     {
         accessorKey: 'shippingPrice',
-        header: () => <div className="w-full text-center">Costo de Envío</div>,
+        header: () => <div className="w-full text-center text-xs">Envío</div>,
         cell: ({ row }: CellContext<Order, unknown>) => {
             const orderId = row.original._id;
             const shippingPrice = row.original.shippingPrice || 0;
             return (
-                <ShippingPriceCell 
-                    orderId={orderId} 
+                <ShippingPriceCell
+                    orderId={orderId}
                     currentPrice={shippingPrice}
                     onUpdate={onOrderUpdated}
                 />
             );
         },
-        size: 100,
-        minSize: 90,
-        maxSize: 120,
+        size: 80,
+        minSize: 70,
+        maxSize: 90,
     },
     {
         accessorKey: 'notesOwn',
         header: 'Notas propias',
         cell: ({ row }: CellContext<Order, unknown>) => {
             const notesOwn = row.original.notesOwn || '';
-            return <div className="min-w-[100px] text-sm">{notesOwn}</div>;
+            return <div className="min-w-[100px] text-xs">{notesOwn}</div>;
         }
     },
     {
@@ -128,7 +132,7 @@ export const createExpressColumns = (onOrderUpdated?: () => void | Promise<void>
         header: 'Cliente',
         cell: ({ row }: CellContext<Order, unknown>) => {
             const user = row.original.user || '';
-            return <div className="min-w-[120px] text-sm whitespace-normal break-words">{user.name} {user.lastName}</div>;
+            return <div className="min-w-[120px] text-xs whitespace-normal break-words">{user.name} {user.lastName}</div>;
         },
     },
     {
@@ -136,7 +140,7 @@ export const createExpressColumns = (onOrderUpdated?: () => void | Promise<void>
         header: 'Dirección',
         cell: ({ row }: CellContext<Order, unknown>) => {
             const address = row.original.address as Order['address'];
-            return <div className="min-w-[180px] text-sm whitespace-normal break-words">{address ? `${address.address}, ${address.city}` : 'N/A'}</div>;
+            return <div className="min-w-[180px] text-xs whitespace-normal break-words">{address ? `${address.address}, ${address.city}` : 'N/A'}</div>;
         }
     },
     {
@@ -145,7 +149,7 @@ export const createExpressColumns = (onOrderUpdated?: () => void | Promise<void>
         cell: ({ row }: CellContext<Order, unknown>) => {
             const address = row.original.address as Order['address'];
             const formattedPhone = formatPhoneNumber(address?.phone || '');
-            return <div className="min-w-[10px] text-sm">{formattedPhone}</div>;
+            return <div className="min-w-[10px] text-xs">{formattedPhone}</div>;
         }
     },
     {
@@ -155,7 +159,7 @@ export const createExpressColumns = (onOrderUpdated?: () => void | Promise<void>
         cell: ({ row }: CellContext<Order, unknown>) => {
             const items = row.original.items as Order['items'];
             return (
-                <div className="min-w-[200px] text-sm whitespace-normal break-words">
+                <div className="min-w-[200px] text-xs whitespace-normal break-words">
                     {items.map((item, index) => {
                         const option = item.options[0] as any;
                         const optionName = option?.name || '';
@@ -185,12 +189,13 @@ export const createExpressColumns = (onOrderUpdated?: () => void | Promise<void>
     },
     {
         accessorKey: 'paymentMethod',
-        header: 'Medio de pago',
+        header: 'Pago',
         cell: ({ row }: CellContext<Order, unknown>) => {
             const paymentMethod = row.original.paymentMethod || '';
             const translatedPaymentMethod = PAYMENT_METHOD_TRANSLATIONS[paymentMethod.toLowerCase()] || paymentMethod;
-            return <div className="min-w-[100px] text-sm">{translatedPaymentMethod}</div>;
-        }
+            return <div className="min-w-[80px] text-xs">{translatedPaymentMethod}</div>;
+        },
+        size: 80,
     },
     {
         accessorKey: 'status',
@@ -210,16 +215,17 @@ export const createExpressColumns = (onOrderUpdated?: () => void | Promise<void>
 
             return (
                 <div className="h-full flex items-center justify-center">
-                    <span className={`text-xs px-2 py-1 rounded ${colorClass}`}>
+                    <span className={`text-[10px] px-2 py-1 rounded ${colorClass}`}>
                         {translatedStatus}
                     </span>
                 </div>
             );
-        }
+        },
+        size: 80,
     },
     {
         accessorKey: 'total',
-        header: () => <div className="w-full text-center">Total</div>,
+        header: () => <div className="w-full text-center text-xs">Total</div>,
         cell: ({ row }: CellContext<Order, unknown>) => {
             const amount = parseFloat(row.getValue('total') as string);
             const rounded = Math.round(amount);
@@ -229,8 +235,9 @@ export const createExpressColumns = (onOrderUpdated?: () => void | Promise<void>
                 minimumFractionDigits: 0,
                 maximumFractionDigits: 0,
             }).format(rounded);
-            return <div className="font-medium text-center min-w-[80px] text-sm">{formatted}</div>;
-        }
+            return <div className="font-medium text-center min-w-[70px] text-xs">{formatted}</div>;
+        },
+        size: 80,
     },
     {
         accessorKey: 'notes',
@@ -256,10 +263,10 @@ export const createExpressColumns = (onOrderUpdated?: () => void | Promise<void>
             }
 
             const allNotes = [notes, addressInfo].filter(Boolean).join(' / ');
-            return <div className="min-w-[220px] text-sm whitespace-normal break-words">{allNotes || 'N/A'}</div>;
+            return <div className="min-w-[200px] text-xs whitespace-normal break-words">{allNotes || 'N/A'}</div>;
         },
-        size: 220,
-        minSize: 200,
+        size: 200,
+        minSize: 150,
     },
     {
         accessorKey: 'user.email',
@@ -269,28 +276,28 @@ export const createExpressColumns = (onOrderUpdated?: () => void | Promise<void>
                 return (
                     <Input
                         value={row.original.user?.email || ''}
-                        className="min-w-[150px] text-xs"
+                        className="min-w-[100px] text-[10px]"
                         readOnly
                     />
                 );
             }
             const user = row.original.user as Order['user'];
-            if (!user || !user.email) return <div className="min-w-[150px] text-sm">N/A</div>;
+            if (!user || !user.email) return <div className="min-w-[100px] text-[10px]">N/A</div>;
 
             const emailParts = user.email.split('@');
             const displayEmail = emailParts[0] + '@';
 
             return (
                 <div
-                    className="min-w-[150px] max-w-[200px] text-xs truncate"
+                    className="min-w-[100px] max-w-[120px] text-[10px] truncate"
                     title={user.email}
                 >
                     {displayEmail}
                 </div>
             );
         },
-        size: 150,
-        minSize: 150,
+        size: 100,
+        minSize: 100,
     },
 ];
 

@@ -16,6 +16,7 @@ type EstadoEnvio = 'pendiente' | 'pidiendo' | 'en-viaje' | 'listo';
 interface EstadoEnvioCellProps {
     orderId: string;
     currentEstado?: EstadoEnvio;
+    onUpdate?: () => void;
 }
 
 const ESTADO_COLORS: Record<EstadoEnvio, string> = {
@@ -39,7 +40,7 @@ const ESTADO_LABELS_SHORT: Record<EstadoEnvio, string> = {
     'listo': 'Listo',
 };
 
-export function EstadoEnvioCell({ orderId, currentEstado = 'pendiente' }: EstadoEnvioCellProps) {
+export function EstadoEnvioCell({ orderId, currentEstado = 'pendiente', onUpdate }: EstadoEnvioCellProps) {
     const [estado, setEstado] = useState<EstadoEnvio>(currentEstado);
     const [isUpdating, setIsUpdating] = useState(false);
 
@@ -48,7 +49,7 @@ export function EstadoEnvioCell({ orderId, currentEstado = 'pendiente' }: Estado
 
         setIsUpdating(true);
         const previousEstado = estado;
-        
+
         // Actualización optimista
         setEstado(newEstado);
 
@@ -69,6 +70,9 @@ export function EstadoEnvioCell({ orderId, currentEstado = 'pendiente' }: Estado
                     title: '¡Éxito!',
                     description: `Estado actualizado a: ${ESTADO_LABELS[newEstado]}`,
                 });
+                if (onUpdate) {
+                    onUpdate();
+                }
             }
         } catch (error) {
             // Revertir en caso de error
@@ -90,7 +94,7 @@ export function EstadoEnvioCell({ orderId, currentEstado = 'pendiente' }: Estado
             onValueChange={(value) => handleEstadoChange(value as EstadoEnvio)}
             disabled={isUpdating}
         >
-            <SelectTrigger 
+            <SelectTrigger
                 className={`h-8 text-xs font-medium ${ESTADO_COLORS[estado]} border-none w-[70px] max-w-[70px]`}
                 title={ESTADO_LABELS[estado]}
             >
@@ -98,33 +102,33 @@ export function EstadoEnvioCell({ orderId, currentEstado = 'pendiente' }: Estado
                     {ESTADO_LABELS_SHORT[estado]}
                 </span>
             </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="pendiente">
-                        <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-gray-400" />
-                            <span>Pendiente</span>
-                        </div>
-                    </SelectItem>
-                    <SelectItem value="pidiendo">
-                        <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-sky-400" />
-                            <span>Pidiendo</span>
-                        </div>
-                    </SelectItem>
-                    <SelectItem value="en-viaje">
-                        <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-yellow-400" />
-                            <span>En Viaje</span>
-                        </div>
-                    </SelectItem>
-                    <SelectItem value="listo">
-                        <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-green-400" />
-                            <span>Listo</span>
-                        </div>
-                    </SelectItem>
-                </SelectContent>
-            </Select>
+            <SelectContent>
+                <SelectItem value="pendiente">
+                    <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-gray-400" />
+                        <span>Pendiente</span>
+                    </div>
+                </SelectItem>
+                <SelectItem value="pidiendo">
+                    <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-sky-400" />
+                        <span>Pidiendo</span>
+                    </div>
+                </SelectItem>
+                <SelectItem value="en-viaje">
+                    <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                        <span>En Viaje</span>
+                    </div>
+                </SelectItem>
+                <SelectItem value="listo">
+                    <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-green-400" />
+                        <span>Listo</span>
+                    </div>
+                </SelectItem>
+            </SelectContent>
+        </Select>
     );
 }
 

@@ -364,8 +364,6 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 const currentValues = localStockValuesRef.current[stockId] || {};
                 const currentStockInicial = currentValues.stockInicial ?? 0;
                 const currentLlevamos = currentValues.llevamos ?? 0;
-                const stockFinal = currentStockInicial - currentLlevamos;
-
                 // Marcar como guardando
                 savingFlags.current[stockId] = true;
 
@@ -379,19 +377,23 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 let targetProduct = product;
                 if (!targetProduct && !stockId.startsWith('new-')) {
                     // Intentar encontrar el producto en productsForStock basado en el stock actual
-                    // Recorremos productsForStock y buscamos match con el stock (por ID seria ideal, pero aqui por nombre)
-                    // Esto es complejo. Mejor confiar en que si es update, mantenemos el valor anterior O usamos 0 si no tenemos forma.
-                    // PERO, para nuevos registros SIEMPRE tenemos product.
-                    // Para actualizaciones desde la tabla, SIEMPRE pasamos product en el onChange.
+                    const currentStock = stock.find(s => String(s._id) === stockId);
+                    if (currentStock) {
+                        targetProduct = productsForStock.find(p => isSameProduct(currentStock, p));
+                    }
                 }
 
                 if (targetProduct) {
                     currentPedidosDelDia = calculatePedidosDelDia(targetProduct);
                 } else {
-                    // Si no tenemos producto (raro desde la tabla), intentar mantener el valor existente o usar 0
-                    // Esto soluciona que "saveStockValue" para updates necesite product
-                    // En la implementación de la tabla, SI pasamos product.
+                    // Si no se encuentra el producto, intentar usar el valor guardado
+                    const currentStock = stock.find(s => String(s._id) === stockId);
+                    currentPedidosDelDia = currentStock?.pedidosDelDia || 0;
                 }
+
+                // Fórmula: stockInicial + llevamos - pedidosDelDia = stockFinal
+                const stockFinal = currentStockInicial + currentLlevamos - currentPedidosDelDia;
+
 
                 // Guardar en servidor
                 try {
@@ -616,14 +618,14 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
             return 'bg-yellow-100 hover:bg-yellow-200';
         }
 
-        // VACA: rojo
+        // VACA: rojo más oscuro (antes era claro)
         if (productUpper.includes('VACA')) {
-            return 'bg-red-100 hover:bg-red-200';
+            return 'bg-red-300 hover:bg-red-400';
         }
 
-        // CERDO: marrón medio rosa
+        // CERDO: rosa claro (antes era más oscuro)
         if (productUpper.includes('CERDO')) {
-            return 'bg-rose-200 hover:bg-rose-300';
+            return 'bg-pink-100 hover:bg-pink-200';
         }
 
         // CORDERO: violeta
@@ -899,7 +901,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                             const localValues = localStockValues[emptyId] || { stockInicial: 0, llevamos: 0 };
                                                             const stockInicial = localValues.stockInicial ?? 0;
                                                             const llevamos = localValues.llevamos ?? 0;
-                                                            const stockFinalCalculado = stockInicial - llevamos;
+                                                            const stockFinalCalculado = stockInicial + llevamos - pedidosDelDia;
 
                                                             return (
                                                                 <tr key={`${product.section}-${product.product}-${product.weight || 'no-weight'}`} className={`border-b ${rowColorClass}`}>
@@ -988,7 +990,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                         };
                                                         const stockInicial = localValues.stockInicial ?? uniqueStockRecord.stockInicial ?? 0;
                                                         const llevamos = localValues.llevamos ?? uniqueStockRecord.llevamos ?? 0;
-                                                        const displayStockFinal = stockInicial - llevamos;
+                                                        const displayStockFinal = stockInicial + llevamos - pedidosDelDia;
 
                                                         return (
                                                             <tr key={`${product.section}-${product.product}-${product.weight || 'no-weight'}-${stockId}`} className={`border-b ${rowColorClass}`}>
@@ -1079,6 +1081,59 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                         {
                             isAdmin && (
                                 <TabsContent value="detalle" className="mt-6">
+                                    {(() => {
+                                        // Calcular totales
+                                        const totalEnvios = orders.length; // Usar órdenes filtradas por fecha y punto de envío si es necesario
+                                        const totalIngresos = orders.reduce((sum, order) => sum + (order.total || 0), 0);
+                                        const totalCostoEnvio = orders.reduce((sum, order) => sum + (order.shippingPrice || 0), 0);
+                                        const porcentajeCosto = totalIngresos > 0 ? ((totalCostoEnvio / totalIngresos) * 100).toFixed(1) : '0';
+
+                                        return (
+                                            <div className="grid gap-4 md:grid-cols-3 mb-6">
+                                                <Card>
+                                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                                        <CardTitle className="text-sm font-medium">
+                                                            Cantidad de Envíos
+                                                        </CardTitle>
+                                                        <Package className="h-4 w-4 text-muted-foreground" />
+                                                    </CardHeader>
+                                                    <CardContent>
+                                                        <div className="text-2xl font-bold">{totalEnvios}</div>
+                                                    </CardContent>
+                                                </Card>
+                                                <Card>
+                                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                                        <CardTitle className="text-sm font-medium">
+                                                            Costo de Envío Total
+                                                        </CardTitle>
+                                                        <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                                                    </CardHeader>
+                                                    <CardContent>
+                                                        <div className="text-2xl font-bold">
+                                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(totalCostoEnvio)}
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Equivale al {porcentajeCosto}% de los ingresos
+                                                        </p>
+                                                    </CardContent>
+                                                </Card>
+                                                <Card>
+                                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                                        <CardTitle className="text-sm font-medium">
+                                                            Ingresos Totales
+                                                        </CardTitle>
+                                                        <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                                                    </CardHeader>
+                                                    <CardContent>
+                                                        <div className="text-2xl font-bold">
+                                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(totalIngresos)}
+                                                        </div>
+                                                    </CardContent>
+                                                </Card>
+                                            </div>
+                                        );
+                                    })()}
+
                                     {isLoading ? (
                                         <Card>
                                             <CardContent className="py-8">
