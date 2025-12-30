@@ -165,6 +165,34 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         }
     };
 
+    // Normalizar nombre de producto para comparación (remover prefijos como "BOX PERRO", "BOX GATO", "BIG DOG")
+    const normalizeProductName = useCallback((productName: string): string => {
+        let normalized = (productName || '').toUpperCase().trim();
+        // Remover prefijos comunes
+        normalized = normalized.replace(/^BOX\s+PERRO\s+/i, '');
+        normalized = normalized.replace(/^BOX\s+GATO\s+/i, '');
+        normalized = normalized.replace(/^BIG\s+DOG\s+/i, '');
+        // Remover peso si está en el nombre
+        normalized = normalized.replace(/\s+\d+KG.*$/i, '');
+        return normalized.trim();
+    }, []);
+
+    // Normalizar peso para comparación (eliminar espacios y convertir a mayúsculas)
+    const normalizeWeight = useCallback((weight: string | null | undefined): string => {
+        if (!weight) return '';
+        return (weight || '').toUpperCase().trim().replace(/\s+/g, '');
+    }, []);
+
+    // Comparar si dos productos son el mismo (producto y peso)
+    const isSameProduct = useCallback((stockItem: Stock, product: ProductForStock): boolean => {
+        const stockProductNormalized = normalizeProductName(stockItem.producto || '');
+        const productNormalized = normalizeProductName(product.product || '');
+        const stockWeightNormalized = normalizeWeight(stockItem.peso);
+        const productWeightNormalized = normalizeWeight(product.weight);
+        
+        return stockProductNormalized === productNormalized && stockWeightNormalized === productWeightNormalized;
+    }, [normalizeProductName, normalizeWeight]);
+
     // Filtrar stock por fecha seleccionada
     const getStockForDate = useCallback((): Stock[] => {
         if (!selectedDate) return [];
@@ -299,13 +327,8 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                         // Verificar si ya existe un registro para este producto antes de crear
                         const stockForDate = getStockForDate();
                         if (product) {
-                            const existingStock = stockForDate.find(s => {
-                                const sProducto = (s.producto || '').toUpperCase().trim();
-                                const sPeso = (s.peso || '').toUpperCase().trim();
-                                const pProduct = (product.product || '').toUpperCase().trim();
-                                const pWeight = (product.weight || '').toUpperCase().trim();
-                                return sProducto === pProduct && sPeso === pWeight;
-                            });
+                            // Buscar stock existente usando comparación normalizada
+                            const existingStock = stockForDate.find(s => isSameProduct(s, product));
                             
                             if (existingStock) {
                                 // Si ya existe, actualizar en lugar de crear
@@ -331,9 +354,9 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                 // Crear nuevo registro solo si no existe
                                 if (!selectedPuntoEnvio || !selectedDate || !product) return;
                                 
-                                    const dateStr = format(selectedDate, 'yyyy-MM-dd');
-                                    const pedidosDelDiaCalculado = calculatePedidosDelDia(product);
-                                    const stockData: any = {
+                                const dateStr = format(selectedDate, 'yyyy-MM-dd');
+                                const pedidosDelDiaCalculado = calculatePedidosDelDia(product);
+                                const stockData: any = {
                                     puntoEnvio: selectedPuntoEnvio,
                                     producto: product.product,
                                     peso: product.weight || undefined,
@@ -404,7 +427,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
             }
             delete saveTimeouts.current[stockId];
         }, 1000);
-    }, [selectedPuntoEnvio, selectedDate, stock, getStockForDate, calculatePedidosDelDia]);
+    }, [selectedPuntoEnvio, selectedDate, stock, getStockForDate, calculatePedidosDelDia, isSameProduct, normalizeProductName, normalizeWeight]);
 
 
     // Función para crear stock si no existe
@@ -773,14 +796,8 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                     }).map((product) => {
                                                         // Buscar registros de stock para este producto en la fecha seleccionada
                                                         const stockForDate = getStockForDate();
-                                                        const stockRecords = stockForDate.filter(s => {
-                                                            const sProducto = (s.producto || '').toUpperCase().trim();
-                                                            const sPeso = (s.peso || '').toUpperCase().trim();
-                                                            const pProduct = (product.product || '').toUpperCase().trim();
-                                                            const pWeight = (product.weight || '').toUpperCase().trim();
-                                                            
-                                                            return sProducto === pProduct && sPeso === pWeight;
-                                                        });
+                                                        // Usar la función de comparación normalizada
+                                                        const stockRecords = stockForDate.filter(s => isSameProduct(s, product));
 
                                                         // Si hay múltiples registros, tomar solo el más reciente (por fecha de creación)
                                                         // Esto evita mostrar filas duplicadas
