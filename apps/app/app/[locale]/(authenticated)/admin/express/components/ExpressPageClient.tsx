@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Dictionary } from '@repo/internationalization';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo/design-system/components/ui/card';
@@ -47,16 +47,52 @@ interface ExpressPageClientProps {
 
 export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, canDelete, isAdmin = true }: ExpressPageClientProps) {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
+
+    // Obtener valores iniciales de la URL
+    const initialPuntoIdFromUrl = searchParams.get('puntoId');
+    const initialTabFromUrl = searchParams.get('tab') || 'orders';
+
     const [showAddStockModal, setShowAddStockModal] = useState(false);
     const [showCreatePuntoEnvioModal, setShowCreatePuntoEnvioModal] = useState(false);
-    const [selectedPuntoEnvio, setSelectedPuntoEnvio] = useState<string>('');
+
+    // Inicializar estado con valor de URL si existe
+    const [selectedPuntoEnvio, setSelectedPuntoEnvio] = useState<string>(initialPuntoIdFromUrl || '');
+    const [activeTab, setActiveTab] = useState<string>(initialTabFromUrl);
+
     const [puntosEnvio, setPuntosEnvio] = useState<PuntoEnvio[]>(initialPuntosEnvio);
+
+    // Función auxiliar para actualizar URL
+    const updateUrlParams = useCallback((param: string, value: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (value) {
+            params.set(param, value);
+        } else {
+            params.delete(param);
+        }
+        router.replace(`${pathname}?${params.toString()}`);
+    }, [searchParams, pathname, router]);
+
+    // Manejar cambio de punto de envío
+    const handlePuntoEnvioChange = (value: string) => {
+        setSelectedPuntoEnvio(value);
+        updateUrlParams('puntoId', value);
+    };
+
+    // Manejar cambio de tab
+    const handleTabChange = (value: string) => {
+        setActiveTab(value);
+        updateUrlParams('tab', value);
+    };
 
     // Debug: verificar datos recibidos
     useEffect(() => {
-        console.log('ExpressPageClient - initialPuntosEnvio:', initialPuntosEnvio);
-        console.log('ExpressPageClient - puntosEnvio state:', puntosEnvio);
-    }, [initialPuntosEnvio, puntosEnvio]);
+        // Si hay un puntoId en la URL pero no está seleccionado en el estado (casos borde), sincronizar
+        if (initialPuntoIdFromUrl && selectedPuntoEnvio !== initialPuntoIdFromUrl) {
+            setSelectedPuntoEnvio(initialPuntoIdFromUrl);
+        }
+    }, [initialPuntoIdFromUrl]);
 
     // Datos de las tablas
     const [orders, setOrders] = useState<Order[]>([]);
@@ -109,10 +145,11 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         }
     };
 
-    // Si no es admin y hay puntos de envío, seleccionar automáticamente (solo debería haber uno)
+    // Si no es admin y hay puntos de envío, seleccionar automáticamente si no hay selección (URL o estado)
     useEffect(() => {
         if (!isAdmin && puntosEnvio.length > 0 && !selectedPuntoEnvio) {
-            setSelectedPuntoEnvio(puntosEnvio[0].nombre || '');
+            const firstPunto = puntosEnvio[0].nombre || '';
+            handlePuntoEnvioChange(firstPunto);
         }
     }, [isAdmin, puntosEnvio, selectedPuntoEnvio]);
 
@@ -633,7 +670,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                             </label>
                             <Select
                                 value={selectedPuntoEnvio}
-                                onValueChange={setSelectedPuntoEnvio}
+                                onValueChange={handlePuntoEnvioChange}
                                 disabled={!isAdmin && puntosEnvio.length > 0}
                             >
                                 <SelectTrigger className="w-full max-w-md">
@@ -676,7 +713,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 )}
 
                 {selectedPuntoEnvio && (
-                    <Tabs defaultValue="orders" className="w-full">
+                    <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                         <TabsList className={isAdmin ? "grid w-full grid-cols-3" : "grid w-full grid-cols-2"}>
                             <TabsTrigger value="orders" className="flex items-center gap-2">
                                 <ShoppingCart className="h-4 w-4" />
