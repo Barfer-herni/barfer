@@ -164,8 +164,9 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         }
     }, [selectedPuntoEnvio, selectedDate]);
 
-    const loadTablasData = async (puntoEnvio: string, skipLocalUpdate = false) => {
-        setIsLoading(true);
+    const loadTablasData = async (puntoEnvio: string, options: { skipLocalUpdate?: boolean; silent?: boolean } = {}) => {
+        const { skipLocalUpdate = false, silent = false } = options;
+        if (!silent) setIsLoading(true);
         try {
             const [ordersResult, stockResult, detalleResult] = await Promise.all([
                 getExpressOrdersAction(puntoEnvio),
@@ -198,7 +199,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         } catch (error) {
             console.error('Error loading tablas data:', error);
         } finally {
-            setIsLoading(false);
+            if (!silent) setIsLoading(false);
         }
     };
 
@@ -496,7 +497,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                     console.error('Error saving stock:', error);
                     // Revertir cambios locales en caso de error
                     if (selectedPuntoEnvio) {
-                        loadTablasData(selectedPuntoEnvio, true);
+                        loadTablasData(selectedPuntoEnvio, { skipLocalUpdate: true });
                     }
                 } finally {
                     // Remover flag de guardando
@@ -759,9 +760,9 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                             ) : (
                                 <OrdersDataTable
                                     columns={createExpressColumns(() => {
-                                        // Recargar los datos después de actualizar una orden
+                                        // Recargar los datos después de actualizar una orden (silenciosamente)
                                         if (selectedPuntoEnvio) {
-                                            loadTablasData(selectedPuntoEnvio);
+                                            loadTablasData(selectedPuntoEnvio, { silent: true });
                                         }
                                     })}
                                     data={orders}
@@ -772,9 +773,9 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                     canEdit={canEdit}
                                     canDelete={canDelete}
                                     onOrderUpdated={() => {
-                                        // Recargar los datos después de actualizar una orden
+                                        // Recargar los datos después de actualizar una orden (silenciosamente)
                                         if (selectedPuntoEnvio) {
-                                            loadTablasData(selectedPuntoEnvio);
+                                            loadTablasData(selectedPuntoEnvio, { silent: true });
                                         }
                                     }}
                                 />
