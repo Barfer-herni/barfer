@@ -51,13 +51,13 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     const [showCreatePuntoEnvioModal, setShowCreatePuntoEnvioModal] = useState(false);
     const [selectedPuntoEnvio, setSelectedPuntoEnvio] = useState<string>('');
     const [puntosEnvio, setPuntosEnvio] = useState<PuntoEnvio[]>(initialPuntosEnvio);
-    
+
     // Debug: verificar datos recibidos
     useEffect(() => {
         console.log('ExpressPageClient - initialPuntosEnvio:', initialPuntosEnvio);
         console.log('ExpressPageClient - puntosEnvio state:', puntosEnvio);
     }, [initialPuntosEnvio, puntosEnvio]);
-    
+
     // Datos de las tablas
     const [orders, setOrders] = useState<Order[]>([]);
     const [stock, setStock] = useState<Stock[]>([]);
@@ -73,7 +73,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     const saveTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
     // Refs para flags que previenen creación duplicada
     const savingFlags = useRef<Record<string, boolean>>({});
-    
+
     // Paginación y ordenamiento para órdenes
     const [pagination, setPagination] = useState<PaginationState>({
         pageIndex: 0,
@@ -189,7 +189,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         const productNormalized = normalizeProductName(product.product || '');
         const stockWeightNormalized = normalizeWeight(stockItem.peso);
         const productWeightNormalized = normalizeWeight(product.weight);
-        
+
         return stockProductNormalized === productNormalized && stockWeightNormalized === productWeightNormalized;
     }, [normalizeProductName, normalizeWeight]);
 
@@ -208,63 +208,73 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     // Calcular automáticamente los pedidos del día para un producto específico
     const calculatePedidosDelDia = useCallback((product?: ProductForStock): number => {
         if (!selectedPuntoEnvio || !selectedDate || !product) return 0;
-        
+
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
-        
+
         // Filtrar órdenes del día para este punto de envío que contengan el producto específico
         const ordersOfDay = orders.filter(order => {
             if (!order.puntoEnvio || order.puntoEnvio !== selectedPuntoEnvio) return false;
-            
+
             // Comparar por fecha de creación (sin importar el estado)
             const orderDate = new Date(order.createdAt);
             const orderDateStr = format(orderDate, 'yyyy-MM-dd');
             if (orderDateStr !== dateStr) return false;
-            
+
             // Verificar si la orden contiene el producto específico
             if (!order.items || order.items.length === 0) return false;
-            
+
             const productName = (product.product || '').toUpperCase().trim();
             const productWeight = product.weight ? (product.weight || '').toUpperCase().trim().replace(/\s+/g, '') : null;
-            
+
             return order.items.some((item: any) => {
+                // Normalizar nombres para comparación
                 const itemProduct = (item.name || '').toUpperCase().trim();
-                
-                // Extraer el nombre del producto de item.name
-                // item.name puede ser "BOX PERRO POLLO", "BOX GATO POLLO", "BIG DOG POLLO", etc.
-                // product.product es solo "POLLO", "VACA", etc.
+
+                // 1. Comparación directa
+                if (itemProduct === productName) return true;
+
+                // 2. Comparación si el nombre del item incluye el nombre del producto (ej: "BOX PERRO VACA" incluye "VACA")
+                if (itemProduct.includes(productName)) {
+                    // Verificar si hay peso
+                    if (productWeight) {
+                        // El peso normalmente está en item.options[0].name (ej: "5KG")
+                        if (item.options && item.options.length > 0) {
+                            const itemWeight = (item.options[0]?.name || '').toUpperCase().trim().replace(/\s+/g, '');
+                            if (itemWeight === productWeight) return true;
+                        }
+                        // También buscar el peso en el nombre del producto (ej: "BOX PERRO POLLO 5KG")
+                        if (itemProduct.replace(/\s+/g, '').includes(productWeight)) return true;
+
+                        return false;
+                    }
+                    return true;
+                }
+
+                // 3. Comparación removiendo prefijos comunes
                 let extractedProductName = itemProduct;
-                
-                // Remover prefijos comunes
                 extractedProductName = extractedProductName.replace(/^BOX\s+PERRO\s+/i, '');
                 extractedProductName = extractedProductName.replace(/^BOX\s+GATO\s+/i, '');
                 extractedProductName = extractedProductName.replace(/^BIG\s+DOG\s+/i, '');
                 extractedProductName = extractedProductName.replace(/\s+\d+KG.*$/i, ''); // Remover peso del nombre si está
                 extractedProductName = extractedProductName.trim();
-                
-                // Comparar nombre del producto extraído con product.product
-                if (extractedProductName !== productName && itemProduct !== productName && !itemProduct.includes(productName)) {
-                    return false;
-                }
-                
-                // Si hay peso especificado en el producto, comparar también el peso
-                if (productWeight) {
-                    // El peso normalmente está en item.options[0].name (ej: "5KG")
-                    if (item.options && item.options.length > 0) {
-                        const itemWeight = (item.options[0]?.name || '').toUpperCase().trim().replace(/\s+/g, '');
-                        if (itemWeight === productWeight) return true;
+
+                if (extractedProductName === productName) {
+                    // Verificar peso si aplica
+                    if (productWeight) {
+                        if (item.options && item.options.length > 0) {
+                            const itemWeight = (item.options[0]?.name || '').toUpperCase().trim().replace(/\s+/g, '');
+                            if (itemWeight === productWeight) return true;
+                        }
+                        if (itemProduct.replace(/\s+/g, '').includes(productWeight)) return true;
+                        return false;
                     }
-                    
-                    // También buscar el peso en el nombre del producto (ej: "BOX PERRO POLLO 5KG")
-                    if (itemProduct.replace(/\s+/g, '').includes(productWeight)) return true;
-                    
-                    return false;
+                    return true;
                 }
-                
-                // Si no hay peso especificado en el producto, considerar que coincide solo con el nombre
-                return true;
+
+                return false;
             });
         });
-        
+
         return ordersOfDay.length;
     }, [selectedPuntoEnvio, selectedDate, orders]);
 
@@ -284,24 +294,24 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                     [field]: value,
                 }
             };
-            
+
             // Actualizar ref para acceso directo
             localStockValuesRef.current = updated;
-            
+
             // Actualizar también el estado de stock local para reflejar cambios inmediatamente
             setStock(prevStock => {
                 const stockItem = prevStock.find(s => String(s._id) === stockId);
                 if (stockItem) {
                     const currentValues = updated[stockId] || { stockInicial: stockItem.stockInicial, llevamos: stockItem.llevamos };
-                    return prevStock.map(s => 
-                        String(s._id) === stockId 
+                    return prevStock.map(s =>
+                        String(s._id) === stockId
                             ? { ...s, [field]: value, stockFinal: currentValues.stockInicial - currentValues.llevamos }
                             : s
                     );
                 }
                 return prevStock;
             });
-            
+
             return updated;
         });
 
@@ -312,16 +322,40 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 if (savingFlags.current[stockId]) {
                     return;
                 }
-                
+
                 // Obtener valores actualizados del estado local usando ref (no setState)
                 const currentValues = localStockValuesRef.current[stockId] || {};
                 const currentStockInicial = currentValues.stockInicial ?? 0;
                 const currentLlevamos = currentValues.llevamos ?? 0;
                 const stockFinal = currentStockInicial - currentLlevamos;
-                
+
                 // Marcar como guardando
                 savingFlags.current[stockId] = true;
-                
+
+                // Recalcular pedidos del día actualizado para guardar
+                // Nota: si no pasamos product para actualizaciones, podríamos perder precisión,
+                // pero normalmente product viene del contexto de render o se puede buscar.
+                // En este caso, saveStockValue recibe product como argumento opcional, asegurarnos de pasarlo en el JSX.
+                let currentPedidosDelDia = 0;
+
+                // Buscar producto si no está presente (caso de update existente donde product puede venir undefined)
+                let targetProduct = product;
+                if (!targetProduct && !stockId.startsWith('new-')) {
+                    // Intentar encontrar el producto en productsForStock basado en el stock actual
+                    // Recorremos productsForStock y buscamos match con el stock (por ID seria ideal, pero aqui por nombre)
+                    // Esto es complejo. Mejor confiar en que si es update, mantenemos el valor anterior O usamos 0 si no tenemos forma.
+                    // PERO, para nuevos registros SIEMPRE tenemos product.
+                    // Para actualizaciones desde la tabla, SIEMPRE pasamos product en el onChange.
+                }
+
+                if (targetProduct) {
+                    currentPedidosDelDia = calculatePedidosDelDia(targetProduct);
+                } else {
+                    // Si no tenemos producto (raro desde la tabla), intentar mantener el valor existente o usar 0
+                    // Esto soluciona que "saveStockValue" para updates necesite product
+                    // En la implementación de la tabla, SI pasamos product.
+                }
+
                 // Guardar en servidor
                 try {
                     if (stockId.startsWith('new-')) {
@@ -330,13 +364,14 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                         if (product) {
                             // Buscar stock existente usando comparación normalizada
                             const existingStock = stockForDate.find(s => isSameProduct(s, product));
-                            
+
                             if (existingStock) {
                                 // Si ya existe, actualizar en lugar de crear
                                 const updateData: any = {
                                     stockInicial: currentStockInicial,
                                     llevamos: currentLlevamos,
                                     stockFinal,
+                                    pedidosDelDia: calculatePedidosDelDia(product),
                                 };
                                 const result = await updateStockAction(String(existingStock._id), updateData);
                                 if (result.success && result.stock) {
@@ -347,14 +382,14 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                         localStockValuesRef.current = updated;
                                         return updated;
                                     });
-                                    setStock(prev => prev.map(s => 
+                                    setStock(prev => prev.map(s =>
                                         String(s._id) === String(existingStock._id) ? result.stock! : s
                                     ));
                                 }
                             } else {
                                 // Crear nuevo registro solo si no existe
                                 if (!selectedPuntoEnvio || !selectedDate || !product) return;
-                                
+
                                 const dateStr = format(selectedDate, 'yyyy-MM-dd');
                                 const pedidosDelDiaCalculado = calculatePedidosDelDia(product);
                                 const stockData: any = {
@@ -389,10 +424,16 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                             llevamos: currentLlevamos,
                             stockFinal,
                         };
+
+                        // Si tenemos el producto, actualizar también pedidosDelDia
+                        if (product) {
+                            updateData.pedidosDelDia = calculatePedidosDelDia(product);
+                        }
+
                         const result = await updateStockAction(stockId, updateData);
                         if (result.success && result.stock) {
                             // Actualizar estado local sin recargar
-                            setStock(prev => prev.map(s => 
+                            setStock(prev => prev.map(s =>
                                 String(s._id) === stockId ? result.stock! : s
                             ));
                             // Actualizar también localStockValues con los valores del servidor
@@ -437,7 +478,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
 
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
         const pedidosDelDiaCalculado = calculatePedidosDelDia(product);
-        
+
         try {
             const result = await createStockAction({
                 puntoEnvio: selectedPuntoEnvio,
@@ -590,8 +631,8 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                             <label className="text-sm font-medium mb-2 block">
                                 Seleccionar Punto de Envío
                             </label>
-                            <Select 
-                                value={selectedPuntoEnvio} 
+                            <Select
+                                value={selectedPuntoEnvio}
                                 onValueChange={setSelectedPuntoEnvio}
                                 disabled={!isAdmin && puntosEnvio.length > 0}
                             >
@@ -614,12 +655,12 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                             </Select>
                         </div>
                         {isAdmin && (
-                        <div className="flex items-end">
-                            <Button onClick={() => setShowCreatePuntoEnvioModal(true)}>
-                                <Plus className="h-4 w-4 mr-2" />
-                                Crear Punto de Envío
-                            </Button>
-                        </div>
+                            <div className="flex items-end">
+                                <Button onClick={() => setShowCreatePuntoEnvioModal(true)}>
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Crear Punto de Envío
+                                </Button>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -646,10 +687,10 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                 Stock ({stock.length})
                             </TabsTrigger>
                             {isAdmin && (
-                            <TabsTrigger value="detalle" className="flex items-center gap-2">
-                                <BarChart3 className="h-4 w-4" />
-                                Detalle ({detalle.length})
-                            </TabsTrigger>
+                                <TabsTrigger value="detalle" className="flex items-center gap-2">
+                                    <BarChart3 className="h-4 w-4" />
+                                    Detalle ({detalle.length})
+                                </TabsTrigger>
                             )}
                         </TabsList>
 
@@ -727,13 +768,13 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-auto p-0" align="end">
                                                     <div className="flex flex-col">
-                                                    <Calendar
-                                                        mode="single"
-                                                        selected={selectedDate}
-                                                        onSelect={(date) => date && setSelectedDate(date)}
-                                                        initialFocus
-                                                        locale={es}
-                                                    />
+                                                        <Calendar
+                                                            mode="single"
+                                                            selected={selectedDate}
+                                                            onSelect={(date) => date && setSelectedDate(date)}
+                                                            initialFocus
+                                                            locale={es}
+                                                        />
                                                         <div className="border-t p-3">
                                                             <Button
                                                                 variant="outline"
@@ -785,14 +826,14 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                     {[...productsForStock].sort((a, b) => {
                                                         const orderA = getProductOrder(a.product, a.section);
                                                         const orderB = getProductOrder(b.product, b.section);
-                                                        
+
                                                         // Si tienen el mismo orden, ordenar por peso
                                                         if (orderA === orderB) {
                                                             const weightA = (a.weight || '').toUpperCase();
                                                             const weightB = (b.weight || '').toUpperCase();
                                                             return weightA.localeCompare(weightB);
                                                         }
-                                                        
+
                                                         return orderA - orderB;
                                                     }).map((product) => {
                                                         // Buscar registros de stock para este producto en la fecha seleccionada
@@ -801,17 +842,19 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                         const stockRecords = stockForDate.filter(s => isSameProduct(s, product));
 
                                                         // Si hay múltiples registros, tomar solo el más reciente (por fecha de creación)
-                                                        // Esto evita mostrar filas duplicadas
-                                                        const uniqueStockRecord = stockRecords.length > 0 
+                                                        const uniqueStockRecord = stockRecords.length > 0
                                                             ? stockRecords.sort((a, b) => {
                                                                 const dateA = new Date(a.createdAt || a.fecha || 0).getTime();
                                                                 const dateB = new Date(b.createdAt || b.fecha || 0).getTime();
-                                                                return dateB - dateA; // Más reciente primero
+                                                                return dateB - dateA;
                                                             })[0]
                                                             : null;
 
                                                         // Obtener el color de la fila para este producto
                                                         const rowColorClass = getProductRowColor(product.product, product.section);
+
+                                                        // Calcular pedidos del día en vivo
+                                                        const pedidosDelDia = calculatePedidosDelDia(product);
 
                                                         // Si no hay registros, mostrar una fila vacía con campos siempre editables
                                                         if (!uniqueStockRecord) {
@@ -820,7 +863,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                             const stockInicial = localValues.stockInicial ?? 0;
                                                             const llevamos = localValues.llevamos ?? 0;
                                                             const stockFinalCalculado = stockInicial - llevamos;
-                                                            
+
                                                             return (
                                                                 <tr key={`${product.section}-${product.product}-${product.weight || 'no-weight'}`} className={`border-b ${rowColorClass}`}>
                                                                     <td className="p-2 font-bold text-gray-700">{product.section}</td>
@@ -834,33 +877,27 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                                 value={stockInicial}
                                                                                 onChange={(e) => {
                                                                                     const inputValue = e.target.value;
-                                                                                    // Si está vacío, mantener el valor actual pero no actualizar todavía
-                                                                                    if (inputValue === '') {
-                                                                                        // No hacer nada si está vacío, permitir que el usuario siga escribiendo
-                                                                                        return;
-                                                                                    }
+                                                                                    if (inputValue === '') return;
                                                                                     const newValue = Number(inputValue);
                                                                                     if (!isNaN(newValue) && newValue >= 0) {
                                                                                         saveStockValue(emptyId, 'stockInicial', newValue, product);
                                                                                     }
                                                                                 }}
                                                                                 onBlur={(e) => {
-                                                                                    // Cuando el usuario sale del campo, asegurar que tenga un valor válido
                                                                                     const inputValue = e.target.value;
                                                                                     if (inputValue === '' || isNaN(Number(inputValue))) {
                                                                                         saveStockValue(emptyId, 'stockInicial', 0, product);
                                                                                     }
                                                                                 }}
                                                                                 onKeyDown={(e) => {
-                                                                                    // Solo prevenir cuando el valor es exactamente 0 y el usuario presiona un número
-                                                                                    if (stockInicial === 0 && /[0-9]/.test(e.key) && 
-                                                                                        e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && 
-                                                                                        e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
+                                                                                    if (stockInicial === 0 && /[0-9]/.test(e.key) &&
+                                                                                        e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' &&
+                                                                                        e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Enter') {
                                                                                         e.preventDefault();
                                                                                         saveStockValue(emptyId, 'stockInicial', Number(e.key), product);
                                                                                     }
                                                                                 }}
-                                                                                className="w-20 h-8 text-right font-bold"
+                                                                                className="w-20 text-right h-8 font-bold"
                                                                             />
                                                                         </div>
                                                                     </td>
@@ -872,55 +909,50 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                                 value={llevamos}
                                                                                 onChange={(e) => {
                                                                                     const inputValue = e.target.value;
-                                                                                    // Si está vacío, mantener el valor actual pero no actualizar todavía
-                                                                                    if (inputValue === '') {
-                                                                                        // No hacer nada si está vacío, permitir que el usuario siga escribiendo
-                                                                                        return;
-                                                                                    }
+                                                                                    if (inputValue === '') return;
                                                                                     const newValue = Number(inputValue);
                                                                                     if (!isNaN(newValue) && newValue >= 0) {
                                                                                         saveStockValue(emptyId, 'llevamos', newValue, product);
                                                                                     }
                                                                                 }}
                                                                                 onBlur={(e) => {
-                                                                                    // Cuando el usuario sale del campo, asegurar que tenga un valor válido
                                                                                     const inputValue = e.target.value;
                                                                                     if (inputValue === '' || isNaN(Number(inputValue))) {
                                                                                         saveStockValue(emptyId, 'llevamos', 0, product);
                                                                                     }
                                                                                 }}
                                                                                 onKeyDown={(e) => {
-                                                                                    // Solo prevenir cuando el valor es exactamente 0 y el usuario presiona un número
-                                                                                    if (llevamos === 0 && /[0-9]/.test(e.key) && 
-                                                                                        e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && 
-                                                                                        e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
+                                                                                    if (llevamos === 0 && /[0-9]/.test(e.key) &&
+                                                                                        e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' &&
+                                                                                        e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Enter') {
                                                                                         e.preventDefault();
                                                                                         saveStockValue(emptyId, 'llevamos', Number(e.key), product);
                                                                                     }
                                                                                 }}
-                                                                                className="w-20 h-8 text-right font-bold"
+                                                                                className="w-20 text-right h-8 font-bold"
                                                                             />
                                                                         </div>
                                                                     </td>
-                                                                    <td className="p-2 font-bold text-right">
-                                                                        <span className="text-gray-700">{calculatePedidosDelDia()}</span>
+                                                                    <td className="p-2 text-center">
+                                                                        <span className="font-semibold text-gray-700">{pedidosDelDia}</span>
                                                                     </td>
-                                                                    <td className="p-2 text-right font-bold">{stockFinalCalculado}</td>
-                                                                    <td className="p-2 text-center"></td>
+                                                                    <td className="p-2 text-right font-bold">
+                                                                        {stockFinalCalculado}
+                                                                    </td>
                                                                 </tr>
                                                             );
                                                         }
 
-                                                        // Mostrar solo un registro de stock por producto (el más reciente) - siempre editable
+                                                        // Si hay registro, usar sus valores
                                                         const stockId = String(uniqueStockRecord._id);
-                                                        const localValues = localStockValues[stockId] || { 
-                                                            stockInicial: uniqueStockRecord.stockInicial, 
-                                                            llevamos: uniqueStockRecord.llevamos 
+                                                        const localValues = localStockValues[stockId] || {
+                                                            stockInicial: uniqueStockRecord.stockInicial,
+                                                            llevamos: uniqueStockRecord.llevamos
                                                         };
                                                         const stockInicial = localValues.stockInicial ?? uniqueStockRecord.stockInicial ?? 0;
                                                         const llevamos = localValues.llevamos ?? uniqueStockRecord.llevamos ?? 0;
                                                         const displayStockFinal = stockInicial - llevamos;
-                                                        
+
                                                         return (
                                                             <tr key={`${product.section}-${product.product}-${product.weight || 'no-weight'}-${stockId}`} className={`border-b ${rowColorClass}`}>
                                                                 <td className="p-2 font-bold text-gray-700">{product.section}</td>
@@ -931,19 +963,15 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                         <Input
                                                                             type="number"
                                                                             min="0"
-                                                                            step="1"
                                                                             value={stockInicial}
                                                                             onChange={(e) => {
                                                                                 const inputValue = e.target.value;
-                                                                                // Convertir a número, usando 0 si está vacío o no es válido
                                                                                 const newValue = inputValue === '' ? 0 : (parseInt(inputValue, 10) || 0);
-                                                                                // Validar que sea un número válido y no negativo
                                                                                 if (!isNaN(newValue) && newValue >= 0) {
                                                                                     saveStockValue(stockId, 'stockInicial', newValue, product);
                                                                                 }
                                                                             }}
                                                                             onBlur={(e) => {
-                                                                                // Asegurar que tenga un valor válido al salir del campo
                                                                                 const inputValue = e.target.value;
                                                                                 const finalValue = inputValue === '' || isNaN(Number(inputValue)) ? 0 : parseInt(inputValue, 10);
                                                                                 if (!isNaN(finalValue) && finalValue >= 0) {
@@ -951,15 +979,14 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                                 }
                                                                             }}
                                                                             onKeyDown={(e) => {
-                                                                                // Solo prevenir cuando el valor es exactamente 0 y el usuario presiona un número
-                                                                                if (stockInicial === 0 && /[0-9]/.test(e.key) && 
-                                                                                    e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && 
+                                                                                if (stockInicial === 0 && /[0-9]/.test(e.key) &&
+                                                                                    e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' &&
                                                                                     e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Enter') {
                                                                                     e.preventDefault();
                                                                                     saveStockValue(stockId, 'stockInicial', Number(e.key), product);
                                                                                 }
                                                                             }}
-                                                                            className="w-20 h-8 text-right font-bold"
+                                                                            className="w-20 text-right h-8 font-bold"
                                                                         />
                                                                     </div>
                                                                 </td>
@@ -968,19 +995,15 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                         <Input
                                                                             type="number"
                                                                             min="0"
-                                                                            step="1"
                                                                             value={llevamos}
                                                                             onChange={(e) => {
                                                                                 const inputValue = e.target.value;
-                                                                                // Convertir a número, usando 0 si está vacío o no es válido
                                                                                 const newValue = inputValue === '' ? 0 : (parseInt(inputValue, 10) || 0);
-                                                                                // Validar que sea un número válido y no negativo
                                                                                 if (!isNaN(newValue) && newValue >= 0) {
                                                                                     saveStockValue(stockId, 'llevamos', newValue, product);
                                                                                 }
                                                                             }}
                                                                             onBlur={(e) => {
-                                                                                // Asegurar que tenga un valor válido al salir del campo
                                                                                 const inputValue = e.target.value;
                                                                                 const finalValue = inputValue === '' || isNaN(Number(inputValue)) ? 0 : parseInt(inputValue, 10);
                                                                                 if (!isNaN(finalValue) && finalValue >= 0) {
@@ -988,23 +1011,23 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                                 }
                                                                             }}
                                                                             onKeyDown={(e) => {
-                                                                                // Solo prevenir cuando el valor es exactamente 0 y el usuario presiona un número
-                                                                                if (llevamos === 0 && /[0-9]/.test(e.key) && 
-                                                                                    e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && 
+                                                                                if (llevamos === 0 && /[0-9]/.test(e.key) &&
+                                                                                    e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' &&
                                                                                     e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Enter') {
                                                                                     e.preventDefault();
                                                                                     saveStockValue(stockId, 'llevamos', Number(e.key), product);
                                                                                 }
                                                                             }}
-                                                                            className="w-20 h-8 text-right font-bold"
+                                                                            className="w-20 text-right h-8 font-bold"
                                                                         />
                                                                     </div>
                                                                 </td>
-                                                                <td className="p-2 font-bold text-right">
-                                                                    <span className="text-gray-700">{calculatePedidosDelDia(product)}</span>
+                                                                <td className="p-2 text-center">
+                                                                    <span className="font-semibold text-gray-700">{pedidosDelDia}</span>
                                                                 </td>
-                                                                <td className="p-2 text-right font-bold">{displayStockFinal}</td>
-                                                                <td className="p-2 text-center"></td>
+                                                                <td className="p-2 text-right font-bold">
+                                                                    {displayStockFinal}
+                                                                </td>
                                                             </tr>
                                                         );
                                                     })}
@@ -1016,33 +1039,36 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                             </Card>
                         </TabsContent>
 
-                        {isAdmin && (
-                        <TabsContent value="detalle" className="mt-6">
-                            {isLoading ? (
-                                <Card>
-                                    <CardContent className="py-8">
-                                        <div className="text-center text-muted-foreground">
-                                            <p>Cargando detalle...</p>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ) : detalle.length === 0 ? (
-                                <Card>
-                                    <CardContent className="py-8">
-                                        <div className="text-center text-muted-foreground">
-                                            <p>No hay datos de detalle disponibles para el punto de envío seleccionado.</p>
-                                            <p className="text-sm mt-2">Los datos de detalle se generan automáticamente cuando se procesan los envíos.</p>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ) : (
-                                <DetalleTable data={detalle} />
-                            )}
-                        </TabsContent>
-                        )}
-                    </Tabs>
-                )}
-            </div>
+                        {
+                            isAdmin && (
+                                <TabsContent value="detalle" className="mt-6">
+                                    {isLoading ? (
+                                        <Card>
+                                            <CardContent className="py-8">
+                                                <div className="text-center text-muted-foreground">
+                                                    <p>Cargando detalle...</p>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    ) : detalle.length === 0 ? (
+                                        <Card>
+                                            <CardContent className="py-8">
+                                                <div className="text-center text-muted-foreground">
+                                                    <p>No hay datos de detalle disponibles para el punto de envío seleccionado.</p>
+                                                    <p className="text-sm mt-2">Los datos de detalle se generan automáticamente cuando se procesan los envíos.</p>
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    ) : (
+                                        <DetalleTable data={detalle} />
+                                    )}
+                                </TabsContent>
+                            )
+                        }
+                    </Tabs >
+                )
+                }
+            </div >
 
             {selectedPuntoEnvio && (
                 <AddStockModal
@@ -1065,7 +1091,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                     handlePuntosEnvioRefresh();
                 }}
             />
-        </div>
+        </div >
     );
 }
 
