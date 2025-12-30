@@ -319,7 +319,9 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                     const newId = String(result.stock._id);
                                     setLocalStockValues(prevLocal => {
                                         const { [stockId]: _, ...rest } = prevLocal;
-                                        return { ...rest, [newId]: { stockInicial: currentStockInicial, llevamos: currentLlevamos } };
+                                        const updated = { ...rest, [newId]: { stockInicial: result.stock!.stockInicial, llevamos: result.stock!.llevamos } };
+                                        localStockValuesRef.current = updated;
+                                        return updated;
                                     });
                                     setStock(prev => prev.map(s => 
                                         String(s._id) === String(existingStock._id) ? result.stock! : s
@@ -348,7 +350,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                     const newId = String(result.stock._id);
                                     setLocalStockValues(prevLocal => {
                                         const { [stockId]: _, ...rest } = prevLocal;
-                                        const updated = { ...rest, [newId]: { stockInicial: currentStockInicial, llevamos: currentLlevamos } };
+                                        const updated = { ...rest, [newId]: { stockInicial: result.stock!.stockInicial, llevamos: result.stock!.llevamos } };
                                         localStockValuesRef.current = updated;
                                         return updated;
                                     });
@@ -369,6 +371,21 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                             setStock(prev => prev.map(s => 
                                 String(s._id) === stockId ? result.stock! : s
                             ));
+                            // Actualizar también localStockValues con los valores del servidor
+                            setLocalStockValues(prev => ({
+                                ...prev,
+                                [stockId]: {
+                                    stockInicial: result.stock!.stockInicial,
+                                    llevamos: result.stock!.llevamos,
+                                }
+                            }));
+                            localStockValuesRef.current = {
+                                ...localStockValuesRef.current,
+                                [stockId]: {
+                                    stockInicial: result.stock!.stockInicial,
+                                    llevamos: result.stock!.llevamos,
+                                }
+                            };
                         }
                     }
                 } catch (error) {
@@ -798,15 +815,31 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                                 min="0"
                                                                                 value={stockInicial}
                                                                                 onChange={(e) => {
-                                                                                    const newValue = e.target.value === '' ? 0 : Number(e.target.value) || 0;
-                                                                                    saveStockValue(emptyId, 'stockInicial', newValue, product);
+                                                                                    const inputValue = e.target.value;
+                                                                                    // Si está vacío, mantener el valor actual pero no actualizar todavía
+                                                                                    if (inputValue === '') {
+                                                                                        // No hacer nada si está vacío, permitir que el usuario siga escribiendo
+                                                                                        return;
+                                                                                    }
+                                                                                    const newValue = Number(inputValue);
+                                                                                    if (!isNaN(newValue) && newValue >= 0) {
+                                                                                        saveStockValue(emptyId, 'stockInicial', newValue, product);
+                                                                                    }
+                                                                                }}
+                                                                                onBlur={(e) => {
+                                                                                    // Cuando el usuario sale del campo, asegurar que tenga un valor válido
+                                                                                    const inputValue = e.target.value;
+                                                                                    if (inputValue === '' || isNaN(Number(inputValue))) {
+                                                                                        saveStockValue(emptyId, 'stockInicial', 0, product);
+                                                                                    }
                                                                                 }}
                                                                                 onKeyDown={(e) => {
-                                                                                    if (e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
-                                                                                        if (stockInicial === 0 && /[0-9]/.test(e.key)) {
-                                                                                            e.preventDefault();
-                                                                                            saveStockValue(emptyId, 'stockInicial', Number(e.key), product);
-                                                                                        }
+                                                                                    // Solo prevenir cuando el valor es exactamente 0 y el usuario presiona un número
+                                                                                    if (stockInicial === 0 && /[0-9]/.test(e.key) && 
+                                                                                        e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && 
+                                                                                        e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
+                                                                                        e.preventDefault();
+                                                                                        saveStockValue(emptyId, 'stockInicial', Number(e.key), product);
                                                                                     }
                                                                                 }}
                                                                                 className="w-20 h-8 text-right font-bold"
@@ -820,15 +853,31 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                                 min="0"
                                                                                 value={llevamos}
                                                                                 onChange={(e) => {
-                                                                                    const newValue = e.target.value === '' ? 0 : Number(e.target.value) || 0;
-                                                                                    saveStockValue(emptyId, 'llevamos', newValue, product);
+                                                                                    const inputValue = e.target.value;
+                                                                                    // Si está vacío, mantener el valor actual pero no actualizar todavía
+                                                                                    if (inputValue === '') {
+                                                                                        // No hacer nada si está vacío, permitir que el usuario siga escribiendo
+                                                                                        return;
+                                                                                    }
+                                                                                    const newValue = Number(inputValue);
+                                                                                    if (!isNaN(newValue) && newValue >= 0) {
+                                                                                        saveStockValue(emptyId, 'llevamos', newValue, product);
+                                                                                    }
+                                                                                }}
+                                                                                onBlur={(e) => {
+                                                                                    // Cuando el usuario sale del campo, asegurar que tenga un valor válido
+                                                                                    const inputValue = e.target.value;
+                                                                                    if (inputValue === '' || isNaN(Number(inputValue))) {
+                                                                                        saveStockValue(emptyId, 'llevamos', 0, product);
+                                                                                    }
                                                                                 }}
                                                                                 onKeyDown={(e) => {
-                                                                                    if (e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
-                                                                                        if (llevamos === 0 && /[0-9]/.test(e.key)) {
-                                                                                            e.preventDefault();
-                                                                                            saveStockValue(emptyId, 'llevamos', Number(e.key), product);
-                                                                                        }
+                                                                                    // Solo prevenir cuando el valor es exactamente 0 y el usuario presiona un número
+                                                                                    if (llevamos === 0 && /[0-9]/.test(e.key) && 
+                                                                                        e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && 
+                                                                                        e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
+                                                                                        e.preventDefault();
+                                                                                        saveStockValue(emptyId, 'llevamos', Number(e.key), product);
                                                                                     }
                                                                                 }}
                                                                                 className="w-20 h-8 text-right font-bold"
@@ -864,17 +913,32 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                         <Input
                                                                             type="number"
                                                                             min="0"
+                                                                            step="1"
                                                                             value={stockInicial}
                                                                             onChange={(e) => {
-                                                                                const newValue = e.target.value === '' ? 0 : Number(e.target.value) || 0;
-                                                                                saveStockValue(stockId, 'stockInicial', newValue, product);
+                                                                                const inputValue = e.target.value;
+                                                                                // Convertir a número, usando 0 si está vacío o no es válido
+                                                                                const newValue = inputValue === '' ? 0 : (parseInt(inputValue, 10) || 0);
+                                                                                // Validar que sea un número válido y no negativo
+                                                                                if (!isNaN(newValue) && newValue >= 0) {
+                                                                                    saveStockValue(stockId, 'stockInicial', newValue, product);
+                                                                                }
+                                                                            }}
+                                                                            onBlur={(e) => {
+                                                                                // Asegurar que tenga un valor válido al salir del campo
+                                                                                const inputValue = e.target.value;
+                                                                                const finalValue = inputValue === '' || isNaN(Number(inputValue)) ? 0 : parseInt(inputValue, 10);
+                                                                                if (!isNaN(finalValue) && finalValue >= 0) {
+                                                                                    saveStockValue(stockId, 'stockInicial', finalValue, product);
+                                                                                }
                                                                             }}
                                                                             onKeyDown={(e) => {
-                                                                                if (e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
-                                                                                    if (stockInicial === 0 && /[0-9]/.test(e.key)) {
-                                                                                        e.preventDefault();
-                                                                                        saveStockValue(stockId, 'stockInicial', Number(e.key), product);
-                                                                                    }
+                                                                                // Solo prevenir cuando el valor es exactamente 0 y el usuario presiona un número
+                                                                                if (stockInicial === 0 && /[0-9]/.test(e.key) && 
+                                                                                    e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && 
+                                                                                    e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Enter') {
+                                                                                    e.preventDefault();
+                                                                                    saveStockValue(stockId, 'stockInicial', Number(e.key), product);
                                                                                 }
                                                                             }}
                                                                             className="w-20 h-8 text-right font-bold"
@@ -886,17 +950,32 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                         <Input
                                                                             type="number"
                                                                             min="0"
+                                                                            step="1"
                                                                             value={llevamos}
                                                                             onChange={(e) => {
-                                                                                const newValue = e.target.value === '' ? 0 : Number(e.target.value) || 0;
-                                                                                saveStockValue(stockId, 'llevamos', newValue, product);
+                                                                                const inputValue = e.target.value;
+                                                                                // Convertir a número, usando 0 si está vacío o no es válido
+                                                                                const newValue = inputValue === '' ? 0 : (parseInt(inputValue, 10) || 0);
+                                                                                // Validar que sea un número válido y no negativo
+                                                                                if (!isNaN(newValue) && newValue >= 0) {
+                                                                                    saveStockValue(stockId, 'llevamos', newValue, product);
+                                                                                }
+                                                                            }}
+                                                                            onBlur={(e) => {
+                                                                                // Asegurar que tenga un valor válido al salir del campo
+                                                                                const inputValue = e.target.value;
+                                                                                const finalValue = inputValue === '' || isNaN(Number(inputValue)) ? 0 : parseInt(inputValue, 10);
+                                                                                if (!isNaN(finalValue) && finalValue >= 0) {
+                                                                                    saveStockValue(stockId, 'llevamos', finalValue, product);
+                                                                                }
                                                                             }}
                                                                             onKeyDown={(e) => {
-                                                                                if (e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') {
-                                                                                    if (llevamos === 0 && /[0-9]/.test(e.key)) {
-                                                                                        e.preventDefault();
-                                                                                        saveStockValue(stockId, 'llevamos', Number(e.key), product);
-                                                                                    }
+                                                                                // Solo prevenir cuando el valor es exactamente 0 y el usuario presiona un número
+                                                                                if (llevamos === 0 && /[0-9]/.test(e.key) && 
+                                                                                    e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' && 
+                                                                                    e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Enter') {
+                                                                                    e.preventDefault();
+                                                                                    saveStockValue(stockId, 'llevamos', Number(e.key), product);
                                                                                 }
                                                                             }}
                                                                             className="w-20 h-8 text-right font-bold"
