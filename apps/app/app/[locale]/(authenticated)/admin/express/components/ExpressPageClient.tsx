@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Dictionary } from '@repo/internationalization';
 import { Button } from '@repo/design-system/components/ui/button';
@@ -110,15 +110,104 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     // Refs para flags que previenen creación duplicada
     const savingFlags = useRef<Record<string, boolean>>({});
 
-    // Paginación y ordenamiento para órdenes
-    const [pagination, setPagination] = useState<PaginationState>({
-        pageIndex: 0,
-        pageSize: 50,
-    });
-    const [sorting, setSorting] = useState<SortingState>([{
-        id: 'createdAt',
-        desc: true,
-    }]);
+    // Obtener parámetros de paginación y filtros de la URL para procesamiento local
+    const pageFromUrl = Number(searchParams.get('page')) || 1;
+    const pageSizeFromUrl = Number(searchParams.get('pageSize')) || 50; // Default a 50 como estaba antes
+    const searchFromUrl = searchParams.get('search') || '';
+    const fromFromUrl = searchParams.get('from');
+    const toFromUrl = searchParams.get('to');
+    const orderTypeFromUrl = searchParams.get('orderType');
+    const sortFromUrl = searchParams.get('sort');
+
+    // Procesar órdenes: Filtrar -> Ordenar -> Paginar
+    // 1. Filtrar y Ordenar
+    const filteredAndSortedOrders = useMemo(() => {
+        let result = [...orders];
+
+        // A. Filtrar por Búsqueda
+        if (searchFromUrl) {
+            const searchLower = searchFromUrl.toLowerCase();
+            result = result.filter(order =>
+                (order.user?.name || '').toLowerCase().includes(searchLower) ||
+                (order.user?.lastName || '').toLowerCase().includes(searchLower) ||
+                (order.user?.email || '').toLowerCase().includes(searchLower) ||
+                (order.total?.toString() || '').includes(searchLower) ||
+                (typeof order._id === 'string' && order._id.includes(searchLower)) ||
+                (order.items || []).some((item: any) =>
+                    (item.name || '').toLowerCase().includes(searchLower) ||
+                    (item.fullName || '').toLowerCase().includes(searchLower)
+                ) ||
+                // Búsqueda por dirección
+                (order.address?.address || '').toLowerCase().includes(searchLower) ||
+                (order.address?.city || '').toLowerCase().includes(searchLower)
+            );
+        }
+
+        // B. Filtrar por Rango de Fechas
+        if (fromFromUrl || toFromUrl) {
+            const fromDate = fromFromUrl ? new Date(fromFromUrl) : null;
+            const toDate = toFromUrl ? new Date(toFromUrl) : null;
+            // Ajustar al fin del día para 'to'
+            if (toDate) toDate.setHours(23, 59, 59, 999);
+            // Ajustar al inicio del día para 'from' (aunque new Date("yyyy-mm-dd") ya es inicio UTC o local depende parsing,
+            // mejor asegurar y usar comparación simple de fechas)
+
+            result = result.filter(order => {
+                const orderDate = new Date(order.createdAt);
+                if (fromDate && orderDate < fromDate) return false;
+                if (toDate && orderDate > toDate) return false;
+                return true;
+            });
+        }
+
+        // C. Filtrar por Tipo de Orden
+        if (orderTypeFromUrl && orderTypeFromUrl !== 'all') {
+            result = result.filter(order => order.orderType === orderTypeFromUrl);
+        }
+
+        // D. Ordenar
+        if (sortFromUrl) {
+            const [sortId, sortDesc] = sortFromUrl.split('.');
+            const isDesc = sortDesc === 'desc';
+
+            result.sort((a: any, b: any) => {
+                // Obtener valor para ordenar
+                let valA = a[sortId];
+                let valB = b[sortId];
+
+                // Manejar casos especiales (objetos anidados)
+                if (sortId === 'user.name') {
+                    valA = `${a.user?.name || ''} ${a.user?.lastName || ''}`.trim();
+                    valB = `${b.user?.name || ''} ${b.user?.lastName || ''}`.trim();
+                } else if (sortId === 'total' || sortId === 'shippingPrice') {
+                    valA = Number(valA || 0);
+                    valB = Number(valB || 0);
+                }
+
+                // Comparación nula segura
+                if (valA === valB) return 0;
+                if (valA === null || valA === undefined) return 1;
+                if (valB === null || valB === undefined) return -1;
+
+                if (valA < valB) return isDesc ? 1 : -1;
+                if (valA > valB) return isDesc ? -1 : 1;
+                return 0;
+            });
+        } else {
+            // Default sort: createdAt desc
+            result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        }
+
+        return result;
+    }, [orders, searchFromUrl, fromFromUrl, toFromUrl, orderTypeFromUrl, sortFromUrl]);
+
+    // 2. Paginar
+    const paginatedOrders = useMemo(() => {
+        const startIndex = (pageFromUrl - 1) * pageSizeFromUrl;
+        return filteredAndSortedOrders.slice(startIndex, startIndex + pageSizeFromUrl);
+    }, [filteredAndSortedOrders, pageFromUrl, pageSizeFromUrl]);
+
+
 
     // Cargar productos para stock al montar el componente
     useEffect(() => {
@@ -765,11 +854,17 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                             loadTablasData(selectedPuntoEnvio, { silent: true });
                                         }
                                     })}
-                                    data={orders}
-                                    pageCount={Math.ceil(orders.length / pagination.pageSize)}
-                                    total={orders.length}
-                                    pagination={pagination}
-                                    sorting={sorting}
+                                    data={paginatedOrders}
+                                    pageCount={Math.ceil(filteredAndSortedOrders.length / pageSizeFromUrl)}
+                                    total={filteredAndSortedOrders.length}
+                                    pagination={{
+                                        pageIndex: pageFromUrl - 1,
+                                        pageSize: pageSizeFromUrl,
+                                    }}
+                                    sorting={sortFromUrl ? [{
+                                        id: sortFromUrl.split('.')[0],
+                                        desc: sortFromUrl.split('.')[1] === 'desc'
+                                    }] : [{ id: 'createdAt', desc: true }]}
                                     canEdit={canEdit}
                                     canDelete={canDelete}
                                     onOrderUpdated={() => {
