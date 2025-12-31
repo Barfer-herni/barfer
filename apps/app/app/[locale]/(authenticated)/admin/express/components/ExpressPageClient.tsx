@@ -355,12 +355,26 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
 
         // Sumar cantidades de los items que coinciden
         let totalQuantity = 0;
-        ordersOfDay.forEach(order => {
-            const productName = (product.product || '').toUpperCase().trim();
-            const productWeight = product.weight ? (product.weight || '').toUpperCase().trim().replace(/\s+/g, '') : null;
+        const sectionUpper = (product.section || '').toUpperCase();
+        const productName = (product.product || '').toUpperCase().trim();
+        const productWeight = product.weight ? (product.weight || '').toUpperCase().trim().replace(/\s+/g, '') : null;
 
+        ordersOfDay.forEach(order => {
             order.items.forEach((item: any) => {
                 const itemProduct = (item.name || '').toUpperCase().trim();
+
+                // --- VALIDACIÓN DE SECCIÓN ---
+                // Evitar mezclar PERRO con GATO
+                if (sectionUpper.includes('GATO')) {
+                    if (!itemProduct.includes('GATO')) return; // Item no es de gato
+                } else if (sectionUpper.includes('PERRO')) {
+                    // Si la sección es perro, el item debe ser perro o big dog
+                    // O al menos NO debe ser de Gato (por si hay nombres genéricos, aunque Express usa BOX PERRO/GATO)
+                    if (itemProduct.includes('GATO')) return;
+                    // Opcional: Requerir PERRO o BIG DOG explícitamente si los nombres son consistentes
+                    if (!itemProduct.includes('PERRO') && !itemProduct.includes('BIG DOG')) return;
+                }
+
                 let isMatch = false;
 
                 // 1. Comparación directa
