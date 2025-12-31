@@ -350,59 +350,72 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
             // Verificar si la orden contiene el producto específico
             if (!order.items || order.items.length === 0) return false;
 
+            return true;
+        });
+
+        // Sumar cantidades de los items que coinciden
+        let totalQuantity = 0;
+        ordersOfDay.forEach(order => {
             const productName = (product.product || '').toUpperCase().trim();
             const productWeight = product.weight ? (product.weight || '').toUpperCase().trim().replace(/\s+/g, '') : null;
 
-            return order.items.some((item: any) => {
-                // Normalizar nombres para comparación
+            order.items.forEach((item: any) => {
                 const itemProduct = (item.name || '').toUpperCase().trim();
+                let isMatch = false;
 
                 // 1. Comparación directa
-                if (itemProduct === productName) return true;
+                if (itemProduct === productName) isMatch = true;
 
-                // 2. Comparación si el nombre del item incluye el nombre del producto (ej: "BOX PERRO VACA" incluye "VACA")
-                if (itemProduct.includes(productName)) {
+                // 2. Comparación si el nombre del item incluye el nombre del producto
+                else if (itemProduct.includes(productName)) {
                     // Verificar si hay peso
                     if (productWeight) {
-                        // El peso normalmente está en item.options[0].name (ej: "5KG")
+                        let weightMatch = false;
                         if (item.options && item.options.length > 0) {
                             const itemWeight = (item.options[0]?.name || '').toUpperCase().trim().replace(/\s+/g, '');
-                            if (itemWeight === productWeight) return true;
+                            if (itemWeight === productWeight) weightMatch = true;
+                        } else if (itemProduct.replace(/\s+/g, '').includes(productWeight)) {
+                            weightMatch = true;
                         }
-                        // También buscar el peso en el nombre del producto (ej: "BOX PERRO POLLO 5KG")
-                        if (itemProduct.replace(/\s+/g, '').includes(productWeight)) return true;
-
-                        return false;
+                        if (weightMatch) isMatch = true;
+                    } else {
+                        isMatch = true;
                     }
-                    return true;
                 }
-
                 // 3. Comparación removiendo prefijos comunes
-                let extractedProductName = itemProduct;
-                extractedProductName = extractedProductName.replace(/^BOX\s+PERRO\s+/i, '');
-                extractedProductName = extractedProductName.replace(/^BOX\s+GATO\s+/i, '');
-                extractedProductName = extractedProductName.replace(/^BIG\s+DOG\s+/i, '');
-                extractedProductName = extractedProductName.replace(/\s+\d+KG.*$/i, ''); // Remover peso del nombre si está
-                extractedProductName = extractedProductName.trim();
+                else {
+                    let extractedProductName = itemProduct;
+                    extractedProductName = extractedProductName.replace(/^BOX\s+PERRO\s+/i, '');
+                    extractedProductName = extractedProductName.replace(/^BOX\s+GATO\s+/i, '');
+                    extractedProductName = extractedProductName.replace(/^BIG\s+DOG\s+/i, '');
+                    extractedProductName = extractedProductName.replace(/\s+\d+KG.*$/i, '');
+                    extractedProductName = extractedProductName.trim();
 
-                if (extractedProductName === productName) {
-                    // Verificar peso si aplica
-                    if (productWeight) {
-                        if (item.options && item.options.length > 0) {
-                            const itemWeight = (item.options[0]?.name || '').toUpperCase().trim().replace(/\s+/g, '');
-                            if (itemWeight === productWeight) return true;
+                    if (extractedProductName === productName) {
+                        if (productWeight) {
+                            if (item.options && item.options.length > 0) {
+                                const itemWeight = (item.options[0]?.name || '').toUpperCase().trim().replace(/\s+/g, '');
+                                if (itemWeight === productWeight) isMatch = true;
+                            } else if (itemProduct.replace(/\s+/g, '').includes(productWeight)) {
+                                isMatch = true;
+                            }
+                        } else {
+                            isMatch = true;
                         }
-                        if (itemProduct.replace(/\s+/g, '').includes(productWeight)) return true;
-                        return false;
                     }
-                    return true;
                 }
 
-                return false;
+                if (isMatch) {
+                    const qty = item.quantity || item.options?.[0]?.quantity || 1;
+                    totalQuantity += qty;
+                    if (product.product?.includes('VACA')) {
+                        console.log(`[DEBUG] Adding ${qty} to VACA from Order ${order._id?.substring(0, 8)}`);
+                    }
+                }
             });
         });
 
-        return ordersOfDay.length;
+        return totalQuantity;
     }, [selectedPuntoEnvio, selectedDate, orders]);
 
     // Función para guardar automáticamente con debounce
@@ -848,10 +861,11 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                 </Card>
                             ) : (
                                 <OrdersDataTable
-                                    columns={createExpressColumns(() => {
-                                        // Recargar los datos después de actualizar una orden (silenciosamente)
+                                    columns={createExpressColumns(async () => {
+                                        // Recargar los datos visualmente
                                         if (selectedPuntoEnvio) {
-                                            loadTablasData(selectedPuntoEnvio, { silent: true });
+                                            await loadTablasData(selectedPuntoEnvio, { silent: false });
+                                            router.refresh();
                                         }
                                     })}
                                     data={paginatedOrders}
@@ -867,10 +881,11 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                     }] : [{ id: 'createdAt', desc: true }]}
                                     canEdit={canEdit}
                                     canDelete={canDelete}
-                                    onOrderUpdated={() => {
-                                        // Recargar los datos después de actualizar una orden (silenciosamente)
+                                    onOrderUpdated={async () => {
+                                        // Recargar los datos visualmente para confirmar
                                         if (selectedPuntoEnvio) {
-                                            loadTablasData(selectedPuntoEnvio, { silent: true });
+                                            await loadTablasData(selectedPuntoEnvio, { silent: false });
+                                            router.refresh(); // Forzar actualización de componentes servidor también
                                         }
                                     }}
                                 />
