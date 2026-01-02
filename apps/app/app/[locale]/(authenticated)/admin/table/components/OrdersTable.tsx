@@ -139,13 +139,48 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
         }
     }, [table.getIsSomeRowsSelected(), table.getIsAllRowsSelected()]);
 
+    const getColumnWidth = (column: any) => {
+        const id = column.id;
+        // Map TanStack ids to our COLUMN_WIDTHS keys
+        const idMap: Record<string, string> = {
+            'orderType': 'orderType',
+            'deliveryDay': 'date',
+            'fecha': 'date',
+            'deliveryArea_schedule': 'schedule',
+            'notesOwn': 'notesOwn',
+            'user_name': 'client',
+            'address_address': 'address',
+            'address_phone': 'phone',
+            'items': 'items',
+            'paymentMethod': 'paymentMethod',
+            'status': 'status',
+            'total': 'total',
+            'notes': 'notes',
+            'user_email': 'email',
+            'estadoEnvio': 'estadoEnvio',
+            'shippingPrice': 'shippingPrice'
+        };
+
+        const widthKey = idMap[id] || id;
+        if (widthKey in COLUMN_WIDTHS) {
+            return `${COLUMN_WIDTHS[widthKey as keyof typeof COLUMN_WIDTHS]}px`;
+        }
+
+        const size = column.getSize();
+        if (size && size !== 150) {
+            return `${size}px`;
+        }
+
+        return '150px';
+    };
+
     return (
         <div className="rounded-md border">
             <Table className="table-fixed w-full border-collapse">
                 <TableHeader>
                     {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id}>
-                            <TableHead className="px-0 py-1 text-xs border-r border-border" style={{ width: `${COLUMN_WIDTHS.checkbox}px` }}>
+                            <TableHead className="px-0 py-1 text-sm border-r border-border" style={{ width: `${COLUMN_WIDTHS.checkbox}px` }}>
                                 <div className="flex justify-center">
                                     <input
                                         type="checkbox"
@@ -155,32 +190,18 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                     />
                                 </div>
                             </TableHead>
-                            {headerGroup.headers.map((header, index) => (
+                            {headerGroup.headers.map((header) => (
                                 <TableHead
                                     key={header.id}
-                                    className="px-0 py-1 text-xs border-r border-border"
-                                    style={{
-                                        width: index === 0 ? `${COLUMN_WIDTHS.orderType}px` :
-                                            index === 1 ? `${COLUMN_WIDTHS.date}px` :
-                                                index === 2 ? `${COLUMN_WIDTHS.schedule}px` :
-                                                    index === 3 ? `${COLUMN_WIDTHS.notesOwn}px` :
-                                                        index === 4 ? `${COLUMN_WIDTHS.client}px` :
-                                                            index === 5 ? `${COLUMN_WIDTHS.address}px` :
-                                                                index === 6 ? `${COLUMN_WIDTHS.phone}px` :
-                                                                    index === 7 ? `${COLUMN_WIDTHS.items}px` :
-                                                                        index === 8 ? `${COLUMN_WIDTHS.paymentMethod}px` :
-                                                                            index === 9 ? `${COLUMN_WIDTHS.status}px` :
-                                                                                index === 10 ? `${COLUMN_WIDTHS.total}px` :
-                                                                                    index === 11 ? `${COLUMN_WIDTHS.notes}px` :
-                                                                                        index === 12 ? `${COLUMN_WIDTHS.email}px` : '150px'
-                                    }}
+                                    className="px-0 py-1 text-sm border-r border-border"
+                                    style={{ width: getColumnWidth(header.column) }}
                                 >
                                     {header.isPlaceholder ? null : (
                                         <Button
                                             variant="ghost"
                                             onClick={header.column.getToggleSortingHandler()}
                                             disabled={!header.column.getCanSort()}
-                                            className="h-6 px-1 text-xs w-full justify-center"
+                                            className="h-6 px-1 text-sm w-full justify-center"
                                         >
                                             {flexRender(header.column.columnDef.header, header.getContext())}
                                             {{
@@ -191,7 +212,7 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                     )}
                                 </TableHead>
                             ))}
-                            <TableHead className="px-0 py-1 text-xs border-r border-border text-center" style={{ width: `${COLUMN_WIDTHS.actions}px` }}>
+                            <TableHead className="px-0 py-1 text-sm border-r border-border text-center" style={{ width: `${COLUMN_WIDTHS.actions}px` }}>
                                 Acciones
                             </TableHead>
                         </TableRow>
@@ -243,21 +264,7 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                         <TableCell
                                             key={cell.id}
                                             className={`px-0 py-1 border-r border-border ${dateBgColor} ${statusBgColor} ${statusTextColor} text-center${dateBgColor ? ' force-dark-black' : ''}`}
-                                            style={{
-                                                width: index === 0 ? `${COLUMN_WIDTHS.orderType}px` :
-                                                    index === 1 ? `${COLUMN_WIDTHS.date}px` :
-                                                        index === 2 ? `${COLUMN_WIDTHS.schedule}px` :
-                                                            index === 3 ? `${COLUMN_WIDTHS.notesOwn}px` :
-                                                                index === 4 ? `${COLUMN_WIDTHS.client}px` :
-                                                                    index === 5 ? `${COLUMN_WIDTHS.address}px` :
-                                                                        index === 6 ? `${COLUMN_WIDTHS.phone}px` :
-                                                                            index === 7 ? `${COLUMN_WIDTHS.items}px` :
-                                                                                index === 8 ? `${COLUMN_WIDTHS.paymentMethod}px` :
-                                                                                    index === 9 ? `${COLUMN_WIDTHS.status}px` :
-                                                                                        index === 10 ? `${COLUMN_WIDTHS.total}px` :
-                                                                                            index === 11 ? `${COLUMN_WIDTHS.notes}px` :
-                                                                                                index === 12 ? `${COLUMN_WIDTHS.email}px` : '150px'
-                                            }}
+                                            style={{ width: getColumnWidth(cell.column) }}
                                         >
                                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                         </TableCell>
@@ -281,16 +288,16 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                                         try {
                                                             const rowData = row.original as any;
                                                             const allItems = editValues.items || rowData.items || [];
-                                                            
+
                                                             // IMPORTANTE: Filtrar items válidos igual que al crear
                                                             const { filterValidItems } = await import('../helpers');
                                                             const currentItems = filterValidItems(allItems);
-                                                            
+
                                                             if (currentItems.length === 0) {
                                                                 alert('No hay productos válidos para generar el PDF.');
                                                                 return;
                                                             }
-                                                            
+
                                                             const currentOrderType = editValues.orderType || rowData.orderType || 'mayorista';
                                                             const currentPaymentMethod = editValues.paymentMethod || rowData.paymentMethod || '';
 
@@ -311,18 +318,18 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                                                     items: currentItems.map((i: any) => ({ name: i.name, fullName: i.fullName })),
                                                                     prices: priceResult.itemPrices.map(p => ({ name: p.name, price: p.unitPrice }))
                                                                 });
-                                                                
+
                                                                 // CRÍTICO: Mapear por NOMBRE, no por índice
                                                                 // itemPrices puede tener menos elementos si algunos items no encontraron precio
                                                                 itemsWithPrices = currentItems.map((item: any) => {
                                                                     const itemFullName = item.fullName || item.name;
                                                                     const itemName = item.name;
-                                                                    
+
                                                                     console.log(`🔍 [PDF EDIT] Buscando precio para item:`, {
                                                                         itemName,
                                                                         itemFullName
                                                                     });
-                                                                    
+
                                                                     // Estrategia de búsqueda múltiple para encontrar el precio correcto
                                                                     let priceInfo = priceResult.itemPrices?.find(ip => {
                                                                         // 1. Coincidencia exacta con fullName
@@ -330,28 +337,28 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                                                             console.log(`✅ Match exacto por fullName: ${ip.name} === ${itemFullName}`);
                                                                             return true;
                                                                         }
-                                                                        
+
                                                                         // 2. Coincidencia exacta con name
                                                                         if (ip.name === itemName) {
                                                                             console.log(`✅ Match exacto por name: ${ip.name} === ${itemName}`);
                                                                             return true;
                                                                         }
-                                                                        
+
                                                                         // 3. El precio contiene el fullName del item
                                                                         if (itemFullName && ip.name.includes(itemFullName)) {
                                                                             console.log(`✅ Match parcial: ${ip.name} contiene ${itemFullName}`);
                                                                             return true;
                                                                         }
-                                                                        
+
                                                                         // 4. El fullName del item contiene el nombre del precio
                                                                         if (itemFullName && itemFullName.includes(ip.name)) {
                                                                             console.log(`✅ Match parcial inverso: ${itemFullName} contiene ${ip.name}`);
                                                                             return true;
                                                                         }
-                                                                        
+
                                                                         return false;
                                                                     });
-                                                                    
+
                                                                     if (!priceInfo) {
                                                                         console.error(`❌ [PDF EDIT] No se encontró precio para:`, {
                                                                             itemName,
@@ -365,7 +372,7 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                                                             priceEntry: priceInfo.name
                                                                         });
                                                                     }
-                                                                    
+
                                                                     return {
                                                                         ...item,
                                                                         price: priceInfo?.unitPrice || 0,
@@ -403,11 +410,11 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                                             // Fallback: generar PDF sin precios calculados pero con items filtrados
                                                             const rowData = row.original as any;
                                                             const allItems = editValues.items || rowData.items || [];
-                                                            
+
                                                             // Filtrar items válidos en el fallback también
                                                             const { filterValidItems } = await import('../helpers');
                                                             const validItems = filterValidItems(allItems);
-                                                            
+
                                                             const pdfData = {
                                                                 user: {
                                                                     name: editValues.userName || rowData.user?.name || '',
@@ -455,7 +462,7 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                                 </Button>
                                             )}
                                             {!canEdit && !canDelete && (
-                                                <span className="text-xs text-muted-foreground px-2">Sin permisos</span>
+                                                <span className="text-sm text-muted-foreground px-2">Sin permisos</span>
                                             )}
                                         </div>
                                     )}
@@ -597,7 +604,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                 <Input
                     value={editValues.notesOwn || ''}
                     onChange={e => onEditValueChange('notesOwn', e.target.value)}
-                    className="w-full text-xs text-center"
+                    className="w-full text-sm text-center"
                 />
             </TableCell>
         );
@@ -610,40 +617,40 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                 <div className="space-y-2">
                     {/* Campo para notas generales */}
                     <div>
-                        <label className="text-xs font-medium text-gray-700 block mb-1.5">📝 Notas:</label>
+                        <label className="text-sm font-medium text-gray-700 block mb-1.5">📝 Notas:</label>
                         <Input
                             value={editValues.notes || ''}
                             onChange={e => onEditValueChange('notes', e.target.value)}
-                            className="w-full text-xs h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                            className="w-full text-sm h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                             placeholder="Notas generales..."
                         />
                     </div>
 
                     {/* Campo para referencia */}
                     <div>
-                        <label className="text-xs font-medium text-gray-700 block mb-1.5">📍 Referencia:</label>
+                        <label className="text-sm font-medium text-gray-700 block mb-1.5">📍 Referencia:</label>
                         <Input
                             value={editValues.address?.reference || ''}
                             onChange={e => onEditValueChange('address', { ...editValues.address, reference: e.target.value })}
-                            className="w-full text-xs h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                            className="w-full text-sm h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                             placeholder="Referencia..."
                         />
                     </div>
 
                     {/* Campo para piso y departamento */}
                     <div>
-                        <label className="text-xs font-medium text-gray-700 block mb-1.5">🏢 Piso/Depto:</label>
+                        <label className="text-sm font-medium text-gray-700 block mb-1.5">🏢 Piso/Depto:</label>
                         <div className="flex gap-2">
                             <Input
                                 value={editValues.address?.floorNumber || ''}
                                 onChange={e => onEditValueChange('address', { ...editValues.address, floorNumber: e.target.value })}
-                                className="w-1/2 text-xs h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                className="w-1/2 text-sm h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                 placeholder="Piso..."
                             />
                             <Input
                                 value={editValues.address?.departmentNumber || ''}
                                 onChange={e => onEditValueChange('address', { ...editValues.address, departmentNumber: e.target.value })}
-                                className="w-1/2 text-xs h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                className="w-1/2 text-sm h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                                 placeholder="Depto..."
                             />
                         </div>
@@ -651,11 +658,11 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
 
                     {/* Campo para entre calles */}
                     <div>
-                        <label className="text-xs font-medium text-gray-700 block mb-1.5">🚦 Entre calles:</label>
+                        <label className="text-sm font-medium text-gray-700 block mb-1.5">🚦 Entre calles:</label>
                         <Input
                             value={editValues.address?.betweenStreets || ''}
                             onChange={e => onEditValueChange('address', { ...editValues.address, betweenStreets: e.target.value })}
-                            className="w-full text-xs h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                            className="w-full text-sm h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                             placeholder="Entre calles..."
                         />
                     </div>
@@ -671,7 +678,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                 <select
                     value={editValues.status}
                     onChange={e => onEditValueChange('status', e.target.value)}
-                    className="w-full p-1 text-xs border border-gray-300 rounded-md text-center"
+                    className="w-full p-1 text-sm border border-gray-300 rounded-md text-center"
                 >
                     {STATUS_OPTIONS.map(option => (
                         <option key={option.value} value={option.value}>
@@ -689,7 +696,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                 <select
                     value={editValues.orderType}
                     onChange={e => onEditValueChange('orderType', e.target.value)}
-                    className="w-full p-1 text-xs border border-gray-300 rounded-md text-center"
+                    className="w-full p-1 text-sm border border-gray-300 rounded-md text-center"
                 >
                     {ORDER_TYPE_OPTIONS.map(option => (
                         <option key={option.value} value={option.value}>
@@ -707,7 +714,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                 <select
                     value={editValues.paymentMethod}
                     onChange={e => onEditValueChange('paymentMethod', e.target.value)}
-                    className="w-full p-1 text-xs border border-gray-300 rounded-md text-center"
+                    className="w-full p-1 text-sm border border-gray-300 rounded-md text-center"
                 >
                     {PAYMENT_METHOD_OPTIONS.map(option => (
                         <option key={option.value} value={option.value}>
@@ -724,7 +731,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
         return (
             <TableCell key={cell.id} className={`px-0 py-1 border-r border-border ${bgColor}`}>
                 <div className="space-y-1">
-                    <label className="text-xs font-medium text-gray-700 flex items-center gap-1">
+                    <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
                         Fecha de Entrega
                         <span className="text-red-500">*</span>
                     </label>
@@ -738,7 +745,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                                     return format(date, 'dd/MM/yyyy');
                                 })() : ''}
                                 placeholder="Seleccionar fecha"
-                                className={`w-full text-xs text-center ${!editValues.deliveryDay ? "border-red-500 focus:border-red-500" : ""}`}
+                                className={`w-full text-sm text-center ${!editValues.deliveryDay ? "border-red-500 focus:border-red-500" : ""}`}
                             />
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
@@ -766,7 +773,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                                             const today = new Date();
                                             onEditValueChange('deliveryDay', createLocalDateISO(today));
                                         }}
-                                        className="w-full text-xs"
+                                        className="w-full text-sm"
                                     >
                                         Hoy
                                     </Button>
@@ -775,7 +782,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                         </PopoverContent>
                     </Popover>
                     {!editValues.deliveryDay && (
-                        <p className="text-xs text-red-500">
+                        <p className="text-sm text-red-500">
                             La fecha de entrega es obligatoria
                         </p>
                     )}
@@ -792,7 +799,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                         placeholder="Buscar producto..."
                         value={productSearchFilter}
                         onChange={(e) => onProductSearchChange(e.target.value)}
-                        className="w-full p-1 text-xs"
+                        className="w-full p-1 text-sm"
                     />
                     {editValues.items?.map((item: any, itemIndex: number) => (
                         <div key={itemIndex} className="space-y-1">
@@ -818,7 +825,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
 
                                         onEditValueChange('items', newItems);
                                     }}
-                                    className="flex-1 p-1 text-xs border border-gray-300 rounded-md text-left bg-white cursor-pointer"
+                                    className="flex-1 p-1 text-sm border border-gray-300 rounded-md text-left bg-white cursor-pointer"
                                     disabled={productsLoading}
                                     style={{
                                         minHeight: '32px',
@@ -890,7 +897,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                                             onEditValueChange('items', newItems);
                                         }
                                     }}
-                                    className="w-12 p-1 text-xs text-center"
+                                    className="w-12 p-1 text-sm text-center"
                                     placeholder="Qty"
                                 />
                                 <Button
@@ -925,7 +932,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                             }];
                             onEditValueChange('items', newItems);
                         }}
-                        className="w-full text-xs"
+                        className="w-full text-sm"
                     >
                         + Agregar Item
                     </Button>
@@ -944,13 +951,13 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                         placeholder="Nombre"
                         value={editValues.userName || ''}
                         onChange={e => onEditValueChange('userName', e.target.value)}
-                        className="w-full p-1 text-xs"
+                        className="w-full p-1 text-sm"
                     />
                     <Input
                         placeholder="Apellido"
                         value={editValues.userLastName || ''}
                         onChange={e => onEditValueChange('userLastName', e.target.value)}
-                        className="w-full p-1 text-xs"
+                        className="w-full p-1 text-sm"
                     />
                 </div>
             </TableCell>
@@ -971,13 +978,13 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                             console.log('🔥 DIRECCION onChange - will call onEditValueChange with:', { ...editValues.address, address: e.target.value });
                             onEditValueChange('address', { ...editValues.address, address: e.target.value });
                         }}
-                        className="w-full p-1 text-xs"
+                        className="w-full p-1 text-sm"
                     />
                     <Input
                         placeholder="Ciudad"
                         value={editValues.address?.city || ''}
                         onChange={e => onEditValueChange('address', { ...editValues.address, city: e.target.value })}
-                        className="w-full p-1 text-xs"
+                        className="w-full p-1 text-sm"
                     />
                 </div>
             </TableCell>
@@ -995,9 +1002,9 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                         // No normalizar en tiempo real, solo guardar el valor tal como lo escribe el usuario
                         onEditValueChange('deliveryAreaSchedule', e.target.value);
                     }}
-                    className="w-full p-1 text-xs"
+                    className="w-full p-1 text-sm"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-sm text-gray-500 mt-1">
                     Puedes usar . o : para minutos (ej: 18.30 o 18:30). Se normalizará automáticamente al guardar.
                 </p>
             </TableCell>
@@ -1012,9 +1019,9 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                     placeholder="Teléfono (ej: 221 123-4567 o 11-1234-5678)"
                     value={editValues.address?.phone || ''}
                     onChange={e => onEditValueChange('address', { ...editValues.address, phone: e.target.value })}
-                    className="w-full p-1 text-xs"
+                    className="w-full p-1 text-sm"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-sm text-gray-500 mt-1">
                     Formato: La Plata (221 XXX-XXXX) o CABA/BA (11-XXXX-XXXX / 15-XXXX-XXXX)
                 </p>
             </TableCell>
@@ -1029,7 +1036,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                     placeholder="Email"
                     value={editValues.userEmail || ''}
                     onChange={e => onEditValueChange('userEmail', e.target.value)}
-                    className="w-full p-1 text-xs"
+                    className="w-full p-1 text-sm"
                 />
             </TableCell>
         );
@@ -1070,8 +1077,8 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                                         onEditValueChange(fieldKey, numValue);
                                     }
                                 }
-                            }} 
-                            className={`flex-1 text-xs text-center ${isCalculatingPrice ? 'bg-blue-50 border-blue-300' : ''}`}
+                            }}
+                            className={`flex-1 text-sm text-center ${isCalculatingPrice ? 'bg-blue-50 border-blue-300' : ''}`}
                             disabled={isCalculatingPrice}
                         />
                         {onForceRecalculatePrice && (
@@ -1110,7 +1117,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                                 }
                             }
                         }}
-                        className="w-full text-xs text-center"
+                        className="w-full text-sm text-center"
                     />
                 </TableCell>
             );
@@ -1122,7 +1129,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                     type="text"
                     value={editValues[fieldKey] === undefined ? '' : editValues[fieldKey]}
                     onChange={e => onEditValueChange(fieldKey, e.target.value || undefined)}
-                    className="w-full text-xs text-center"
+                    className="w-full text-sm text-center"
                 />
             </TableCell>
         );

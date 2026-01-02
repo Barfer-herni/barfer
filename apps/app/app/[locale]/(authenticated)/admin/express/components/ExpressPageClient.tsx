@@ -635,50 +635,6 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         }, 1000);
     }, [selectedPuntoEnvio, selectedDate, stock, getStockForDate, calculatePedidosDelDia, isSameProduct, normalizeProductName, normalizeWeight]);
 
-
-    // Función para crear stock si no existe
-    const handleCreateStockForProduct = async (product: ProductForStock) => {
-        if (!selectedPuntoEnvio || !selectedDate) return;
-
-        const dateStr = format(selectedDate, 'yyyy-MM-dd');
-        const pedidosDelDiaCalculado = calculatePedidosDelDia(product);
-
-        try {
-            const result = await createStockAction({
-                puntoEnvio: selectedPuntoEnvio,
-                producto: product.product,
-                peso: product.weight || undefined,
-                stockInicial: 0,
-                llevamos: 0,
-                pedidosDelDia: pedidosDelDiaCalculado,
-                stockFinal: 0,
-                fecha: dateStr, // Enviar formato YYYY-MM-DD
-            });
-
-            if (result.success) {
-                toast({
-                    title: '¡Éxito!',
-                    description: 'Registro de stock creado',
-                });
-                if (selectedPuntoEnvio) {
-                    loadTablasData(selectedPuntoEnvio);
-                }
-            } else {
-                toast({
-                    title: 'Error',
-                    description: result.message || 'Error al crear el stock',
-                    variant: 'destructive',
-                });
-            }
-        } catch (error) {
-            toast({
-                title: 'Error',
-                description: 'Error al crear el stock',
-                variant: 'destructive',
-            });
-        }
-    };
-
     // Función para determinar el orden de los productos
     const getProductOrder = (product: string, section: string): number => {
         const productUpper = product.toUpperCase();
