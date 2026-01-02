@@ -12,12 +12,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@repo/design-system/components/ui/select';
-import { Plus, Package, ShoppingCart, BarChart3, CalendarIcon, Edit2, Save, X } from 'lucide-react';
-import { Calendar } from '@repo/design-system/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@repo/design-system/components/ui/popover';
+import { Plus, Package, ShoppingCart, BarChart3, Edit2, Save, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { cn } from '@repo/design-system/lib/utils';
 import { Input } from '@repo/design-system/components/ui/input';
 import { toast } from '@repo/design-system/hooks/use-toast';
 import { AddStockModal } from './AddStockModal';
@@ -101,7 +98,6 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     const [detalle, setDetalle] = useState<DetalleEnvio[]>([]);
     const [productsForStock, setProductsForStock] = useState<ProductForStock[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     // Estado local para los valores editados (sin necesidad de modo edición)
     const [localStockValues, setLocalStockValues] = useState<Record<string, { stockInicial: number; llevamos: number }>>({});
     // Ref para mantener los valores actuales del estado (para acceder sin setState)
@@ -146,18 +142,23 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
 
         // B. Filtrar por Rango de Fechas
         if (fromFromUrl || toFromUrl) {
-            const fromDate = fromFromUrl ? new Date(fromFromUrl) : null;
-            const toDate = toFromUrl ? new Date(toFromUrl) : null;
-            // Ajustar al fin del día para 'to'
-            if (toDate) toDate.setHours(23, 59, 59, 999);
-            // Ajustar al inicio del día para 'from' (aunque new Date("yyyy-mm-dd") ya es inicio UTC o local depende parsing,
-            // mejor asegurar y usar comparación simple de fechas)
-
             result = result.filter(order => {
-                const orderDate = new Date(order.createdAt);
-                if (fromDate && orderDate < fromDate) return false;
-                if (toDate && orderDate > toDate) return false;
-                return true;
+                let orderDateStr: string;
+
+                if (order.deliveryDay) {
+                    // deliveryDay viene como Date de MongoDB, extraer fecha UTC
+                    const deliveryDate = new Date(order.deliveryDay);
+                    orderDateStr = deliveryDate.toISOString().substring(0, 10);
+                } else {
+                    // Convertir UTC a hora Argentina (UTC-3)
+                    const orderDate = new Date(order.createdAt);
+                    const argDate = new Date(orderDate.getTime() - (3 * 60 * 60 * 1000));
+                    orderDateStr = argDate.toISOString().substring(0, 10);
+                }
+
+                const passesFrom = !fromFromUrl || orderDateStr >= fromFromUrl;
+                const passesTo = !toFromUrl || orderDateStr <= toFromUrl;
+                return passesFrom && passesTo;
             });
         }
 
@@ -243,31 +244,16 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         }
     }, [isAdmin, puntosEnvio, selectedPuntoEnvio]);
 
-    // Cargar datos cuando se selecciona un punto de envío o cambia la fecha
+    // Cargar datos cuando se selecciona un punto de envío
     useEffect(() => {
         if (selectedPuntoEnvio) {
-            // Actualizar URL con la fecha seleccionada para que el filtro funcione
-            // Si la fecha seleccionada cambió, actualizar URL
-            const dateStr = format(selectedDate, 'yyyy-MM-dd');
-            const currentFrom = searchParams.get('from');
-
-            // Solo actualizar si es diferente para evitar loops, y solo si no estamos viendo "all" (que usa lógica propia)
-            // O mejor: si estamos en modo órdenes standard.
-            // Para "all" usamos ResumenGeneralTables que filtra internamente.
-            // Para "orders" tab normal, necesitamos que URL tenga from/to para que filteredAndSortedOrders funcione.
-
-            if (dateStr !== currentFrom) {
-                updateUrlParams('from', dateStr);
-                updateUrlParams('to', dateStr);
-            }
-
             loadTablasData(selectedPuntoEnvio);
         } else {
             setOrders([]);
             setStock([]);
             setDetalle([]);
         }
-    }, [selectedPuntoEnvio, selectedDate, updateUrlParams]);
+    }, [selectedPuntoEnvio]);
 
     const loadTablasData = async (puntoEnvio: string, options: { skipLocalUpdate?: boolean; silent?: boolean } = {}) => {
         const { skipLocalUpdate = false, silent = false } = options;
@@ -343,41 +329,51 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         return stockProductNormalized === productNormalized && stockWeightNormalized === productWeightNormalized;
     }, [normalizeProductName, normalizeWeight]);
 
-    // Filtrar stock por fecha seleccionada
+    // Filtrar stock por fecha seleccionada desde URL
     const getStockForDate = useCallback((): Stock[] => {
-        if (!selectedDate) return [];
-        const dateStr = format(selectedDate, 'yyyy-MM-dd');
+        const fromDate = searchParams.get('from');
+        const toDate = searchParams.get('to');
+
+        if (!fromDate) return stock; // Si no hay filtro, devolver todo
+
         return stock.filter(s => {
             // Comparar directamente el string de fecha (primeros 10 caracteres)
             // para evitar problemas de zona horaria
             const stockDateStr = String(s.fecha).substring(0, 10);
-            return stockDateStr === dateStr;
+
+            // Si from y to son iguales, filtrar por ese día específico
+            if (fromDate === toDate) {
+                return stockDateStr === fromDate;
+            }
+
+            // Si hay rango, filtrar por rango
+            return stockDateStr >= fromDate && stockDateStr <= (toDate || fromDate);
         });
-    }, [selectedDate, stock]);
+    }, [stock, searchParams]);
 
     // Calcular automáticamente los pedidos del día para un producto específico
     const calculatePedidosDelDia = useCallback((product?: ProductForStock): number => {
-        if (!selectedPuntoEnvio || !selectedDate || !product) return 0;
+        if (!selectedPuntoEnvio || !product) return 0;
 
-        const dateStr = format(selectedDate, 'yyyy-MM-dd');
+        const fromDate = searchParams.get('from');
+        if (!fromDate) return 0;
 
-        // Filtrar órdenes del día para este punto de envío que contengan el producto específico
         const ordersOfDay = orders.filter(order => {
             if (!order.puntoEnvio || order.puntoEnvio !== selectedPuntoEnvio) return false;
 
-            // Comparar por fecha (deliveryDay tiene prioridad sobre createdAt)
-            // Esto asegura que si se pidió ayer para hoy, cuente en el stock de hoy
+            let orderDateStr: string;
+
             if (order.deliveryDay) {
-                const orderDeliveryDate = String(order.deliveryDay).substring(0, 10);
-                if (orderDeliveryDate !== dateStr) return false;
+                // deliveryDay viene como Date de MongoDB, extraer fecha UTC
+                const deliveryDate = new Date(order.deliveryDay);
+                orderDateStr = deliveryDate.toISOString().substring(0, 10);
             } else {
-                // Fallback a createdAt si no hay deliveryDay
                 const orderDate = new Date(order.createdAt);
-                const orderDateStr = format(orderDate, 'yyyy-MM-dd');
-                if (orderDateStr !== dateStr) return false;
+                const argDate = new Date(orderDate.getTime() - (3 * 60 * 60 * 1000));
+                orderDateStr = argDate.toISOString().substring(0, 10);
             }
 
-            // Verificar si la orden contiene el producto específico
+            if (orderDateStr !== fromDate) return false;
             if (!order.items || order.items.length === 0) return false;
 
             return true;
@@ -452,17 +448,13 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 if (isMatch) {
                     const qty = item.quantity || item.options?.[0]?.quantity || 1;
                     totalQuantity += qty;
-                    if (product.product?.includes('VACA')) {
-                        console.log(`[DEBUG] Adding ${qty} to VACA from Order ${order._id?.substring(0, 8)}`);
-                    }
                 }
             });
         });
 
-        return totalQuantity;
-    }, [selectedPuntoEnvio, selectedDate, orders]);
 
-    // Función para guardar automáticamente con debounce
+        return totalQuantity;
+    }, [selectedPuntoEnvio, orders, searchParams]);    // Función para guardar automáticamente con debounce
     const saveStockValue = useCallback((stockId: string, field: 'stockInicial' | 'llevamos', value: number, product?: ProductForStock) => {
         // Limpiar timeout anterior si existe (usar solo stockId como clave)
         if (saveTimeouts.current[stockId]) {
@@ -574,9 +566,11 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                 }
                             } else {
                                 // Crear nuevo registro solo si no existe
-                                if (!selectedPuntoEnvio || !selectedDate || !product) return;
+                                if (!selectedPuntoEnvio || !product) return;
 
-                                const dateStr = format(selectedDate, 'yyyy-MM-dd');
+                                const fromDate = searchParams.get('from');
+                                if (!fromDate) return; // Necesitamos una fecha para crear stock
+
                                 const pedidosDelDiaCalculado = calculatePedidosDelDia(product);
                                 const stockData: any = {
                                     puntoEnvio: selectedPuntoEnvio,
@@ -586,7 +580,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                     llevamos: currentLlevamos,
                                     stockFinal,
                                     pedidosDelDia: pedidosDelDiaCalculado,
-                                    fecha: dateStr, // Enviar formato YYYY-MM-DD
+                                    fecha: fromDate, // Enviar formato YYYY-MM-DD desde URL
                                 };
 
                                 const result = await createStockAction(stockData);
@@ -655,7 +649,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
             }
             delete saveTimeouts.current[stockId];
         }, 1000);
-    }, [selectedPuntoEnvio, selectedDate, stock, getStockForDate, calculatePedidosDelDia, isSameProduct, normalizeProductName, normalizeWeight]);
+    }, [selectedPuntoEnvio, stock, getStockForDate, calculatePedidosDelDia, isSameProduct, normalizeProductName, normalizeWeight, searchParams]);
 
     // Función para determinar el orden de los productos
     const getProductOrder = (product: string, section: string): number => {
@@ -810,51 +804,13 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                     </div>
                 </div>
 
-                {/* Date Picker - Global for all tabs */}
-                <div className="mb-6 flex items-center gap-4 bg-gray-50 p-4 rounded-lg border border-gray-100">
-                    <div className="flex items-center gap-2">
-                        <CalendarIcon className="h-5 w-5 text-gray-500" />
-                        <span className="font-medium text-gray-700">Fecha seleccionada:</span>
-                    </div>
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant={"outline"}
-                                className={cn(
-                                    "w-[240px] justify-start text-left font-normal bg-white",
-                                    !selectedDate && "text-muted-foreground"
-                                )}
-                            >
-                                {selectedDate ? (
-                                    format(selectedDate, "PPP", { locale: es })
-                                ) : (
-                                    <span>Seleccionar fecha</span>
-                                )}
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                                mode="single"
-                                selected={selectedDate}
-                                onSelect={(date) => date && setSelectedDate(date)}
-                                initialFocus
-                            />
-                        </PopoverContent>
-                    </Popover>
-                    {selectedDate && (
-                        <span className="text-sm text-muted-foreground ml-2">
-                            {format(selectedDate, "EEEE", { locale: es })}
-                        </span>
-                    )}
-                </div>
-
                 {/* Mostrar Resumen General si está seleccionado "all" */}
                 {selectedPuntoEnvio === 'all' && (
                     <ResumenGeneralTables
                         orders={orders}
                         puntosEnvio={puntosEnvio}
                         productsForStock={productsForStock}
-                        selectedDate={selectedDate}
+                        selectedDateStr={searchParams.get('from') || format(new Date(), 'yyyy-MM-dd')}
                     />
                 )}
 
@@ -944,41 +900,6 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                             </CardDescription>
                                         </div>
                                         <div className="flex items-center gap-4">
-                                            <Popover>
-                                                <PopoverTrigger asChild>
-                                                    <Button
-                                                        variant="outline"
-                                                        className={cn(
-                                                            'w-[240px] justify-start text-left font-normal',
-                                                            !selectedDate && 'text-muted-foreground'
-                                                        )}
-                                                    >
-                                                        <CalendarIcon className="mr-2 h-4 w-4" />
-                                                        {selectedDate ? format(selectedDate, 'PPP', { locale: es }) : 'Seleccionar fecha'}
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-0" align="end">
-                                                    <div className="flex flex-col">
-                                                        <Calendar
-                                                            mode="single"
-                                                            selected={selectedDate}
-                                                            onSelect={(date) => date && setSelectedDate(date)}
-                                                            initialFocus
-                                                            locale={es}
-                                                        />
-                                                        <div className="border-t p-3">
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => setSelectedDate(new Date())}
-                                                                className="w-full"
-                                                            >
-                                                                Hoy
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                </PopoverContent>
-                                            </Popover>
                                             <Button onClick={() => setShowAddStockModal(true)} disabled={!selectedPuntoEnvio}>
                                                 <Plus className="h-4 w-4 mr-2" />
                                                 Agregar producto
@@ -1336,7 +1257,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                     open={showAddStockModal}
                     onOpenChange={setShowAddStockModal}
                     puntoEnvio={selectedPuntoEnvio}
-                    defaultDate={selectedDate}
+                    defaultDate={searchParams.get('from') ? new Date(searchParams.get('from')!) : new Date()}
                     onStockCreated={() => {
                         if (selectedPuntoEnvio) {
                             loadTablasData(selectedPuntoEnvio);

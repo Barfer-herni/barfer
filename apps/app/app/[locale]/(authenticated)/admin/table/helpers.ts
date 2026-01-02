@@ -550,29 +550,31 @@ export const downloadBase64File = (base64Data: string, fileName: string) => {
 };
 
 // Función para crear una fecha local preservando la fecha original
+// Las fechas en MongoDB se guardan en UTC, pero queremos interpretarlas en hora de Argentina (UTC-3)
 export const createLocalDate = (dateInput: string | Date | { $date: string }): Date => {
-    let date: Date;
+    let dateStr: string;
 
     // Si es un objeto con $date, extraer el string
     if (typeof dateInput === 'object' && '$date' in dateInput) {
-        date = new Date(dateInput.$date);
+        dateStr = dateInput.$date;
     }
-    // Si ya es un Date, usar directamente
+    // Si ya es un Date, convertir a ISO string
     else if (dateInput && typeof dateInput === 'object' && 'getTime' in dateInput) {
-        date = dateInput as Date;
+        dateStr = (dateInput as Date).toISOString();
     } else if (typeof dateInput === 'string') {
-        // Si es string, parsear
-        date = new Date(dateInput);
+        dateStr = dateInput;
     } else {
-        // Fallback
-        date = new Date(dateInput as any);
+        dateStr = new Date(dateInput as any).toISOString();
     }
 
-    // Sumar 5 horas para ajustar a Argentina (UTC-3)
-    const adjustedDate = new Date(date.getTime() + (5 * 60 * 60 * 1000));
+    // Extraer solo la parte de fecha (YYYY-MM-DD) del string
+    // Esto ignora completamente la hora y el timezone
+    const datePart = dateStr.substring(0, 10);
+    const [year, month, day] = datePart.split('-').map(Number);
 
-    // Crear fecha local preservando solo año, mes y día
-    return new Date(adjustedDate.getFullYear(), adjustedDate.getMonth(), adjustedDate.getDate());
+    // Crear fecha local en Argentina usando el constructor con componentes
+    // Esto crea una fecha a las 00:00:00 hora local (sin conversión de timezone)
+    return new Date(year, month - 1, day);
 };
 
 // Función para crear una fecha ISO preservando la fecha local

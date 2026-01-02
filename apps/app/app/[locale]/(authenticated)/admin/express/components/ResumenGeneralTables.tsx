@@ -10,28 +10,42 @@ interface ResumenGeneralTablesProps {
     orders: Order[];
     puntosEnvio: PuntoEnvio[];
     productsForStock: ProductForStock[];
-    selectedDate: Date;
+    selectedDateStr: string; // formato 'yyyy-MM-dd'
 }
 
-export function ResumenGeneralTables({ orders, puntosEnvio, productsForStock, selectedDate }: ResumenGeneralTablesProps) {
+export function ResumenGeneralTables({ orders, puntosEnvio, productsForStock, selectedDateStr }: ResumenGeneralTablesProps) {
+    // Convertir string a Date para el formato visual
+    const selectedDate = new Date(selectedDateStr + 'T12:00:00'); // Usar mediodía para evitar problemas de timezone
     const formattedDate = format(selectedDate, "EEEE d 'de' MMMM", { locale: es });
 
     // Filter orders for the selected date
     const ordersForDate = useMemo(() => {
-        const dateStr = format(selectedDate, 'yyyy-MM-dd');
-        return orders.filter(order => {
+        console.log('📋 [RESUMEN GENERAL] Filtrando órdenes para fecha:', selectedDateStr);
+        console.log('📋 [RESUMEN GENERAL] Total de órdenes a filtrar:', orders.length);
+
+        const filtered = orders.filter(order => {
             // Prioritize deliveryDay for filtering
             if (order.deliveryDay) {
                 const deliveryDateStr = String(order.deliveryDay).substring(0, 10);
-                return deliveryDateStr === dateStr;
+                const matches = deliveryDateStr === selectedDateStr;
+                console.log('📋 [RESUMEN] Orden', order._id, '| deliveryDay:', deliveryDateStr, '| Coincide:', matches);
+                return matches;
             }
 
             // Fallback to createdAt
+            // Convertir UTC a hora Argentina (UTC-3)
             const orderDate = new Date(order.createdAt);
-            const orderDateStr = format(orderDate, 'yyyy-MM-dd');
-            return orderDateStr === dateStr;
+            // Restar 3 horas para convertir de UTC a Argentina
+            const argDate = new Date(orderDate.getTime() - (3 * 60 * 60 * 1000));
+            const orderDateStr = argDate.toISOString().substring(0, 10);
+            const matches = orderDateStr === selectedDateStr;
+            console.log('📋 [RESUMEN] Orden', order._id, '| createdAt convertido:', orderDateStr, '| original:', order.createdAt, '| Coincide:', matches);
+            return matches;
         });
-    }, [orders, selectedDate]);
+
+        console.log('📋 [RESUMEN GENERAL] Total de órdenes filtradas:', filtered.length);
+        return filtered;
+    }, [orders, selectedDateStr]);
 
     // Data processing for both tables
     const summaryData = useMemo(() => {

@@ -22,20 +22,18 @@ export async function getAllPuntosEnvioMongo(): Promise<{
         const formattedPuntosEnvio: PuntoEnvio[] = puntosEnvio.map((doc) => {
             // Asegurar que el nombre existe y es un string
             const nombre = doc.nombre || '';
-            
+
             return {
                 _id: doc._id.toString(),
                 nombre: nombre,
-                createdAt: doc.createdAt instanceof Date 
-                    ? doc.createdAt.toISOString() 
+                createdAt: doc.createdAt instanceof Date
+                    ? doc.createdAt.toISOString()
                     : (typeof doc.createdAt === 'string' ? doc.createdAt : new Date().toISOString()),
-                updatedAt: doc.updatedAt instanceof Date 
-                    ? doc.updatedAt.toISOString() 
+                updatedAt: doc.updatedAt instanceof Date
+                    ? doc.updatedAt.toISOString()
                     : (typeof doc.updatedAt === 'string' ? doc.updatedAt : new Date().toISOString()),
             };
         });
-
-        console.log('getAllPuntosEnvioMongo - Found puntos:', formattedPuntosEnvio.length, formattedPuntosEnvio);
 
         return {
             success: true,

@@ -17,8 +17,10 @@ import {
 } from '@repo/design-system/components/ui/popover';
 
 // Función helper para crear fechas desde string
+// Crea fechas locales (sin conversión de timezone) para que coincidan con las fechas guardadas en UTC
 const createDateFromString = (dateString: string, isEndOfDay = false): Date => {
     const [year, month, day] = dateString.split('-').map(Number);
+    // Crear fecha en hora local de Argentina usando el constructor con componentes
     const date = new Date(year, month - 1, day);
 
     if (isEndOfDay) {
@@ -31,8 +33,12 @@ const createDateFromString = (dateString: string, isEndOfDay = false): Date => {
 };
 
 // Función helper para formatear fechas para la URL
+// Retorna formato YYYY-MM-DD sin conversión de timezone
 const formatDateForURL = (date: Date): string => {
-    return format(date, 'yyyy-MM-dd');
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 };
 
 export function DateRangeFilter({
