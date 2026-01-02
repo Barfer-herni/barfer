@@ -20,6 +20,13 @@ export function ResumenGeneralTables({ orders, puntosEnvio, productsForStock, se
     const ordersForDate = useMemo(() => {
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
         return orders.filter(order => {
+            // Prioritize deliveryDay for filtering
+            if (order.deliveryDay) {
+                const deliveryDateStr = String(order.deliveryDay).substring(0, 10);
+                return deliveryDateStr === dateStr;
+            }
+
+            // Fallback to createdAt
             const orderDate = new Date(order.createdAt);
             const orderDateStr = format(orderDate, 'yyyy-MM-dd');
             return orderDateStr === dateStr;

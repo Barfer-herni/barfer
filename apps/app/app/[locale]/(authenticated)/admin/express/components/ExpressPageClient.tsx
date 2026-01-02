@@ -246,13 +246,28 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     // Cargar datos cuando se selecciona un punto de envío o cambia la fecha
     useEffect(() => {
         if (selectedPuntoEnvio) {
+            // Actualizar URL con la fecha seleccionada para que el filtro funcione
+            // Si la fecha seleccionada cambió, actualizar URL
+            const dateStr = format(selectedDate, 'yyyy-MM-dd');
+            const currentFrom = searchParams.get('from');
+
+            // Solo actualizar si es diferente para evitar loops, y solo si no estamos viendo "all" (que usa lógica propia)
+            // O mejor: si estamos en modo órdenes standard.
+            // Para "all" usamos ResumenGeneralTables que filtra internamente.
+            // Para "orders" tab normal, necesitamos que URL tenga from/to para que filteredAndSortedOrders funcione.
+
+            if (dateStr !== currentFrom) {
+                updateUrlParams('from', dateStr);
+                updateUrlParams('to', dateStr);
+            }
+
             loadTablasData(selectedPuntoEnvio);
         } else {
             setOrders([]);
             setStock([]);
             setDetalle([]);
         }
-    }, [selectedPuntoEnvio, selectedDate]);
+    }, [selectedPuntoEnvio, selectedDate, updateUrlParams]);
 
     const loadTablasData = async (puntoEnvio: string, options: { skipLocalUpdate?: boolean; silent?: boolean } = {}) => {
         const { skipLocalUpdate = false, silent = false } = options;
@@ -350,10 +365,17 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         const ordersOfDay = orders.filter(order => {
             if (!order.puntoEnvio || order.puntoEnvio !== selectedPuntoEnvio) return false;
 
-            // Comparar por fecha de creación (sin importar el estado)
-            const orderDate = new Date(order.createdAt);
-            const orderDateStr = format(orderDate, 'yyyy-MM-dd');
-            if (orderDateStr !== dateStr) return false;
+            // Comparar por fecha (deliveryDay tiene prioridad sobre createdAt)
+            // Esto asegura que si se pidió ayer para hoy, cuente en el stock de hoy
+            if (order.deliveryDay) {
+                const orderDeliveryDate = String(order.deliveryDay).substring(0, 10);
+                if (orderDeliveryDate !== dateStr) return false;
+            } else {
+                // Fallback a createdAt si no hay deliveryDay
+                const orderDate = new Date(order.createdAt);
+                const orderDateStr = format(orderDate, 'yyyy-MM-dd');
+                if (orderDateStr !== dateStr) return false;
+            }
 
             // Verificar si la orden contiene el producto específico
             if (!order.items || order.items.length === 0) return false;
@@ -883,10 +905,9 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                 <OrdersDataTable
                                     fontSize="text-sm"
                                     columns={createExpressColumns(async () => {
-                                        // Recargar los datos visualmente
+                                        // Recargar los datos visualmente sin loading global
                                         if (selectedPuntoEnvio) {
-                                            await loadTablasData(selectedPuntoEnvio, { silent: false });
-                                            router.refresh();
+                                            await loadTablasData(selectedPuntoEnvio, { silent: true });
                                         }
                                     })}
                                     data={paginatedOrders}
@@ -903,10 +924,9 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                     canEdit={canEdit}
                                     canDelete={canDelete}
                                     onOrderUpdated={async () => {
-                                        // Recargar los datos visualmente para confirmar
+                                        // Recargar los datos visualmente sin loading global
                                         if (selectedPuntoEnvio) {
-                                            await loadTablasData(selectedPuntoEnvio, { silent: false });
-                                            router.refresh(); // Forzar actualización de componentes servidor también
+                                            await loadTablasData(selectedPuntoEnvio, { silent: true });
                                         }
                                     }}
                                 />
