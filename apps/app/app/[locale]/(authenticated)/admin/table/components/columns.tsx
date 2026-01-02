@@ -17,7 +17,7 @@ export const columns: ColumnDef<Order>[] = [
             return (
                 <Badge
                     variant={isWholesale ? 'destructive' : 'secondary'}
-                    className="text-sm"
+                    className="text-xs"
                 >
                     {orderType === 'mayorista' ? 'Mayorista' : 'Minorista'}
                 </Badge>
@@ -31,7 +31,7 @@ export const columns: ColumnDef<Order>[] = [
         cell: ({ row }: CellContext<Order, unknown>) => {
             const deliveryDay = row.original.deliveryDay;
             if (!deliveryDay) {
-                return <div className="w-full text-center text-base">--</div>;
+                return <div className="w-full text-center text-sm">--</div>;
             }
 
             // Usar la función helper para crear una fecha local
@@ -84,7 +84,7 @@ export const columns: ColumnDef<Order>[] = [
         header: 'Rango Horario',
         cell: ({ row }: CellContext<Order, unknown>) => {
             const deliveryArea = row.original.deliveryArea;
-            if (!deliveryArea?.schedule) return <div className="min-w-[90px] text-base">N/A</div>;
+            if (!deliveryArea?.schedule) return <div className="min-w-[90px] text-sm">N/A</div>;
 
             // Primero normalizar el schedule (convertir "APROXIMADAMENTE" a "aprox", etc.)
             const normalizedSchedule = normalizeScheduleTime(deliveryArea.schedule);
@@ -96,7 +96,7 @@ export const columns: ColumnDef<Order>[] = [
 
             if (match) {
                 // Si encuentra el patrón, devolver solo el horario
-                return <div className="min-w-[90px] text-base whitespace-normal break-words">{match[1]}</div>;
+                return <div className="min-w-[90px] text-sm whitespace-normal break-words">{match[1]}</div>;
             }
 
             // Si no encuentra el patrón exacto, intentar extraer cualquier horario
@@ -105,11 +105,11 @@ export const columns: ColumnDef<Order>[] = [
 
             if (fallbackMatch) {
                 // Agregar "aprox" si no está presente
-                return <div className="min-w-[90px] text-base whitespace-normal break-words">{fallbackMatch[1]} aprox</div>;
+                return <div className="min-w-[90px] text-sm whitespace-normal break-words">{fallbackMatch[1]} aprox</div>;
             }
 
             // Si no se puede extraer, devolver el schedule normalizado
-            return <div className="min-w-[90px] text-base whitespace-normal break-words">{normalizedSchedule}</div>;
+            return <div className="min-w-[90px] text-sm whitespace-normal break-words">{normalizedSchedule}</div>;
         }
     },
     {
@@ -117,13 +117,13 @@ export const columns: ColumnDef<Order>[] = [
         header: 'Notas propias',
         cell: ({ row }: CellContext<Order, unknown>) => {
             const notesOwn = row.original.notesOwn || '';
-            return <div className="min-w-[100px] text-base">{notesOwn}</div>;
+            return <div className="min-w-[100px] text-sm">{notesOwn}</div>;
         }
         // cell: ({ row }: CellContext<Order, unknown>) => {
         //     return (
         //         <Input
         //             placeholder="Nota..."
-        //             className="min-w-[100px] h-7 text-sm"
+        //             className="min-w-[100px] h-7 text-xs"
         //             defaultValue=""
         //         />
         //     );
@@ -134,7 +134,7 @@ export const columns: ColumnDef<Order>[] = [
         header: 'Cliente',
         cell: ({ row }: CellContext<Order, unknown>) => {
             const user = row.original.user || '';
-            return <div className="min-w-[120px] text-base whitespace-normal break-words">{user.name} {user.lastName}</div>;
+            return <div className="min-w-[120px] text-sm whitespace-normal break-words">{user.name} {user.lastName}</div>;
         },
     },
     {
@@ -142,7 +142,7 @@ export const columns: ColumnDef<Order>[] = [
         header: 'Dirección',
         cell: ({ row }: CellContext<Order, unknown>) => {
             const address = row.original.address as Order['address'];
-            return <div className="min-w-[180px] text-base whitespace-normal break-words">{address ? `${address.address}, ${address.city}` : 'N/A'}</div>;
+            return <div className="min-w-[180px] text-sm whitespace-normal break-words">{address ? `${address.address}, ${address.city}` : 'N/A'}</div>;
         }
     },
     {
@@ -151,7 +151,7 @@ export const columns: ColumnDef<Order>[] = [
         cell: ({ row }: CellContext<Order, unknown>) => {
             const address = row.original.address as Order['address'];
             const formattedPhone = formatPhoneNumber(address?.phone || '');
-            return <div className="min-w-[10px] text-base">{formattedPhone}</div>;
+            return <div className="min-w-[10px] text-sm">{formattedPhone}</div>;
         }
     },
     {
@@ -161,7 +161,7 @@ export const columns: ColumnDef<Order>[] = [
         cell: ({ row }: CellContext<Order, unknown>) => {
             const items = row.original.items as Order['items'];
             return (
-                <div className="min-w-[200px] text-base whitespace-normal break-words">
+                <div className="min-w-[200px] text-sm whitespace-normal break-words">
                     {items.map((item, index) => {
                         const option = item.options[0] as any;
                         const optionName = option?.name || '';
@@ -202,7 +202,7 @@ export const columns: ColumnDef<Order>[] = [
         cell: ({ row }: CellContext<Order, unknown>) => {
             const paymentMethod = row.original.paymentMethod || '';
             const translatedPaymentMethod = PAYMENT_METHOD_TRANSLATIONS[paymentMethod.toLowerCase()] || paymentMethod;
-            return <div className="min-w-[100px] text-base">{translatedPaymentMethod}</div>;
+            return <div className="min-w-[100px] text-sm">{translatedPaymentMethod}</div>;
         }
     },
     {
@@ -223,7 +223,7 @@ export const columns: ColumnDef<Order>[] = [
 
             return (
                 <div className="h-full flex items-center justify-center">
-                    <span className={`text-sm px-2 py-1 rounded ${colorClass}`}>
+                    <span className={`text-xs px-2 py-1 rounded ${colorClass}`}>
                         {translatedStatus}
                     </span>
                 </div>
@@ -242,7 +242,7 @@ export const columns: ColumnDef<Order>[] = [
                 minimumFractionDigits: 0,
                 maximumFractionDigits: 0,
             }).format(rounded);
-            return <div className="font-medium text-center min-w-[80px] text-base">{formatted}</div>;
+            return <div className="font-medium text-center min-w-[80px] text-sm">{formatted}</div>;
         }
     },
     {
@@ -272,7 +272,7 @@ export const columns: ColumnDef<Order>[] = [
             }
 
             const allNotes = [notes, addressInfo].filter(Boolean).join(' / ');
-            return <div className="min-w-[200px] text-base whitespace-normal break-words">{allNotes || 'N/A'}</div>;
+            return <div className="min-w-[200px] text-sm whitespace-normal break-words">{allNotes || 'N/A'}</div>;
         }
     },
     {
@@ -283,13 +283,13 @@ export const columns: ColumnDef<Order>[] = [
                 return (
                     <Input
                         value={row.original.user?.email || ''}
-                        className="min-w-[10px] text-sm"
+                        className="min-w-[10px] text-xs"
                         readOnly
                     />
                 );
             }
             const user = row.original.user as Order['user'];
-            if (!user || !user.email) return <div className="min-w-[10px] text-base">N/A</div>;
+            if (!user || !user.email) return <div className="min-w-[10px] text-sm">N/A</div>;
 
             // Mostrar solo hasta el "@" del email
             const emailParts = user.email.split('@');
@@ -297,7 +297,7 @@ export const columns: ColumnDef<Order>[] = [
 
             return (
                 <div
-                    className="min-w-[10px] max-w-[60px] text-sm truncate"
+                    className="min-w-[10px] max-w-[60px] text-xs truncate"
                     title={user.email}
                 >
                     {displayEmail}

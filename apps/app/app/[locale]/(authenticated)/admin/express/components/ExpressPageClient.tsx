@@ -881,6 +881,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                 </Card>
                             ) : (
                                 <OrdersDataTable
+                                    fontSize="text-sm"
                                     columns={createExpressColumns(async () => {
                                         // Recargar los datos visualmente
                                         if (selectedPuntoEnvio) {

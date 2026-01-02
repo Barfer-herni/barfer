@@ -52,6 +52,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     canEdit = false,
     canDelete = false,
     onOrderUpdated,
+    fontSize = 'text-xs',
 }: DataTableProps<TData, TValue>) {
     const router = useRouter();
     const pathname = usePathname();
@@ -521,7 +522,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 startTransition(() => {
                     router.refresh();
                 });
-                
+
                 // También hacer un refresh adicional después de un pequeño delay
                 // para asegurar que los datos se actualicen
                 setTimeout(() => {
@@ -546,7 +547,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
         try {
             const result = await deleteOrderAction(row.id);
             if (!result.success) throw new Error(result.error || 'Error al eliminar');
-            
+
             // Si hay un callback personalizado para actualizar datos, llamarlo
             if (onOrderUpdated) {
                 await onOrderUpdated();
@@ -556,14 +557,14 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 startTransition(() => {
                     router.refresh();
                 });
-                
+
                 // También hacer un refresh adicional después de un pequeño delay
                 // para asegurar que los datos se actualicen
                 setTimeout(() => {
                     router.refresh();
                 }, 500);
             }
-            
+
             updateBackupsCount(); // Actualizar contador después de eliminar
         } catch (e) {
             alert(e instanceof Error ? e.message : 'Error al eliminar la orden');
@@ -581,7 +582,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
         try {
             const result = await duplicateOrderAction(row.id);
             if (!result.success) throw new Error(result.error || 'Error al duplicar');
-            
+
             // Si hay un callback personalizado para actualizar datos, llamarlo
             if (onOrderUpdated) {
                 await onOrderUpdated();
@@ -591,14 +592,14 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 startTransition(() => {
                     router.refresh();
                 });
-                
+
                 // También hacer un refresh adicional después de un pequeño delay
                 // para asegurar que los datos se actualicen
                 setTimeout(() => {
                     router.refresh();
                 }, 500);
             }
-            
+
             alert(result.message || 'Pedido duplicado correctamente');
         } catch (e) {
             alert(e instanceof Error ? e.message : 'Error al duplicar la orden');
@@ -703,12 +704,12 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
 
             const result = await createOrderAction(orderDataWithFilteredItems);
             if (!result.success) throw new Error(result.error || 'Error al crear');
-            
+
             setShowCreateModal(false);
             setCreateFormData(createDefaultOrderData());
             setSelectedMayorista(null); // Limpiar mayorista seleccionado
             setItemPrices([]); // Limpiar precios
-            
+
             // Llamar al callback si está disponible (para express)
             if (onOrderUpdated) {
                 await onOrderUpdated();
@@ -718,7 +719,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 startTransition(() => {
                     router.refresh();
                 });
-                
+
                 // También hacer un refresh adicional después de un pequeño delay
                 // para asegurar que los datos se actualicen
                 setTimeout(() => {
@@ -1732,6 +1733,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 onPaginationChange={navigateToPagination}
                 onSortingChange={navigateToSorting}
                 isCalculatingPrice={isCalculatingPrice}
+                fontSize={fontSize}
             />
         </div>
     );

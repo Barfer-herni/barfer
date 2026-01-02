@@ -70,6 +70,7 @@ interface OrdersTableProps<TData extends { _id: string }, TValue> extends DataTa
     onSortingChange: (sorting: any) => void;
     isCalculatingPrice?: boolean;
     onForceRecalculatePrice?: () => void;
+    fontSize?: 'text-xs' | 'text-sm';
 }
 
 export function OrdersTable<TData extends { _id: string }, TValue>({
@@ -101,6 +102,7 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
     onSortingChange,
     isCalculatingPrice = false,
     onForceRecalculatePrice,
+    fontSize = 'text-xs',
 }: OrdersTableProps<TData, TValue>) {
     const table = useReactTable({
         data,
@@ -162,13 +164,16 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
         };
 
         const widthKey = idMap[id] || id;
-        if (widthKey in COLUMN_WIDTHS) {
-            return `${COLUMN_WIDTHS[widthKey as keyof typeof COLUMN_WIDTHS]}px`;
-        }
 
+        // PRIORIDAD 1: Si la columna tiene un tamaño específico definido individualmente (y no es el default 150)
         const size = column.getSize();
         if (size && size !== 150) {
             return `${size}px`;
+        }
+
+        // PRIORIDAD 2: Si existe en nuestras constantes globales (COLUMN_WIDTHS)
+        if (widthKey in COLUMN_WIDTHS) {
+            return `${COLUMN_WIDTHS[widthKey as keyof typeof COLUMN_WIDTHS]}px`;
         }
 
         return '150px';
@@ -180,7 +185,7 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                 <TableHeader>
                     {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id}>
-                            <TableHead className="px-0 py-1 text-sm border-r border-border" style={{ width: `${COLUMN_WIDTHS.checkbox}px` }}>
+                            <TableHead className={`px-0 py-1 ${fontSize} border-r border-border`} style={{ width: `${COLUMN_WIDTHS.checkbox}px` }}>
                                 <div className="flex justify-center">
                                     <input
                                         type="checkbox"
@@ -193,7 +198,7 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                             {headerGroup.headers.map((header) => (
                                 <TableHead
                                     key={header.id}
-                                    className="px-0 py-1 text-sm border-r border-border"
+                                    className={`px-0 py-1 ${fontSize} border-r border-border`}
                                     style={{ width: getColumnWidth(header.column) }}
                                 >
                                     {header.isPlaceholder ? null : (
@@ -201,7 +206,7 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                             variant="ghost"
                                             onClick={header.column.getToggleSortingHandler()}
                                             disabled={!header.column.getCanSort()}
-                                            className="h-6 px-1 text-sm w-full justify-center"
+                                            className={`h-6 px-1 ${fontSize} w-full justify-center`}
                                         >
                                             {flexRender(header.column.columnDef.header, header.getContext())}
                                             {{
@@ -212,7 +217,7 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                     )}
                                 </TableHead>
                             ))}
-                            <TableHead className="px-0 py-1 text-sm border-r border-border text-center" style={{ width: `${COLUMN_WIDTHS.actions}px` }}>
+                            <TableHead className={`px-0 py-1 ${fontSize} border-r border-border text-center`} style={{ width: `${COLUMN_WIDTHS.actions}px` }}>
                                 Acciones
                             </TableHead>
                         </TableRow>
@@ -244,7 +249,7 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                 {row.getVisibleCells().map((cell, index) => {
                                     // Edición inline para campos editables
                                     if (editingRowId === row.id) {
-                                        return renderEditableCell(cell, index, editValues, onEditValueChange, productSearchFilter, onProductSearchChange, availableProducts, productsLoading, isCalculatingPrice, onForceRecalculatePrice);
+                                        return renderEditableCell(cell, index, editValues, onEditValueChange, productSearchFilter, onProductSearchChange, availableProducts, productsLoading, isCalculatingPrice, onForceRecalculatePrice, fontSize);
                                     }
 
                                     // Aplicar color de fondo para celdas específicas
@@ -462,7 +467,7 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                                 </Button>
                                             )}
                                             {!canEdit && !canDelete && (
-                                                <span className="text-sm text-muted-foreground px-2">Sin permisos</span>
+                                                <span className={`{fontSize} text-muted-foreground px-2`}>Sin permisos</span>
                                             )}
                                         </div>
                                     )}
@@ -480,21 +485,21 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
             </Table>
             <div className="flex items-center justify-between space-x-2 py-4">
                 <div className="flex items-center gap-4">
-                    <div className="text-sm text-muted-foreground">
+                    <div className={`${fontSize} text-muted-foreground`}>
                         Mostrando {table.getRowModel().rows.length} de {total} órdenes.
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Mostrar:</span>
+                        <span className={`${fontSize} text-muted-foreground`}>Mostrar:</span>
                         <select
                             value={pagination.pageSize}
                             onChange={e => onPaginationChange(0, Number(e.target.value))}
-                            className="p-1 text-sm border rounded-md"
+                            className={`p-1 ${fontSize} border rounded-md`}
                         >
                             <option value={50}>50</option>
                             <option value={100}>100</option>
                             <option value={200}>200</option>
                         </select>
-                        <span className="text-sm text-muted-foreground">registros</span>
+                        <span className={`${fontSize} text-muted-foreground`}>registros</span>
                     </div>
                 </div>
                 <div className="space-x-2">
@@ -597,14 +602,14 @@ function findMatchingProduct(itemName: string, availableProducts: string[], item
     return itemName;
 }
 
-function renderEditableCell(cell: any, index: number, editValues: any, onEditValueChange: (field: string, value: any) => void, productSearchFilter: string, onProductSearchChange: (value: string) => void, availableProducts: string[], productsLoading: boolean, isCalculatingPrice?: boolean, onForceRecalculatePrice?: () => void) {
+function renderEditableCell(cell: any, index: number, editValues: any, onEditValueChange: (field: string, value: any) => void, productSearchFilter: string, onProductSearchChange: (value: string) => void, availableProducts: string[], productsLoading: boolean, isCalculatingPrice?: boolean, onForceRecalculatePrice?: () => void, fontSize: 'text-xs' | 'text-sm' = 'text-xs') {
     if (cell.column.id === 'notesOwn') {
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
                 <Input
                     value={editValues.notesOwn || ''}
                     onChange={e => onEditValueChange('notesOwn', e.target.value)}
-                    className="w-full text-sm text-center"
+                    className={`w-full ${fontSize} text-center`}
                 />
             </TableCell>
         );
@@ -617,40 +622,40 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                 <div className="space-y-2">
                     {/* Campo para notas generales */}
                     <div>
-                        <label className="text-sm font-medium text-gray-700 block mb-1.5">📝 Notas:</label>
+                        <label className={`${fontSize} font-medium text-gray-700 block mb-1.5`}>📝 Notas:</label>
                         <Input
                             value={editValues.notes || ''}
                             onChange={e => onEditValueChange('notes', e.target.value)}
-                            className="w-full text-sm h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                            className={`w-full ${fontSize} h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
                             placeholder="Notas generales..."
                         />
                     </div>
 
                     {/* Campo para referencia */}
                     <div>
-                        <label className="text-sm font-medium text-gray-700 block mb-1.5">📍 Referencia:</label>
+                        <label className={`${fontSize} font-medium text-gray-700 block mb-1.5`}>📍 Referencia:</label>
                         <Input
                             value={editValues.address?.reference || ''}
                             onChange={e => onEditValueChange('address', { ...editValues.address, reference: e.target.value })}
-                            className="w-full text-sm h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                            className={`w-full ${fontSize} h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
                             placeholder="Referencia..."
                         />
                     </div>
 
                     {/* Campo para piso y departamento */}
                     <div>
-                        <label className="text-sm font-medium text-gray-700 block mb-1.5">🏢 Piso/Depto:</label>
+                        <label className={`${fontSize} font-medium text-gray-700 block mb-1.5`}>🏢 Piso/Depto:</label>
                         <div className="flex gap-2">
                             <Input
                                 value={editValues.address?.floorNumber || ''}
                                 onChange={e => onEditValueChange('address', { ...editValues.address, floorNumber: e.target.value })}
-                                className="w-1/2 text-sm h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                className={`w-1/2 ${fontSize} h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
                                 placeholder="Piso..."
                             />
                             <Input
                                 value={editValues.address?.departmentNumber || ''}
                                 onChange={e => onEditValueChange('address', { ...editValues.address, departmentNumber: e.target.value })}
-                                className="w-1/2 text-sm h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                className={`w-1/2 ${fontSize} h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
                                 placeholder="Depto..."
                             />
                         </div>
@@ -658,11 +663,11 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
 
                     {/* Campo para entre calles */}
                     <div>
-                        <label className="text-sm font-medium text-gray-700 block mb-1.5">🚦 Entre calles:</label>
+                        <label className="${fontSize} font-medium text-gray-700 block mb-1.5">🚦 Entre calles:</label>
                         <Input
                             value={editValues.address?.betweenStreets || ''}
                             onChange={e => onEditValueChange('address', { ...editValues.address, betweenStreets: e.target.value })}
-                            className="w-full text-sm h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                            className={`w-full ${fontSize} h-8 border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500`}
                             placeholder="Entre calles..."
                         />
                     </div>
@@ -678,7 +683,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                 <select
                     value={editValues.status}
                     onChange={e => onEditValueChange('status', e.target.value)}
-                    className="w-full p-1 text-sm border border-gray-300 rounded-md text-center"
+                    className={`w-full p-1 ${fontSize} border border-gray-300 rounded-md text-center`}
                 >
                     {STATUS_OPTIONS.map(option => (
                         <option key={option.value} value={option.value}>
@@ -696,7 +701,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                 <select
                     value={editValues.orderType}
                     onChange={e => onEditValueChange('orderType', e.target.value)}
-                    className="w-full p-1 text-sm border border-gray-300 rounded-md text-center"
+                    className={`w-full p-1 ${fontSize} border border-gray-300 rounded-md text-center`}
                 >
                     {ORDER_TYPE_OPTIONS.map(option => (
                         <option key={option.value} value={option.value}>
@@ -714,7 +719,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                 <select
                     value={editValues.paymentMethod}
                     onChange={e => onEditValueChange('paymentMethod', e.target.value)}
-                    className="w-full p-1 text-sm border border-gray-300 rounded-md text-center"
+                    className={`w-full p-1 ${fontSize} border border-gray-300 rounded-md text-center`}
                 >
                     {PAYMENT_METHOD_OPTIONS.map(option => (
                         <option key={option.value} value={option.value}>
@@ -731,7 +736,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
         return (
             <TableCell key={cell.id} className={`px-0 py-1 border-r border-border ${bgColor}`}>
                 <div className="space-y-1">
-                    <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
+                    <label className={`${fontSize} font-medium text-gray-700 flex items-center gap-1`}>
                         Fecha de Entrega
                         <span className="text-red-500">*</span>
                     </label>
@@ -745,7 +750,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                                     return format(date, 'dd/MM/yyyy');
                                 })() : ''}
                                 placeholder="Seleccionar fecha"
-                                className={`w-full text-sm text-center ${!editValues.deliveryDay ? "border-red-500 focus:border-red-500" : ""}`}
+                                className={`w-full ${fontSize} text-center ${!editValues.deliveryDay ? "border-red-500 focus:border-red-500" : ""}`}
                             />
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0">
@@ -773,7 +778,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                                             const today = new Date();
                                             onEditValueChange('deliveryDay', createLocalDateISO(today));
                                         }}
-                                        className="w-full text-sm"
+                                        className={`w-full ${fontSize}`}
                                     >
                                         Hoy
                                     </Button>
@@ -782,7 +787,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                         </PopoverContent>
                     </Popover>
                     {!editValues.deliveryDay && (
-                        <p className="text-sm text-red-500">
+                        <p className={`${fontSize} text-red-500`}>
                             La fecha de entrega es obligatoria
                         </p>
                     )}
@@ -799,7 +804,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                         placeholder="Buscar producto..."
                         value={productSearchFilter}
                         onChange={(e) => onProductSearchChange(e.target.value)}
-                        className="w-full p-1 text-sm"
+                        className={`w-full p-1 ${fontSize}`}
                     />
                     {editValues.items?.map((item: any, itemIndex: number) => (
                         <div key={itemIndex} className="space-y-1">
@@ -825,7 +830,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
 
                                         onEditValueChange('items', newItems);
                                     }}
-                                    className="flex-1 p-1 text-sm border border-gray-300 rounded-md text-left bg-white cursor-pointer"
+                                    className={`flex-1 p-1 ${fontSize} border border-gray-300 rounded-md text-left bg-white cursor-pointer`}
                                     disabled={productsLoading}
                                     style={{
                                         minHeight: '32px',
@@ -897,7 +902,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                                             onEditValueChange('items', newItems);
                                         }
                                     }}
-                                    className="w-12 p-1 text-sm text-center"
+                                    className={`w-12 p-1 ${fontSize} text-center`}
                                     placeholder="Qty"
                                 />
                                 <Button
@@ -932,7 +937,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                             }];
                             onEditValueChange('items', newItems);
                         }}
-                        className="w-full text-sm"
+                        className={`w-full ${fontSize}`}
                     >
                         + Agregar Item
                     </Button>
@@ -951,13 +956,13 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                         placeholder="Nombre"
                         value={editValues.userName || ''}
                         onChange={e => onEditValueChange('userName', e.target.value)}
-                        className="w-full p-1 text-sm"
+                        className={`w-full p-1 ${fontSize}`}
                     />
                     <Input
                         placeholder="Apellido"
                         value={editValues.userLastName || ''}
                         onChange={e => onEditValueChange('userLastName', e.target.value)}
-                        className="w-full p-1 text-sm"
+                        className={`w-full p-1 ${fontSize}`}
                     />
                 </div>
             </TableCell>
@@ -978,13 +983,13 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                             console.log('🔥 DIRECCION onChange - will call onEditValueChange with:', { ...editValues.address, address: e.target.value });
                             onEditValueChange('address', { ...editValues.address, address: e.target.value });
                         }}
-                        className="w-full p-1 text-sm"
+                        className={`w-full p-1 ${fontSize}`}
                     />
                     <Input
                         placeholder="Ciudad"
                         value={editValues.address?.city || ''}
                         onChange={e => onEditValueChange('address', { ...editValues.address, city: e.target.value })}
-                        className="w-full p-1 text-sm"
+                        className={`w-full p-1 ${fontSize}`}
                     />
                 </div>
             </TableCell>
@@ -1002,9 +1007,9 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                         // No normalizar en tiempo real, solo guardar el valor tal como lo escribe el usuario
                         onEditValueChange('deliveryAreaSchedule', e.target.value);
                     }}
-                    className="w-full p-1 text-sm"
+                    className={`w-full p-1 ${fontSize}`}
                 />
-                <p className="text-sm text-gray-500 mt-1">
+                <p className={`${fontSize} text-gray-500 mt-1`}>
                     Puedes usar . o : para minutos (ej: 18.30 o 18:30). Se normalizará automáticamente al guardar.
                 </p>
             </TableCell>
@@ -1019,9 +1024,9 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                     placeholder="Teléfono (ej: 221 123-4567 o 11-1234-5678)"
                     value={editValues.address?.phone || ''}
                     onChange={e => onEditValueChange('address', { ...editValues.address, phone: e.target.value })}
-                    className="w-full p-1 text-sm"
+                    className={`w-full p-1 ${fontSize}`}
                 />
-                <p className="text-sm text-gray-500 mt-1">
+                <p className={`${fontSize} text-gray-500 mt-1`}>
                     Formato: La Plata (221 XXX-XXXX) o CABA/BA (11-XXXX-XXXX / 15-XXXX-XXXX)
                 </p>
             </TableCell>
@@ -1036,7 +1041,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                     placeholder="Email"
                     value={editValues.userEmail || ''}
                     onChange={e => onEditValueChange('userEmail', e.target.value)}
-                    className="w-full p-1 text-sm"
+                    className={`w-full p-1 ${fontSize}`}
                 />
             </TableCell>
         );
@@ -1078,7 +1083,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                                     }
                                 }
                             }}
-                            className={`flex-1 text-sm text-center ${isCalculatingPrice ? 'bg-blue-50 border-blue-300' : ''}`}
+                            className={`flex-1 ${fontSize} text-center ${isCalculatingPrice ? 'bg-blue-50 border-blue-300' : ''}`}
                             disabled={isCalculatingPrice}
                         />
                         {onForceRecalculatePrice && (
@@ -1117,7 +1122,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                                 }
                             }
                         }}
-                        className="w-full text-sm text-center"
+                        className={`w-full ${fontSize} text-center`}
                     />
                 </TableCell>
             );
@@ -1129,7 +1134,7 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                     type="text"
                     value={editValues[fieldKey] === undefined ? '' : editValues[fieldKey]}
                     onChange={e => onEditValueChange(fieldKey, e.target.value || undefined)}
-                    className="w-full text-sm text-center"
+                    className={`w-full ${fontSize} text-center`}
                 />
             </TableCell>
         );

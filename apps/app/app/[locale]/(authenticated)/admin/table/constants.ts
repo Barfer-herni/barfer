@@ -81,7 +81,7 @@ export const FORBIDDEN_PRODUCTS_FOR_RETAIL = ['Cornalitos', 'Orejas'];
 // Anchos de columnas
 export const COLUMN_WIDTHS = {
     checkbox: 32,
-    orderType: 40,
+    orderType: 80,
     date: 70,
     schedule: 100,
     notesOwn: 110,
@@ -93,7 +93,7 @@ export const COLUMN_WIDTHS = {
     status: 85,
     total: 100,
     notes: 200,
-    email: 45,
+    email: 60,
     estadoEnvio: 80,
     shippingPrice: 80,
     actions: 80,
