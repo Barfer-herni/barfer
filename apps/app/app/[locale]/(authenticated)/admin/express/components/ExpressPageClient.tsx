@@ -36,6 +36,7 @@ import type { DeliveryArea, Order, Stock, DetalleEnvio, PuntoEnvio, ProductForSt
 import { OrdersDataTable } from '../../table/components/OrdersDataTable';
 import type { ColumnDef, PaginationState, SortingState } from '@tanstack/react-table';
 import { createExpressColumns } from './expressColumns';
+import { ResumenGeneralTables } from './ResumenGeneralTables';
 
 interface ExpressPageClientProps {
     dictionary: Dictionary;
@@ -257,10 +258,17 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         const { skipLocalUpdate = false, silent = false } = options;
         if (!silent) setIsLoading(true);
         try {
+            // Si es 'all', traemos todas las órdenes sin filtro de punto
+            const ordersPromise = getExpressOrdersAction(puntoEnvio === 'all' ? undefined : puntoEnvio);
+
+            // Si es 'all', no traemos stock ni detalle específico por ahora (o podríamos adaptarlo luego)
+            const stockPromise = puntoEnvio === 'all' ? Promise.resolve({ success: true, stock: [] }) : getStockByPuntoEnvioAction(puntoEnvio);
+            const detallePromise = puntoEnvio === 'all' ? Promise.resolve({ success: true, detalleEnvio: [] }) : getDetalleEnvioByPuntoEnvioAction(puntoEnvio);
+
             const [ordersResult, stockResult, detalleResult] = await Promise.all([
-                getExpressOrdersAction(puntoEnvio),
-                getStockByPuntoEnvioAction(puntoEnvio),
-                getDetalleEnvioByPuntoEnvioAction(puntoEnvio),
+                ordersPromise,
+                stockPromise,
+                detallePromise,
             ]);
 
             if (ordersResult.success) {
@@ -796,14 +804,19 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                     <SelectValue placeholder={puntosEnvio.length === 0 ? "No hay puntos de envío disponibles" : "Selecciona un punto de envío..."} />
                                 </SelectTrigger>
                                 <SelectContent>
+                                    {isAdmin && (
+                                        <SelectItem value="all" className="font-bold border-b mb-1">
+                                            Todos los puntos (Resumen General)
+                                        </SelectItem>
+                                    )}
                                     {puntosEnvio.length === 0 ? (
                                         <SelectItem value="" disabled>
-                                            No hay puntos de envío disponibles
+                                            No hay puntos de envío
                                         </SelectItem>
                                     ) : (
                                         puntosEnvio.map((punto) => (
-                                            <SelectItem key={String(punto._id)} value={punto.nombre || ''}>
-                                                {punto.nombre || 'Sin nombre'}
+                                            <SelectItem key={String(punto._id)} value={punto.nombre}>
+                                                {punto.nombre}
                                             </SelectItem>
                                         ))
                                     )}
@@ -811,27 +824,64 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                             </Select>
                         </div>
                         {isAdmin && (
-                            <div className="flex items-end">
-                                <Button onClick={() => setShowCreatePuntoEnvioModal(true)}>
-                                    <Plus className="h-4 w-4 mr-2" />
-                                    Crear Punto de Envío
-                                </Button>
-                            </div>
+                            <Button onClick={() => setShowCreatePuntoEnvioModal(true)} variant="outline">
+                                <Plus className="mr-2 h-4 w-4" />
+                                Nuevo Punto
+                            </Button>
                         )}
                     </div>
                 </div>
 
-                {!selectedPuntoEnvio && (
-                    <Card>
-                        <CardContent className="py-8">
-                            <div className="text-center text-muted-foreground">
-                                <p>Selecciona un punto de envío para ver sus datos</p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                {/* Date Picker - Global for all tabs */}
+                <div className="mb-6 flex items-center gap-4 bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    <div className="flex items-center gap-2">
+                        <CalendarIcon className="h-5 w-5 text-gray-500" />
+                        <span className="font-medium text-gray-700">Fecha seleccionada:</span>
+                    </div>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant={"outline"}
+                                className={cn(
+                                    "w-[240px] justify-start text-left font-normal bg-white",
+                                    !selectedDate && "text-muted-foreground"
+                                )}
+                            >
+                                {selectedDate ? (
+                                    format(selectedDate, "PPP", { locale: es })
+                                ) : (
+                                    <span>Seleccionar fecha</span>
+                                )}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="single"
+                                selected={selectedDate}
+                                onSelect={(date) => date && setSelectedDate(date)}
+                                initialFocus
+                            />
+                        </PopoverContent>
+                    </Popover>
+                    {selectedDate && (
+                        <span className="text-sm text-muted-foreground ml-2">
+                            {format(selectedDate, "EEEE", { locale: es })}
+                        </span>
+                    )}
+                </div>
+
+                {/* Mostrar Resumen General si está seleccionado "all" */}
+                {selectedPuntoEnvio === 'all' && (
+                    <ResumenGeneralTables
+                        orders={orders}
+                        puntosEnvio={puntosEnvio}
+                        productsForStock={productsForStock}
+                        selectedDate={selectedDate}
+                    />
                 )}
 
-                {selectedPuntoEnvio && (
+                {/* Mostrar Tabs normales si hay un punto específico seleccionado */}
+                {selectedPuntoEnvio && selectedPuntoEnvio !== 'all' && (
                     <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                         <TabsList className={isAdmin ? "grid w-full grid-cols-3" : "grid w-full grid-cols-2"}>
                             <TabsTrigger value="orders" className="flex items-center gap-2">
@@ -1212,9 +1262,10 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                         const totalIngresos = orders.reduce((sum, order) => sum + (order.total || 0), 0);
                                         const totalCostoEnvio = orders.reduce((sum, order) => sum + (order.shippingPrice || 0), 0);
                                         const porcentajeCosto = totalIngresos > 0 ? ((totalCostoEnvio / totalIngresos) * 100).toFixed(1) : '0';
+                                        const costoEnvioPromedio = totalEnvios > 0 ? totalCostoEnvio / totalEnvios : 0;
 
                                         return (
-                                            <div className="grid gap-4 md:grid-cols-3 mb-6">
+                                            <div className="grid gap-4 md:grid-cols-4 mb-6">
                                                 <Card>
                                                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                                         <CardTitle className="text-sm font-medium">
@@ -1239,6 +1290,22 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                         </div>
                                                         <p className="text-xs text-muted-foreground">
                                                             Equivale al {porcentajeCosto}% de los ingresos
+                                                        </p>
+                                                    </CardContent>
+                                                </Card>
+                                                <Card>
+                                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                                        <CardTitle className="text-sm font-medium">
+                                                            Costo de Envío Promedio
+                                                        </CardTitle>
+                                                        <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                                                    </CardHeader>
+                                                    <CardContent>
+                                                        <div className="text-2xl font-bold">
+                                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(costoEnvioPromedio)}
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Por pedido
                                                         </p>
                                                     </CardContent>
                                                 </Card>
@@ -1287,7 +1354,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 }
             </div >
 
-            {selectedPuntoEnvio && (
+            {selectedPuntoEnvio && selectedPuntoEnvio !== 'all' && (
                 <AddStockModal
                     open={showAddStockModal}
                     onOpenChange={setShowAddStockModal}
