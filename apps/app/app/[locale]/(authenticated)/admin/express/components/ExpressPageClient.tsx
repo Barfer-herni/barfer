@@ -12,7 +12,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@repo/design-system/components/ui/select';
-import { Plus, Package, ShoppingCart, BarChart3, Edit2, Save, X } from 'lucide-react';
+import { Plus, Package, ShoppingCart, BarChart3, Edit2, Save, X, ChevronUp, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Input } from '@repo/design-system/components/ui/input';
@@ -98,6 +98,8 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     const [detalle, setDetalle] = useState<DetalleEnvio[]>([]);
     const [productsForStock, setProductsForStock] = useState<ProductForStock[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    // Estado para forzar re-render cuando se actualiza el orden de prioridad
+    const [orderPriorityVersion, setOrderPriorityVersion] = useState(0);
     // Estado local para los valores editados (sin necesidad de modo edición)
     const [localStockValues, setLocalStockValues] = useState<Record<string, { stockInicial: number; llevamos: number }>>({});
     // Ref para mantener los valores actuales del estado (para acceder sin setState)
@@ -115,6 +117,74 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     const toFromUrl = searchParams.get('to');
     const orderTypeFromUrl = searchParams.get('orderType');
     const sortFromUrl = searchParams.get('sort');
+
+    // Funciones helper para localStorage - Orden de prioridad de pedidos
+    const getLocalStorageKey = useCallback((fecha: string, puntoEnvio: string): string => {
+        return `orderPriority_${fecha}_${puntoEnvio}`;
+    }, []);
+
+    const getSavedOrder = useCallback((fecha: string, puntoEnvio: string): string[] => {
+        if (typeof window === 'undefined') return [];
+        try {
+            const key = getLocalStorageKey(fecha, puntoEnvio);
+            const saved = localStorage.getItem(key);
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) {
+            console.error('Error loading order from localStorage:', error);
+            return [];
+        }
+    }, [getLocalStorageKey]);
+
+    const saveOrder = useCallback((fecha: string, puntoEnvio: string, orderIds: string[]) => {
+        if (typeof window === 'undefined') return;
+        try {
+            const key = getLocalStorageKey(fecha, puntoEnvio);
+            localStorage.setItem(key, JSON.stringify(orderIds));
+        } catch (error) {
+            console.error('Error saving order to localStorage:', error);
+        }
+    }, [getLocalStorageKey]);
+
+    // Función para aplicar el orden guardado a los pedidos
+    const applySavedOrder = useCallback((orders: Order[], fecha: string, puntoEnvio: string): Order[] => {
+        const savedOrderIds = getSavedOrder(fecha, puntoEnvio);
+        if (savedOrderIds.length === 0) return orders;
+
+        // Normalizar todos los IDs a strings
+        const normalizedSavedOrderIds = savedOrderIds.map(id => String(id));
+
+        // Crear un mapa de pedidos por ID (normalizado a string)
+        const orderMap = new Map(orders.map(order => [String(order._id), order]));
+        
+        // Crear un set de IDs que tenemos (normalizado a string)
+        const availableIds = new Set(orders.map(order => String(order._id)));
+
+        // Ordenar según el orden guardado (solo los que existen)
+        const ordered: Order[] = [];
+        const addedIds = new Set<string>();
+
+        // Primero agregar los pedidos en el orden guardado
+        for (const id of normalizedSavedOrderIds) {
+            const normalizedId = String(id);
+            if (availableIds.has(normalizedId) && !addedIds.has(normalizedId)) {
+                const order = orderMap.get(normalizedId);
+                if (order) {
+                    ordered.push(order);
+                    addedIds.add(normalizedId);
+                }
+            }
+        }
+
+        // Agregar los pedidos que no estaban en el orden guardado (nuevos pedidos)
+        for (const order of orders) {
+            const id = String(order._id);
+            if (!addedIds.has(id)) {
+                ordered.push(order);
+            }
+        }
+
+        return ordered;
+    }, [getSavedOrder]);
 
     // Procesar órdenes: Filtrar -> Ordenar -> Paginar
     // 1. Filtrar y Ordenar
@@ -168,7 +238,10 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         }
 
         // D. Ordenar
-        if (sortFromUrl) {
+        // Primero aplicar el orden guardado en localStorage (solo si no hay sort activo y hay fecha/punto seleccionados)
+        if (!sortFromUrl && fromFromUrl && selectedPuntoEnvio && selectedPuntoEnvio !== 'all') {
+            result = applySavedOrder(result, fromFromUrl, selectedPuntoEnvio);
+        } else if (sortFromUrl) {
             const [sortId, sortDesc] = sortFromUrl.split('.');
             const isDesc = sortDesc === 'desc';
 
@@ -196,18 +269,106 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 return 0;
             });
         } else {
-            // Default sort: createdAt desc
-            result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            // Default sort: createdAt desc (solo si no hay orden guardado)
+            if (!fromFromUrl || !selectedPuntoEnvio || selectedPuntoEnvio === 'all') {
+                result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            } else {
+                // Si hay fecha y punto pero no hay orden guardado, aplicar orden guardado vacío (sin cambio)
+                result = applySavedOrder(result, fromFromUrl, selectedPuntoEnvio);
+                // Si no había orden guardado, ordenar por createdAt desc
+                const savedOrderIds = getSavedOrder(fromFromUrl, selectedPuntoEnvio);
+                if (savedOrderIds.length === 0) {
+                    result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                }
+            }
         }
 
         return result;
-    }, [orders, searchFromUrl, fromFromUrl, toFromUrl, orderTypeFromUrl, sortFromUrl]);
+    }, [orders, searchFromUrl, fromFromUrl, toFromUrl, orderTypeFromUrl, sortFromUrl, selectedPuntoEnvio, applySavedOrder, getSavedOrder, orderPriorityVersion]);
 
     // 2. Paginar
     const paginatedOrders = useMemo(() => {
         const startIndex = (pageFromUrl - 1) * pageSizeFromUrl;
         return filteredAndSortedOrders.slice(startIndex, startIndex + pageSizeFromUrl);
     }, [filteredAndSortedOrders, pageFromUrl, pageSizeFromUrl]);
+
+    // Función para mover un pedido arriba o abajo en el orden
+    const moveOrder = useCallback((orderId: string, direction: 'up' | 'down') => {
+        if (!fromFromUrl || !selectedPuntoEnvio || selectedPuntoEnvio === 'all') {
+            return;
+        }
+
+        // Normalizar el orderId a string
+        const normalizedOrderId = String(orderId);
+
+        // Obtener el orden actual guardado
+        let currentOrderIds = getSavedOrder(fromFromUrl, selectedPuntoEnvio);
+        
+        // Filtrar pedidos por fecha y punto de envío para obtener la lista completa del día
+        let filteredOrders = [...orders];
+        if (fromFromUrl || toFromUrl) {
+            filteredOrders = filteredOrders.filter(order => {
+                let orderDateStr: string;
+                if (order.deliveryDay) {
+                    const deliveryDate = new Date(order.deliveryDay);
+                    orderDateStr = deliveryDate.toISOString().substring(0, 10);
+                } else {
+                    const orderDate = new Date(order.createdAt);
+                    const argDate = new Date(orderDate.getTime() - (3 * 60 * 60 * 1000));
+                    orderDateStr = argDate.toISOString().substring(0, 10);
+                }
+                const passesFrom = !fromFromUrl || orderDateStr >= fromFromUrl;
+                const passesTo = !toFromUrl || orderDateStr <= toFromUrl;
+                return passesFrom && passesTo;
+            });
+        }
+        filteredOrders = filteredOrders.filter(order => order.puntoEnvio === selectedPuntoEnvio);
+        
+        // Si no hay orden guardado, crear uno basado en los pedidos filtrados, ordenados por createdAt desc
+        if (currentOrderIds.length === 0) {
+            const sortedOrders = [...filteredOrders].sort((a, b) => 
+                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            );
+            currentOrderIds = sortedOrders.map(order => String(order._id));
+        }
+
+        // Normalizar todos los IDs en currentOrderIds
+        currentOrderIds = currentOrderIds.map(id => String(id));
+
+        // Encontrar el índice del pedido
+        const currentIndex = currentOrderIds.indexOf(normalizedOrderId);
+        
+        if (currentIndex === -1) {
+            // Si el pedido no está en el orden guardado, agregarlo al final
+            currentOrderIds.push(normalizedOrderId);
+            // Si es 'up', moverlo una posición arriba
+            if (direction === 'up' && currentOrderIds.length > 1) {
+                const newIndex = currentOrderIds.length - 1;
+                [currentOrderIds[newIndex], currentOrderIds[newIndex - 1]] = 
+                    [currentOrderIds[newIndex - 1], currentOrderIds[newIndex]];
+            }
+        } else {
+            // Calcular el nuevo índice
+            let newIndex: number;
+            if (direction === 'up') {
+                if (currentIndex === 0) return; // Ya está arriba
+                newIndex = currentIndex - 1;
+            } else {
+                if (currentIndex === currentOrderIds.length - 1) return; // Ya está abajo
+                newIndex = currentIndex + 1;
+            }
+
+            // Intercambiar posiciones
+            [currentOrderIds[currentIndex], currentOrderIds[newIndex]] = 
+                [currentOrderIds[newIndex], currentOrderIds[currentIndex]];
+        }
+
+        // Guardar el nuevo orden
+        saveOrder(fromFromUrl, selectedPuntoEnvio, currentOrderIds);
+
+        // Forzar re-render incrementando el estado (esto hará que filteredAndSortedOrders se recalcule)
+        setOrderPriorityVersion(prev => prev + 1);
+    }, [fromFromUrl, toFromUrl, selectedPuntoEnvio, orders, getSavedOrder, saveOrder]);
 
 
 
@@ -860,12 +1021,15 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                             ) : (
                                 <OrdersDataTable
                                     fontSize="text-sm"
-                                    columns={createExpressColumns(async () => {
-                                        // Recargar los datos visualmente sin loading global
-                                        if (selectedPuntoEnvio) {
-                                            await loadTablasData(selectedPuntoEnvio, { silent: true });
-                                        }
-                                    })}
+                                    columns={createExpressColumns(
+                                        async () => {
+                                            // Recargar los datos visualmente sin loading global
+                                            if (selectedPuntoEnvio) {
+                                                await loadTablasData(selectedPuntoEnvio, { silent: true });
+                                            }
+                                        },
+                                        moveOrder
+                                    )}
                                     data={paginatedOrders}
                                     pageCount={Math.ceil(filteredAndSortedOrders.length / pageSizeFromUrl)}
                                     total={filteredAndSortedOrders.length}

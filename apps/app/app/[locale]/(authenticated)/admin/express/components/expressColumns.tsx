@@ -4,12 +4,59 @@ import { type ColumnDef, type CellContext } from '@tanstack/react-table';
 import type { Order } from '@repo/data-services/src/types/barfer';
 import { Badge } from '@repo/design-system/components/ui/badge';
 import { Input } from '@repo/design-system/components/ui/input';
+import { Button } from '@repo/design-system/components/ui/button';
 import { STATUS_TRANSLATIONS, PAYMENT_METHOD_TRANSLATIONS } from '../../table/constants';
 import { createLocalDate, formatPhoneNumber } from '../../table/helpers';
 import { EstadoEnvioCell } from './EstadoEnvioCell';
 import { ShippingPriceCell } from './ShippingPriceCell';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 
-export const createExpressColumns = (onOrderUpdated?: () => void | Promise<void>): ColumnDef<Order>[] => [
+export const createExpressColumns = (
+    onOrderUpdated?: () => void | Promise<void>,
+    onMoveOrder?: (orderId: string, direction: 'up' | 'down') => void
+): ColumnDef<Order>[] => [
+    {
+        accessorKey: 'priority',
+        header: () => <div className="w-full text-center text-xs">Prioridad</div>,
+        enableSorting: false,
+        cell: ({ row }: CellContext<Order, unknown>) => {
+            const orderId = row.original._id;
+            if (!onMoveOrder) {
+                return <div className="w-full text-center text-xs">--</div>;
+            }
+            return (
+                <div className="flex items-center justify-center gap-1">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onMoveOrder(String(orderId), 'up');
+                        }}
+                        title="Mover arriba"
+                    >
+                        <ChevronUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onMoveOrder(String(orderId), 'down');
+                        }}
+                        title="Mover abajo"
+                    >
+                        <ChevronDown className="h-4 w-4" />
+                    </Button>
+                </div>
+            );
+        },
+        size: 80,
+        minSize: 70,
+        maxSize: 90,
+    },
     {
         accessorKey: 'orderType',
         header: 'Tipo',
