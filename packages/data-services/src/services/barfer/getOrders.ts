@@ -37,8 +37,24 @@ export async function getOrders({
 
         const baseFilter: any = {};
 
-        // Excluir envíos del día (método de pago 'transfer' y 'bank-transfer')
-        baseFilter.paymentMethod = { $nin: ['transfer', 'bank-transfer'] };
+        // Excluir pedidos express:
+        // - Pedidos viejos: método de pago 'transfer' y 'bank-transfer'
+        // - Pedidos nuevos: deliveryArea.sameDayDelivery: true
+        baseFilter.$and = [
+            {
+                $or: [
+                    { paymentMethod: { $nin: ['transfer', 'bank-transfer'] } },
+                    { paymentMethod: { $exists: false } }
+                ]
+            },
+            {
+                $or: [
+                    { 'deliveryArea.sameDayDelivery': { $ne: true } },
+                    { 'deliveryArea.sameDayDelivery': { $exists: false } },
+                    { deliveryArea: { $exists: false } }
+                ]
+            }
+        ];
 
         // Filtro por fecha simplificado - usar fechas directamente
         if ((from && from.trim() !== '') || (to && to.trim() !== '')) {
