@@ -16,7 +16,7 @@ import {
 /**
  * Crear un nuevo usuario
  */
-export async function createUser(data: UserFormData & { role: UserRole; permissions?: string[]; puntoEnvio?: string }) {
+export async function createUser(data: UserFormData & { role: UserRole; permissions?: string[]; puntoEnvio?: string | string[] }) {
     return await createUserGestor(data);
 }
 
@@ -47,7 +47,7 @@ export async function getAllUsers(excludeUserId?: string) {
 /**
  * Actualizar un usuario existente
  */
-export async function updateUser(userId: string, data: UserFormData & { role?: UserRole; permissions?: string[]; puntoEnvio?: string }) {
+export async function updateUser(userId: string, data: UserFormData & { role?: UserRole; permissions?: string[]; puntoEnvio?: string | string[] }) {
     "use server";
     try {
         const user = await updateUserGestor(userId, {

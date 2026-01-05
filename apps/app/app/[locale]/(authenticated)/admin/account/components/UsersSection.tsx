@@ -9,6 +9,7 @@ import { Label } from '@repo/design-system/components/ui/label';
 import { Badge } from '@repo/design-system/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@repo/design-system/components/ui/select';
 import { Switch } from '@repo/design-system/components/ui/switch';
+import { Checkbox } from '@repo/design-system/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@repo/design-system/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@repo/design-system/components/ui/alert-dialog';
 import { useToast } from '@repo/design-system/hooks/use-toast';
@@ -40,7 +41,7 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
         password: '',
         role: 'user' as UserRole,
         permissions: [] as string[],
-        puntoEnvio: '',
+        puntoEnvio: [] as string[],
     });
 
     // Cargar puntos de envío
@@ -84,13 +85,18 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
                 'outputs:delete',      // Eliminar salidas
                 'outputs:view_statistics', // Ver estadísticas de salidas
             ], // Permisos básicos por defecto para usuarios normales
-            puntoEnvio: '',
+            puntoEnvio: [],
         });
         setIsUserDialogOpen(true);
     };
 
     const handleEditUser = (user: UserData) => {
         setEditingUser(user);
+        // Normalizar puntoEnvio: si es string, convertir a array; si es array, usar directamente
+        const puntoEnvioArray = Array.isArray(user.puntoEnvio) 
+            ? user.puntoEnvio 
+            : (user.puntoEnvio ? [user.puntoEnvio] : []);
+        
         setUserForm({
             name: user.name,
             lastName: user.lastName,
@@ -98,7 +104,7 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
             password: '',
             role: user.role as UserRole,
             permissions: user.permissions || [],
-            puntoEnvio: user.puntoEnvio || '',
+            puntoEnvio: puntoEnvioArray,
         });
         setIsUserDialogOpen(true);
     };
@@ -135,8 +141,9 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
                 formData.append('password', userForm.password);
                 formData.append('role', userForm.role);
                 formData.append('permissions', JSON.stringify(userForm.permissions));
-                if (userForm.puntoEnvio && userForm.puntoEnvio !== '__none__') {
-                    formData.append('puntoEnvio', userForm.puntoEnvio);
+                // Enviar array de puntosEnvio como JSON
+                if (userForm.puntoEnvio && userForm.puntoEnvio.length > 0) {
+                    formData.append('puntoEnvio', JSON.stringify(userForm.puntoEnvio));
                 }
 
                 console.log('🟢 Llamando a createUser/updateUser', { 
@@ -362,26 +369,53 @@ export function UsersSection({ users, currentUser, dictionary }: UsersSectionPro
                             </Select>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="user-puntoEnvio">Punto de Envío (opcional)</Label>
-                            <Select
-                                value={userForm.puntoEnvio || '__none__'}
-                                onValueChange={(value) => setUserForm(prev => ({ ...prev, puntoEnvio: value === '__none__' ? '' : value }))}
-                                disabled={isPending}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Ninguno (ver todos los puntos de envío)" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="__none__">Ninguno (ver todos los puntos de envío)</SelectItem>
-                                    {puntosEnvio.filter(p => p.nombre && p.nombre.trim() !== '').map((punto) => (
-                                        <SelectItem key={String(punto._id)} value={punto.nombre!}>
-                                            {punto.nombre}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Label htmlFor="user-puntoEnvio">Puntos de Envío (opcional)</Label>
+                            <div className="max-h-48 overflow-y-auto space-y-2 p-3 border rounded-lg">
+                                {puntosEnvio.filter(p => p.nombre && p.nombre.trim() !== '').length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">No hay puntos de envío disponibles</p>
+                                ) : (
+                                    puntosEnvio.filter(p => p.nombre && p.nombre.trim() !== '').map((punto) => {
+                                        const puntoNombre = punto.nombre!;
+                                        const isChecked = userForm.puntoEnvio.includes(puntoNombre);
+                                        return (
+                                            <div key={String(punto._id)} className="flex items-center space-x-2">
+                                                <Checkbox
+                                                    id={`punto-${punto._id}`}
+                                                    checked={isChecked}
+                                                    onCheckedChange={(checked) => {
+                                                        setUserForm(prev => {
+                                                            if (checked) {
+                                                                // Agregar si no está ya en el array
+                                                                return {
+                                                                    ...prev,
+                                                                    puntoEnvio: prev.puntoEnvio.includes(puntoNombre)
+                                                                        ? prev.puntoEnvio
+                                                                        : [...prev.puntoEnvio, puntoNombre]
+                                                                };
+                                                            } else {
+                                                                // Remover del array
+                                                                return {
+                                                                    ...prev,
+                                                                    puntoEnvio: prev.puntoEnvio.filter(p => p !== puntoNombre)
+                                                                };
+                                                            }
+                                                        });
+                                                    }}
+                                                    disabled={isPending}
+                                                />
+                                                <label
+                                                    htmlFor={`punto-${punto._id}`}
+                                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                                >
+                                                    {puntoNombre}
+                                                </label>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
                             <p className="text-xs text-muted-foreground">
-                                Si se asigna un punto de envío, el usuario solo verá órdenes y stock de ese punto
+                                Selecciona uno o más puntos de envío. Si no se selecciona ninguno, el usuario verá todos los puntos (solo admins).
                             </p>
                         </div>
                         <div className="space-y-2">

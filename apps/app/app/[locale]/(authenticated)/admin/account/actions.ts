@@ -37,7 +37,7 @@ const userSchema = z.object({
     password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres').optional().or(z.literal('')),
     role: z.enum(['admin', 'user']),
     permissions: z.array(z.string()),
-    puntoEnvio: z.string().optional(),
+    puntoEnvio: z.union([z.string(), z.array(z.string())]).optional(), // Acepta string (retrocompatibilidad) o array
 });
 
 export async function updateProfile(userId: string, formData: FormData) {
@@ -102,6 +102,18 @@ export async function createUser(formData: FormData) {
             return { success: false, message: 'No tienes permisos para crear usuarios.' };
         }
 
+        const puntoEnvioRaw = formData.get('puntoEnvio');
+        let puntoEnvio: string | string[] | undefined = undefined;
+        if (puntoEnvioRaw) {
+            try {
+                // Intentar parsear como JSON (array)
+                puntoEnvio = JSON.parse(puntoEnvioRaw as string);
+            } catch {
+                // Si falla, usar como string (retrocompatibilidad)
+                puntoEnvio = puntoEnvioRaw as string;
+            }
+        }
+
         const data = {
             name: formData.get('name'),
             lastName: formData.get('lastName'),
@@ -109,7 +121,7 @@ export async function createUser(formData: FormData) {
             password: formData.get('password'),
             role: formData.get('role'),
             permissions: JSON.parse(formData.get('permissions') as string || '[]'),
-            puntoEnvio: formData.get('puntoEnvio') || undefined,
+            puntoEnvio: puntoEnvio,
         };
 
         console.log('🟡 Datos parseados:', { ...data, password: data.password ? '[REDACTED]' : undefined });
@@ -154,6 +166,18 @@ export async function updateUser(userId: string, formData: FormData) {
             return { success: false, message: 'No tienes permisos para actualizar usuarios.' };
         }
 
+        const puntoEnvioRaw = formData.get('puntoEnvio');
+        let puntoEnvio: string | string[] | undefined = undefined;
+        if (puntoEnvioRaw) {
+            try {
+                // Intentar parsear como JSON (array)
+                puntoEnvio = JSON.parse(puntoEnvioRaw as string);
+            } catch {
+                // Si falla, usar como string (retrocompatibilidad)
+                puntoEnvio = puntoEnvioRaw as string;
+            }
+        }
+
         const data = {
             name: formData.get('name'),
             lastName: formData.get('lastName'),
@@ -161,7 +185,7 @@ export async function updateUser(userId: string, formData: FormData) {
             password: formData.get('password'),
             role: formData.get('role'),
             permissions: JSON.parse(formData.get('permissions') as string || '[]'),
-            puntoEnvio: formData.get('puntoEnvio') || undefined,
+            puntoEnvio: puntoEnvio,
         };
 
         const validated = userSchema.safeParse(data);

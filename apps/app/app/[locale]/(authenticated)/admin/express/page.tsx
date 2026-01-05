@@ -24,11 +24,15 @@ export default async function GestionEnvioExpressStockPage({
     const canDelete = userWithPermissions?.permissions.includes('express:delete') || false;
     const isAdmin = userWithPermissions?.isAdmin || false;
 
-    // Filtrar puntos de envío: si no es admin, solo mostrar el asignado al usuario
+    // Filtrar puntos de envío: si no es admin, solo mostrar los asignados al usuario
     let filteredPuntosEnvio = puntosEnvio;
     if (!isAdmin && userWithPermissions?.puntoEnvio) {
-        const userPuntoEnvio = userWithPermissions.puntoEnvio;
-        filteredPuntosEnvio = puntosEnvio.filter(p => p.nombre === userPuntoEnvio);
+        const userPuntosEnvio = Array.isArray(userWithPermissions.puntoEnvio) 
+            ? userWithPermissions.puntoEnvio 
+            : [userWithPermissions.puntoEnvio]; // Retrocompatibilidad: convertir string a array
+        filteredPuntosEnvio = puntosEnvio.filter(p => 
+            p.nombre && userPuntosEnvio.includes(p.nombre)
+        );
     } else if (!isAdmin) {
         // Si no es admin y no tiene punto de envío asignado, mostrar array vacío
         filteredPuntosEnvio = [];

@@ -14,7 +14,7 @@ export interface UserGestor {
     role: UserRole;
     password?: string; // Opcional - solo se incluye internamente para verificación
     permissions: string[];
-    puntoEnvio?: string; // Punto de envío asignado al usuario
+    puntoEnvio?: string | string[]; // Punto(s) de envío asignado(s) al usuario (string para retrocompatibilidad, string[] para múltiples)
     createdAt?: Date | string;
     updatedAt?: Date | string;
 }
@@ -26,7 +26,7 @@ export interface UserGestorCreateInput {
     role: UserRole;
     password: string;
     permissions?: string[];
-    puntoEnvio?: string; // Punto de envío asignado al usuario
+    puntoEnvio?: string | string[]; // Punto(s) de envío asignado(s) al usuario (string para retrocompatibilidad, string[] para múltiples)
 }
 
 export interface UserGestorUpdateInput {
@@ -36,7 +36,7 @@ export interface UserGestorUpdateInput {
     role?: UserRole;
     password?: string;
     permissions?: string[];
-    puntoEnvio?: string; // Punto de envío asignado al usuario
+    puntoEnvio?: string | string[]; // Punto(s) de envío asignado(s) al usuario (string para retrocompatibilidad, string[] para múltiples)
 }
 
 /**
