@@ -10,15 +10,15 @@ interface QuantityAnalyticsTabProps {
         from: Date;
         to: Date;
     };
+    selectedYear?: number; // Año seleccionado por el usuario
 }
 
-export async function QuantityAnalyticsTab({ dateFilter, compareFilter }: QuantityAnalyticsTabProps) {
+export async function QuantityAnalyticsTab({ dateFilter, compareFilter, selectedYear }: QuantityAnalyticsTabProps) {
     try {
-        // Para la tabla de cantidad total KG, siempre mostrar todos los datos del año actual
-        // independientemente del filtro de fechas
-        const currentYear = new Date().getFullYear();
-        const yearStart = new Date(currentYear, 0, 1); // 1 de enero del año actual
-        const yearEnd = new Date(currentYear, 11, 31, 23, 59, 59, 999); // 31 de diciembre del año actual
+        // Usar el año seleccionado o el año actual por defecto
+        const currentYear = selectedYear || new Date().getFullYear();
+        const yearStart = new Date(currentYear, 0, 1); // 1 de enero del año seleccionado
+        const yearEnd = new Date(currentYear, 11, 31, 23, 59, 59, 999); // 31 de diciembre del año seleccionado
 
 
 
@@ -40,6 +40,7 @@ export async function QuantityAnalyticsTab({ dateFilter, compareFilter }: Quanti
                 compareFilter={compareFilter}
                 quantityStats={quantityStats}
                 compareQuantityStats={compareQuantityStats}
+                selectedYear={currentYear}
             />
         );
     } catch (error) {

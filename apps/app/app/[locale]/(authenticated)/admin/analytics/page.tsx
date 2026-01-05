@@ -17,6 +17,7 @@ interface AnalyticsPageProps {
         compare?: string;
         compareFrom?: string;
         compareTo?: string;
+        quantityYear?: string; // Año para la sección de cantidad total KG
     }>;
 }
 
@@ -76,7 +77,7 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
                 categoriesTab={<CategoriesAnalyticsTab dateFilter={dateFilter} compareFilter={compareFilter} />}
                 paymentsTab={<PaymentsAnalyticsTab dateFilter={dateFilter} compareFilter={compareFilter} />}
                 frequencyTab={<FrequencyAnalyticsTab dateFilter={dateFilter} compareFilter={compareFilter} />}
-                quantityTab={<QuantityAnalyticsTab dateFilter={dateFilter} compareFilter={compareFilter} />}
+                quantityTab={<QuantityAnalyticsTab dateFilter={dateFilter} compareFilter={compareFilter} selectedYear={params.quantityYear ? parseInt(params.quantityYear) : undefined} />}
             />
         </div>
     );

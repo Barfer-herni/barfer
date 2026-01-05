@@ -4,6 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@repo
 import { QuantityTable } from './QuantityTable';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@repo/design-system/components/ui/select';
 
 interface ProductQuantity {
     month: string;
@@ -43,14 +51,35 @@ interface QuantityAnalyticsClientProps {
     };
     quantityStats?: QuantityStatsByType;
     compareQuantityStats?: QuantityStatsByType;
+    selectedYear?: number;
 }
 
 export function QuantityAnalyticsClient({
     dateFilter,
     compareFilter,
     quantityStats,
-    compareQuantityStats
+    compareQuantityStats,
+    selectedYear
 }: QuantityAnalyticsClientProps) {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
+    const currentYear = new Date().getFullYear();
+    const displayYear = selectedYear || currentYear;
+
+    // Generar lista de años disponibles (desde 2020 hasta el año actual)
+    const availableYears = Array.from({ length: currentYear - 2019 }, (_, i) => currentYear - i);
+
+    const handleYearChange = (year: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (year && year !== currentYear.toString()) {
+            params.set('quantityYear', year);
+        } else {
+            params.delete('quantityYear');
+        }
+        router.push(`${pathname}?${params.toString()}`);
+    };
+
     const formatDateRange = (from: Date, to: Date) => {
         if (!from || !to) {
             return 'Período no válido';
@@ -105,8 +134,23 @@ export function QuantityAnalyticsClient({
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <h2 className="text-xl font-semibold">Cantidad Total KG</h2>
-                <div className="text-sm text-muted-foreground">
-                    Todos los meses del {new Date().getFullYear()}
+                <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Año:</span>
+                    <Select
+                        value={displayYear.toString()}
+                        onValueChange={handleYearChange}
+                    >
+                        <SelectTrigger className="w-[120px]">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {availableYears.map((year) => (
+                                <SelectItem key={year} value={year.toString()}>
+                                    {year}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
 
@@ -143,7 +187,7 @@ export function QuantityAnalyticsClient({
                 <>
                     <div className="mt-8">
                         <h3 className="text-lg font-semibold mb-4">
-                            Comparación con año anterior ({new Date().getFullYear() - 1})
+                            Comparación con año anterior ({displayYear - 1})
                         </h3>
                     </div>
 
