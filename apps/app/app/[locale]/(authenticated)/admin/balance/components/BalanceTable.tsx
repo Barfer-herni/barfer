@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Dictionary } from '@repo/internationalization';
 import { BalanceMonthlyData } from '@repo/data-services';
 import {
@@ -15,16 +16,43 @@ import { Card, CardContent, CardHeader, CardTitle } from '@repo/design-system/co
 import { Badge } from '@repo/design-system/components/ui/badge';
 import { Button } from '@repo/design-system/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@repo/design-system/components/ui/tabs';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@repo/design-system/components/ui/select';
 import { Download, TrendingUp, TrendingDown, DollarSign, Package, Users, AlertTriangle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 interface BalanceTableProps {
     data: BalanceMonthlyData[];
     dictionary: Dictionary;
+    selectedYear?: number;
 }
 
-export function BalanceTable({ data, dictionary }: BalanceTableProps) {
+export function BalanceTable({ data, dictionary, selectedYear }: BalanceTableProps) {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
     const [filteredData, setFilteredData] = useState(data);
+    
+    const currentYear = new Date().getFullYear();
+    const displayYear = selectedYear || currentYear;
+
+    // Generar lista de años disponibles (desde 2020 hasta el año actual)
+    const availableYears = Array.from({ length: currentYear - 2019 }, (_, i) => currentYear - i);
+
+    const handleYearChange = (year: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (year && year !== currentYear.toString()) {
+            params.set('year', year);
+        } else {
+            params.delete('year');
+        }
+        router.push(`${pathname}?${params.toString()}`);
+    };
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('es-AR', {
@@ -80,15 +108,33 @@ export function BalanceTable({ data, dictionary }: BalanceTableProps) {
                             <DollarSign className="h-5 w-5 text-green-600" />
                             <span>Balance Financiero</span>
                         </div>
-                        <Button variant="outline" size="sm">
-                            <Download className="h-4 w-4 mr-2" />
-                            Exportar
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">Año:</span>
+                            <Select
+                                value={displayYear.toString()}
+                                onValueChange={handleYearChange}
+                            >
+                                <SelectTrigger className="w-[120px]">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {availableYears.map((year) => (
+                                        <SelectItem key={year} value={year.toString()}>
+                                            {year}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <Button variant="outline" size="sm">
+                                <Download className="h-4 w-4 mr-2" />
+                                Exportar
+                            </Button>
+                        </div>
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <p className="text-sm text-muted-foreground">
-                        Análisis mensual de ingresos y gastos del negocio.
+                        Análisis mensual de ingresos y gastos del negocio para el año {displayYear}.
                         <span className="text-green-600 font-medium"> Verde</span> = ganancias,
                         <span className="text-red-600 font-medium"> Rojo</span> = pérdidas.
                     </p>
