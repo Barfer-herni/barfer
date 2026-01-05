@@ -3,16 +3,23 @@ import { getCollection } from '@repo/database';
 import type { Order } from '../../types/barfer';
 
 /**
- * Obtener órdenes express (paymentMethod: "bank-transfer")
+ * Obtener órdenes express
+ * - Pedidos viejos: paymentMethod: "bank-transfer"
+ * - Pedidos nuevos: deliveryArea.sameDayDelivery: true
  * Opcionalmente filtradas por punto de envío (nombre)
  */
 export async function getExpressOrders(puntoEnvio?: string): Promise<Order[]> {
     try {
         const collection = await getCollection('orders');
 
-        // Filtro base: solo órdenes con paymentMethod "bank-transfer"
+        // Filtro base: pedidos express (viejos o nuevos)
         const filter: any = {
-            paymentMethod: 'bank-transfer',
+            $or: [
+                // Pedidos viejos: método de pago bank-transfer
+                { paymentMethod: 'bank-transfer' },
+                // Pedidos nuevos: sameDayDelivery activado
+                { 'deliveryArea.sameDayDelivery': true }
+            ]
         };
 
         // Si se proporciona puntoEnvio, filtrar por ese punto de envío
