@@ -51,7 +51,8 @@ export function BalanceTable({ data, dictionary, selectedYear }: BalanceTablePro
         } else {
             params.delete('year');
         }
-        router.push(`${pathname}?${params.toString()}`);
+        // Usar window.location para forzar recarga completa
+        window.location.href = `${pathname}?${params.toString()}`;
     };
 
     const formatCurrency = (amount: number) => {
