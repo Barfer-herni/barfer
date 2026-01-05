@@ -931,7 +931,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                             <Select
                                 value={selectedPuntoEnvio}
                                 onValueChange={handlePuntoEnvioChange}
-                                disabled={!isAdmin && puntosEnvio.length > 0}
+                                disabled={!isAdmin && initialPuntosEnvio.length <= 1}
                             >
                                 <SelectTrigger className="w-full max-w-md">
                                     <SelectValue placeholder={puntosEnvio.length === 0 ? "No hay puntos de envío disponibles" : "Selecciona un punto de envío..."} />

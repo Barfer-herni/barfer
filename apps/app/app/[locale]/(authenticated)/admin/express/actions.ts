@@ -14,6 +14,7 @@ import {
     updateStockMongo,
     countOrdersByDay,
 } from '@repo/data-services';
+import { getCurrentUserWithPermissions } from '@repo/auth/server-permissions';
 
 export async function getDeliveryAreasWithPuntoEnvioAction() {
     try {
@@ -29,6 +30,25 @@ export async function getDeliveryAreasWithPuntoEnvioAction() {
 
 export async function getExpressOrdersAction(puntoEnvio?: string) {
     try {
+        // Validar que el usuario tenga permiso para ver este punto de envío
+        const userWithPermissions = await getCurrentUserWithPermissions();
+        const isAdmin = userWithPermissions?.isAdmin || false;
+
+        // Si no es admin y se especifica un punto de envío, validar que esté en sus puntos asignados
+        if (!isAdmin && puntoEnvio && puntoEnvio !== 'all') {
+            const userPuntosEnvio = Array.isArray(userWithPermissions?.puntoEnvio)
+                ? userWithPermissions.puntoEnvio
+                : (userWithPermissions?.puntoEnvio ? [userWithPermissions.puntoEnvio] : []);
+
+            // Si el usuario no tiene puntos asignados o el punto seleccionado no está en su lista, retornar vacío
+            if (userPuntosEnvio.length === 0 || !userPuntosEnvio.includes(puntoEnvio)) {
+                return {
+                    success: true,
+                    orders: [],
+                };
+            }
+        }
+
         const orders = await getExpressOrders(puntoEnvio);
         return {
             success: true,
@@ -72,6 +92,24 @@ export async function createStockAction(data: {
 
 export async function getStockByPuntoEnvioAction(puntoEnvio: string) {
     try {
+        // Validar que el usuario tenga permiso para ver este punto de envío
+        const userWithPermissions = await getCurrentUserWithPermissions();
+        const isAdmin = userWithPermissions?.isAdmin || false;
+
+        // Si no es admin, validar que el punto esté en sus puntos asignados
+        if (!isAdmin) {
+            const userPuntosEnvio = Array.isArray(userWithPermissions?.puntoEnvio)
+                ? userWithPermissions.puntoEnvio
+                : (userWithPermissions?.puntoEnvio ? [userWithPermissions.puntoEnvio] : []);
+
+            if (userPuntosEnvio.length === 0 || !userPuntosEnvio.includes(puntoEnvio)) {
+                return {
+                    success: true,
+                    stock: [],
+                };
+            }
+        }
+
         return await getStockByPuntoEnvioMongo(puntoEnvio);
     } catch (error) {
         console.error('Error getting stock:', error);
@@ -84,6 +122,24 @@ export async function getStockByPuntoEnvioAction(puntoEnvio: string) {
 
 export async function getDetalleEnvioByPuntoEnvioAction(puntoEnvio: string) {
     try {
+        // Validar que el usuario tenga permiso para ver este punto de envío
+        const userWithPermissions = await getCurrentUserWithPermissions();
+        const isAdmin = userWithPermissions?.isAdmin || false;
+
+        // Si no es admin, validar que el punto esté en sus puntos asignados
+        if (!isAdmin) {
+            const userPuntosEnvio = Array.isArray(userWithPermissions?.puntoEnvio)
+                ? userWithPermissions.puntoEnvio
+                : (userWithPermissions?.puntoEnvio ? [userWithPermissions.puntoEnvio] : []);
+
+            if (userPuntosEnvio.length === 0 || !userPuntosEnvio.includes(puntoEnvio)) {
+                return {
+                    success: true,
+                    detalleEnvio: [],
+                };
+            }
+        }
+
         return await getDetalleEnvioByPuntoEnvioMongo(puntoEnvio);
     } catch (error) {
         console.error('Error getting detalle:', error);
