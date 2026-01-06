@@ -8,7 +8,9 @@ import {
     useReactTable,
     type Table as TanstackTable,
 } from '@tanstack/react-table';
-import { Pencil, Save, Trash2, X, Copy, Calculator, Download } from 'lucide-react';
+import { Pencil, Save, Trash2, X, Copy, Calculator, Download, GripVertical } from 'lucide-react';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 import {
     Table,
@@ -71,6 +73,72 @@ interface OrdersTableProps<TData extends { _id: string }, TValue> extends DataTa
     isCalculatingPrice?: boolean;
     onForceRecalculatePrice?: () => void;
     fontSize?: 'text-xs' | 'text-sm';
+    isDragEnabled?: boolean; // Nuevo prop para habilitar drag and drop
+}
+
+// Componente interno para filas draggables
+function DraggableTableRow({ row, children, isDragEnabled }: { row: any; children: React.ReactNode; isDragEnabled: boolean }) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+        setActivatorNodeRef,
+    } = useSortable({
+        id: String(row.id),
+        disabled: !isDragEnabled,
+    });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        cursor: isDragging ? 'grabbing' : undefined,
+    };
+
+    const rowClassName = shouldHighlightRow(row) === 'green'
+        ? 'bg-green-100 dark:bg-green-900/40'
+        : shouldHighlightRow(row) === 'orange'
+            ? 'bg-orange-100 dark:bg-orange-900/40'
+            : '';
+
+    if (!isDragEnabled) {
+        return (
+            <TableRow
+                key={row.id}
+                data-state={row.getIsSelected() && 'selected'}
+                className={rowClassName}
+            >
+                {children}
+            </TableRow>
+        );
+    }
+
+    return (
+        <TableRow
+            ref={setNodeRef}
+            style={style}
+            key={row.id}
+            data-state={row.getIsSelected() && 'selected'}
+            className={`${rowClassName} ${isDragging ? 'relative z-50 shadow-lg' : ''}`}
+        >
+            {/* Drag Handle Cell - solo si drag está habilitado */}
+            <TableCell className="px-1 py-1 border-r border-border w-[50px] bg-gray-50">
+                <div
+                    ref={setActivatorNodeRef}
+                    {...attributes}
+                    {...listeners}
+                    className="cursor-grab active:cursor-grabbing flex items-center justify-center hover:bg-blue-100 rounded p-2 transition-colors"
+                    title="Arrastra para reordenar"
+                >
+                    <GripVertical className="h-5 w-5 text-gray-600" />
+                </div>
+            </TableCell>
+            {children}
+        </TableRow>
+    );
 }
 
 export function OrdersTable<TData extends { _id: string }, TValue>({
@@ -103,6 +171,7 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
     isCalculatingPrice = false,
     onForceRecalculatePrice,
     fontSize = 'text-xs',
+    isDragEnabled = false,
 }: OrdersTableProps<TData, TValue>) {
     const table = useReactTable({
         data,
@@ -185,6 +254,14 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                 <TableHeader>
                     {table.getHeaderGroups().map((headerGroup) => (
                         <TableRow key={headerGroup.id}>
+                            {/* Drag Handle Header - solo si drag está habilitado */}
+                            {isDragEnabled && (
+                                <TableHead className={`px-0 py-2 ${fontSize} border-r border-border text-center bg-gray-100`} style={{ width: '50px' }}>
+                                    <div className="flex items-center justify-center">
+                                        <GripVertical className="h-4 w-4 text-gray-600" />
+                                    </div>
+                                </TableHead>
+                            )}
                             <TableHead className={`px-0 py-1 ${fontSize} border-r border-border`} style={{ width: `${COLUMN_WIDTHS.checkbox}px` }}>
                                 <div className="flex justify-center">
                                     <input
@@ -226,17 +303,7 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                 <TableBody>
                     {table.getRowModel().rows?.length ? (
                         table.getRowModel().rows.map((row) => (
-                            <TableRow
-                                key={row.id}
-                                data-state={row.getIsSelected() && 'selected'}
-                                className={
-                                    shouldHighlightRow(row) === 'green'
-                                        ? 'bg-green-100 dark:bg-green-900/40'
-                                        : shouldHighlightRow(row) === 'orange'
-                                            ? 'bg-orange-100 dark:bg-orange-900/40'
-                                            : ''
-                                }
-                            >
+                            <DraggableTableRow key={row.id} row={row} isDragEnabled={isDragEnabled}>
                                 <TableCell className="px-0 py-1 border-r border-border">
                                     <div className="flex justify-center">
                                         <input
@@ -472,11 +539,11 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                         </div>
                                     )}
                                 </TableCell>
-                            </TableRow>
+                            </DraggableTableRow>
                         ))
                     ) : (
                         <TableRow>
-                            <TableCell colSpan={columns.length + 2} className="h-24 text-center">
+                            <TableCell colSpan={columns.length + (isDragEnabled ? 3 : 2)} className="h-24 text-center">
                                 No se encontraron resultados.
                             </TableCell>
                         </TableRow>

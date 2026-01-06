@@ -9,13 +9,17 @@ import { STATUS_TRANSLATIONS, PAYMENT_METHOD_TRANSLATIONS } from '../../table/co
 import { createLocalDate, formatPhoneNumber } from '../../table/helpers';
 import { EstadoEnvioCell } from './EstadoEnvioCell';
 import { ShippingPriceCell } from './ShippingPriceCell';
+import { NotesOwnCell } from './NotesOwnCell';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 
 export const createExpressColumns = (
     onOrderUpdated?: () => void | Promise<void>,
-    onMoveOrder?: (orderId: string, direction: 'up' | 'down') => void
+    onMoveOrder?: (orderId: string, direction: 'up' | 'down') => void,
+    isDragEnabled?: boolean
 ): ColumnDef<Order>[] => [
-    {
+    // Columna de prioridad: muestra flechas si NO está habilitado el drag
+    // Si el drag está habilitado, esta columna se oculta porque el drag handle se renderiza en OrdersTable
+    ...(!isDragEnabled ? [{
         accessorKey: 'priority',
         header: () => <div className="w-full text-center text-xs">Prioridad</div>,
         enableSorting: false,
@@ -56,7 +60,7 @@ export const createExpressColumns = (
         size: 80,
         minSize: 70,
         maxSize: 90,
-    },
+    }] : []),
     {
         accessorKey: 'orderType',
         header: 'Tipo',
@@ -170,8 +174,17 @@ export const createExpressColumns = (
         accessorKey: 'notesOwn',
         header: 'Notas propias',
         cell: ({ row }: CellContext<Order, unknown>) => {
+            const orderId = row.original._id;
             const notesOwn = row.original.notesOwn || '';
-            return <div className="min-w-[100px] text-sm">{notesOwn}</div>;
+            return (
+                <div className="min-w-[100px]">
+                    <NotesOwnCell
+                        orderId={orderId}
+                        currentNotes={notesOwn}
+                        onUpdate={onOrderUpdated}
+                    />
+                </div>
+            );
         }
     },
     {

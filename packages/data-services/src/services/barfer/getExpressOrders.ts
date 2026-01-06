@@ -6,9 +6,9 @@ import type { Order } from '../../types/barfer';
  * Obtener órdenes express
  * - Pedidos viejos: paymentMethod: "bank-transfer"
  * - Pedidos nuevos: deliveryArea.sameDayDelivery: true
- * Opcionalmente filtradas por punto de envío (nombre)
+ * Opcionalmente filtradas por punto de envío (nombre) y rango de fechas
  */
-export async function getExpressOrders(puntoEnvio?: string): Promise<Order[]> {
+export async function getExpressOrders(puntoEnvio?: string, from?: string, to?: string): Promise<Order[]> {
     try {
         const collection = await getCollection('orders');
 
@@ -25,6 +25,23 @@ export async function getExpressOrders(puntoEnvio?: string): Promise<Order[]> {
         // Si se proporciona puntoEnvio, filtrar por ese punto de envío
         if (puntoEnvio) {
             filter.puntoEnvio = puntoEnvio;
+        }
+
+        // Filtro por fecha si se proporciona
+        if (from && from.trim() !== '' || to && to.trim() !== '') {
+            filter.deliveryDay = {};
+            if (from && from.trim() !== '') {
+                // Crear fecha desde string sin manipulación de zona horaria
+                const [year, month, day] = from.split('-').map(Number);
+                const fromDateObj = new Date(year, month - 1, day, 0, 0, 0, 0);
+                filter.deliveryDay.$gte = fromDateObj;
+            }
+            if (to && to.trim() !== '') {
+                // Crear fecha desde string sin manipulación de zona horaria
+                const [year, month, day] = to.split('-').map(Number);
+                const toDateObj = new Date(year, month - 1, day, 23, 59, 59, 999);
+                filter.deliveryDay.$lte = toDateObj;
+            }
         }
 
         const orders = await collection

@@ -12,7 +12,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@repo/design-system/components/ui/select';
-import { Plus, Package, ShoppingCart, BarChart3, Edit2, Save, X, ChevronUp, ChevronDown } from 'lucide-react';
+import { Plus, Package, ShoppingCart, BarChart3, Edit2, Save, X, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Input } from '@repo/design-system/components/ui/input';
@@ -34,6 +34,10 @@ import { OrdersDataTable } from '../../table/components/OrdersDataTable';
 import type { ColumnDef, PaginationState, SortingState } from '@tanstack/react-table';
 import { createExpressColumns } from './expressColumns';
 import { ResumenGeneralTables } from './ResumenGeneralTables';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import { DateRangeFilter } from '../../table/components/DateRangeFilter';
 
 interface ExpressPageClientProps {
     dictionary: Dictionary;
@@ -108,6 +112,16 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     const saveTimeouts = useRef<Record<string, NodeJS.Timeout>>({});
     // Refs para flags que previenen creación duplicada
     const savingFlags = useRef<Record<string, boolean>>({});
+
+    // Configurar sensores para drag and drop
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8, // Requiere mover 8px antes de activar el drag (evita clicks accidentales)
+            },
+        }),
+        useSensor(KeyboardSensor)
+    );
 
     // Obtener parámetros de paginación y filtros de la URL para procesamiento local
     const pageFromUrl = Number(searchParams.get('page')) || 1;
@@ -292,7 +306,76 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         return filteredAndSortedOrders.slice(startIndex, startIndex + pageSizeFromUrl);
     }, [filteredAndSortedOrders, pageFromUrl, pageSizeFromUrl]);
 
-    // Función para mover un pedido arriba o abajo en el orden
+    // Función para manejar el fin del drag and drop
+    const handleDragEnd = useCallback((event: DragEndEvent) => {
+        const { active, over } = event;
+
+        if (!over || active.id === over.id) {
+            return;
+        }
+
+        if (!fromFromUrl || !selectedPuntoEnvio || selectedPuntoEnvio === 'all') {
+            return;
+        }
+
+        // Normalizar IDs a strings
+        const activeId = String(active.id);
+        const overId = String(over.id);
+
+        // Obtener el orden actual guardado
+        let currentOrderIds = getSavedOrder(fromFromUrl, selectedPuntoEnvio);
+
+        // Filtrar pedidos por fecha y punto de envío para obtener la lista completa del día
+        let filteredOrders = [...orders];
+        if (fromFromUrl || toFromUrl) {
+            filteredOrders = filteredOrders.filter(order => {
+                let orderDateStr: string;
+                if (order.deliveryDay) {
+                    const deliveryDate = new Date(order.deliveryDay);
+                    orderDateStr = deliveryDate.toISOString().substring(0, 10);
+                } else {
+                    const orderDate = new Date(order.createdAt);
+                    const argDate = new Date(orderDate.getTime() - (3 * 60 * 60 * 1000));
+                    orderDateStr = argDate.toISOString().substring(0, 10);
+                }
+                const passesFrom = !fromFromUrl || orderDateStr >= fromFromUrl;
+                const passesTo = !toFromUrl || orderDateStr <= toFromUrl;
+                return passesFrom && passesTo;
+            });
+        }
+        filteredOrders = filteredOrders.filter(order => order.puntoEnvio === selectedPuntoEnvio);
+
+        // Si no hay orden guardado, crear uno basado en los pedidos filtrados, ordenados por createdAt desc
+        if (currentOrderIds.length === 0) {
+            const sortedOrders = [...filteredOrders].sort((a, b) =>
+                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            );
+            currentOrderIds = sortedOrders.map(order => String(order._id));
+        }
+
+        // Normalizar todos los IDs en currentOrderIds
+        currentOrderIds = currentOrderIds.map(id => String(id));
+
+        // Encontrar los índices
+        const oldIndex = currentOrderIds.indexOf(activeId);
+        const newIndex = currentOrderIds.indexOf(overId);
+
+        if (oldIndex === -1 || newIndex === -1) {
+            console.warn('No se pudieron encontrar los índices para el drag and drop');
+            return;
+        }
+
+        // Usar arrayMove de @dnd-kit para reordenar
+        const newOrderIds = arrayMove(currentOrderIds, oldIndex, newIndex);
+
+        // Guardar el nuevo orden
+        saveOrder(fromFromUrl, selectedPuntoEnvio, newOrderIds);
+
+        // Forzar re-render incrementando el estado
+        setOrderPriorityVersion(prev => prev + 1);
+    }, [fromFromUrl, toFromUrl, selectedPuntoEnvio, orders, getSavedOrder, saveOrder]);
+
+    // Función para mover un pedido arriba o abajo en el orden (mantener para compatibilidad con flechas)
     const moveOrder = useCallback((orderId: string, direction: 'up' | 'down') => {
         if (!fromFromUrl || !selectedPuntoEnvio || selectedPuntoEnvio === 'all') {
             return;
@@ -405,23 +488,27 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         }
     }, [isAdmin, puntosEnvio, selectedPuntoEnvio]);
 
-    // Cargar datos cuando se selecciona un punto de envío
+    // Cargar datos cuando se selecciona un punto de envío Y hay una fecha seleccionada
     useEffect(() => {
-        if (selectedPuntoEnvio) {
+        if (selectedPuntoEnvio && fromFromUrl) {
             loadTablasData(selectedPuntoEnvio);
         } else {
             setOrders([]);
             setStock([]);
             setDetalle([]);
         }
-    }, [selectedPuntoEnvio]);
+    }, [selectedPuntoEnvio, fromFromUrl]);
 
     const loadTablasData = async (puntoEnvio: string, options: { skipLocalUpdate?: boolean; silent?: boolean } = {}) => {
         const { skipLocalUpdate = false, silent = false } = options;
         if (!silent) setIsLoading(true);
         try {
             // Si es 'all', traemos todas las órdenes sin filtro de punto
-            const ordersPromise = getExpressOrdersAction(puntoEnvio === 'all' ? undefined : puntoEnvio);
+            const ordersPromise = getExpressOrdersAction(
+                puntoEnvio === 'all' ? undefined : puntoEnvio,
+                fromFromUrl || undefined,
+                toFromUrl || undefined
+            );
 
             // Si es 'all', no traemos stock ni detalle específico por ahora (o podríamos adaptarlo luego)
             const stockPromise = puntoEnvio === 'all' ? Promise.resolve({ success: true, stock: [] }) : getStockByPuntoEnvioAction(puntoEnvio);
@@ -921,12 +1008,21 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
             </div>
 
             <div className="px-5">
-                {/* Selector de punto de envío */}
-                <div className="mb-6">
+                {/* Filtros: Fecha y Punto de Envío */}
+                <div className="mb-6 space-y-4">
+                    {/* Filtro de Fecha */}
+                    <div>
+                        <label className="text-sm font-medium mb-2 block">
+                            📅 Seleccionar Fecha
+                        </label>
+                        <DateRangeFilter />
+                    </div>
+
+                    {/* Selector de punto de envío */}
                     <div className="flex items-center gap-4">
                         <div className="flex-1">
                             <label className="text-sm font-medium mb-2 block">
-                                Seleccionar Punto de Envío
+                                📍 Seleccionar Punto de Envío
                             </label>
                             <Select
                                 value={selectedPuntoEnvio}
@@ -957,7 +1053,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                             </Select>
                         </div>
                         {isAdmin && (
-                            <Button onClick={() => setShowCreatePuntoEnvioModal(true)} variant="outline">
+                            <Button onClick={() => setShowCreatePuntoEnvioModal(true)} variant="outline" className="mt-6">
                                 <Plus className="mr-2 h-4 w-4" />
                                 Nuevo Punto
                             </Button>
@@ -996,7 +1092,22 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                         </TabsList>
 
                         <TabsContent value="orders" className="mt-6">
-                            {isLoading ? (
+                            {!fromFromUrl || !selectedPuntoEnvio || selectedPuntoEnvio === 'all' ? (
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Órdenes Express</CardTitle>
+                                        <CardDescription>
+                                            Selecciona una fecha y un punto de envío para ver las órdenes
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="text-center py-8 text-muted-foreground">
+                                            <p className="text-lg mb-2">📅 Selecciona una fecha y un punto de envío específico para comenzar</p>
+                                            <p className="text-sm">Los datos se cargarán automáticamente</p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ) : isLoading ? (
                                 <Card>
                                     <CardContent className="py-8">
                                         <div className="text-center text-muted-foreground">
@@ -1018,39 +1129,81 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                         </div>
                                     </CardContent>
                                 </Card>
-                            ) : (
-                                <OrdersDataTable
-                                    fontSize="text-sm"
-                                    columns={createExpressColumns(
-                                        async () => {
-                                            // Recargar los datos visualmente sin loading global
+                            ) : (() => {
+                                // Determinar si el drag está habilitado (solo si no hay sort activo y hay fecha/punto seleccionados)
+                                const isDragEnabled = Boolean(!sortFromUrl && fromFromUrl && selectedPuntoEnvio && selectedPuntoEnvio !== 'all');
+                                
+                                // Crear array de IDs para SortableContext
+                                const itemIds = paginatedOrders.map((order) => String(order._id));
+
+                                const tableComponent = (
+                                    <OrdersDataTable
+                                        fontSize="text-sm"
+                                        columns={createExpressColumns(
+                                            undefined, // No recargar datos al actualizar
+                                            moveOrder,
+                                            isDragEnabled // Pasar flag para ocultar columna de flechas si drag está habilitado
+                                        )}
+                                        data={paginatedOrders}
+                                        pageCount={Math.ceil(filteredAndSortedOrders.length / pageSizeFromUrl)}
+                                        total={filteredAndSortedOrders.length}
+                                        pagination={{
+                                            pageIndex: pageFromUrl - 1,
+                                            pageSize: pageSizeFromUrl,
+                                        }}
+                                        sorting={sortFromUrl ? [{
+                                            id: sortFromUrl.split('.')[0],
+                                            desc: sortFromUrl.split('.')[1] === 'desc'
+                                        }] : [{ id: 'createdAt', desc: true }]}
+                                        canEdit={canEdit}
+                                        canDelete={canDelete}
+                                        onOrderUpdated={async () => {
+                                            // Recargar solo si es necesario (edición completa, no campos inline)
                                             if (selectedPuntoEnvio) {
                                                 await loadTablasData(selectedPuntoEnvio, { silent: true });
                                             }
-                                        },
-                                        moveOrder
-                                    )}
-                                    data={paginatedOrders}
-                                    pageCount={Math.ceil(filteredAndSortedOrders.length / pageSizeFromUrl)}
-                                    total={filteredAndSortedOrders.length}
-                                    pagination={{
-                                        pageIndex: pageFromUrl - 1,
-                                        pageSize: pageSizeFromUrl,
-                                    }}
-                                    sorting={sortFromUrl ? [{
-                                        id: sortFromUrl.split('.')[0],
-                                        desc: sortFromUrl.split('.')[1] === 'desc'
-                                    }] : [{ id: 'createdAt', desc: true }]}
-                                    canEdit={canEdit}
-                                    canDelete={canDelete}
-                                    onOrderUpdated={async () => {
-                                        // Recargar los datos visualmente sin loading global
-                                        if (selectedPuntoEnvio) {
-                                            await loadTablasData(selectedPuntoEnvio, { silent: true });
-                                        }
-                                    }}
-                                />
-                            )}
+                                        }}
+                                        isDragEnabled={isDragEnabled}
+                                    />
+                                );
+
+                                // Si drag está habilitado, envolver con DndContext
+                                if (isDragEnabled) {
+                                    return (
+                                        <DndContext
+                                            sensors={sensors}
+                                            collisionDetection={closestCenter}
+                                            onDragEnd={handleDragEnd}
+                                            modifiers={[restrictToVerticalAxis]}
+                                        >
+                                            <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                                                {tableComponent}
+                                            </SortableContext>
+                                        </DndContext>
+                                    );
+                                }
+
+                                // Si drag NO está habilitado, mostrar mensaje y tabla normal
+                                return (
+                                    <div className="space-y-4">
+                                        {sortFromUrl && (
+                                            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                                                <p className="text-sm text-yellow-800">
+                                                    <strong>⚠️ Nota:</strong> El reordenamiento manual está desactivado mientras hay un ordenamiento activo. Elimina el ordenamiento para poder arrastrar las filas.
+                                                </p>
+                                            </div>
+                                        )}
+                                        {(!fromFromUrl || !selectedPuntoEnvio || selectedPuntoEnvio === 'all') && (
+                                            <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
+                                                <p className="text-sm text-gray-800">
+                                                    <strong>ℹ️ Info:</strong> Selecciona una fecha y un punto de envío específico para habilitar el reordenamiento manual.
+                                                </p>
+                                            </div>
+                                        )}
+                                        {tableComponent}
+                                    </div>
+                                );
+                            })()}
                         </TabsContent>
 
                         <TabsContent value="stock" className="mt-6">

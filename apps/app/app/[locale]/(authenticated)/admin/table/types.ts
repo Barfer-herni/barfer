@@ -11,6 +11,7 @@ export interface DataTableProps<TData extends { _id: string }, TValue> {
     canDelete?: boolean;
     onOrderUpdated?: () => void | Promise<void>;
     fontSize?: 'text-xs' | 'text-sm';
+    isDragEnabled?: boolean;
 }
 
 export interface EditValues {

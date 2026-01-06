@@ -53,6 +53,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     canDelete = false,
     onOrderUpdated,
     fontSize = 'text-xs',
+    isDragEnabled = false,
 }: DataTableProps<TData, TValue>) {
     const router = useRouter();
     const pathname = usePathname();
@@ -1734,6 +1735,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 onSortingChange={navigateToSorting}
                 isCalculatingPrice={isCalculatingPrice}
                 fontSize={fontSize}
+                isDragEnabled={isDragEnabled}
             />
         </div>
     );

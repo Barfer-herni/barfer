@@ -28,7 +28,7 @@ export async function getDeliveryAreasWithPuntoEnvioAction() {
     }
 }
 
-export async function getExpressOrdersAction(puntoEnvio?: string) {
+export async function getExpressOrdersAction(puntoEnvio?: string, from?: string, to?: string) {
     try {
         // Validar que el usuario tenga permiso para ver este punto de envío
         const userWithPermissions = await getCurrentUserWithPermissions();
@@ -49,7 +49,7 @@ export async function getExpressOrdersAction(puntoEnvio?: string) {
             }
         }
 
-        const orders = await getExpressOrders(puntoEnvio);
+        const orders = await getExpressOrders(puntoEnvio, from, to);
         return {
             success: true,
             orders,

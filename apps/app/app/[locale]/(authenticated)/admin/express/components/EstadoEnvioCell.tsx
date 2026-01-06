@@ -65,15 +65,8 @@ export function EstadoEnvioCell({ orderId, currentEstado = 'pendiente', onUpdate
                     variant: 'destructive',
                 });
                 console.error('Error al actualizar estado:', result.error);
-            } else {
-                toast({
-                    title: '¡Éxito!',
-                    description: `Estado actualizado a: ${ESTADO_LABELS[newEstado]}`,
-                });
-                if (onUpdate) {
-                    onUpdate();
-                }
             }
+            // NO llamar a onUpdate para evitar refresh completo
         } catch (error) {
             // Revertir en caso de error
             setEstado(previousEstado);

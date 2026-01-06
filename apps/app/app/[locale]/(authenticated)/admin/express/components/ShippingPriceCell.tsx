@@ -35,22 +35,19 @@ export function ShippingPriceCell({ orderId, currentPrice, onUpdate }: ShippingP
         }
 
         setIsSaving(true);
+        setIsEditing(false); // Salir del modo edición inmediatamente
+        
         try {
             const result = await updateOrderAction(orderId, {
                 shippingPrice: numValue
             });
 
-            if (result.success) {
-                setIsEditing(false);
-                // Llamar al callback para recargar datos si está disponible
-                if (onUpdate) {
-                    onUpdate();
-                }
-            } else {
+            if (!result.success) {
                 // Revertir el valor si falla
                 setValue(currentNumValue.toString());
                 alert(result.error || 'Error al actualizar el costo de envío');
             }
+            // NO llamar a onUpdate para evitar refresh completo
         } catch (error) {
             // Revertir el valor si hay error
             setValue(currentNumValue.toString());
