@@ -26,7 +26,6 @@ export function ShippingPriceCell({ orderId, currentPrice, onUpdate, onOrderUpda
         if (!isEditing && !isSaving && !hasPendingChange) {
             // Solo actualizar si el currentPrice es diferente del optimisticPrice
             if (currentPrice !== optimisticPrice) {
-                console.log('🔄 ShippingPriceCell sync:', { orderId, currentPrice, optimisticPrice });
                 setOptimisticPrice(currentPrice || 0);
                 setValue(currentPrice?.toString() || '0');
             }
@@ -71,7 +70,6 @@ export function ShippingPriceCell({ orderId, currentPrice, onUpdate, onOrderUpda
                 alert(result.error || 'Error al actualizar el costo de envío');
             } else if (result.order && onOrderUpdate) {
                 // Actualizar el estado del padre con la orden actualizada
-                console.log('✅ ShippingPriceCell saved:', { orderId, newPrice: numValue, orderFromServer: result.order.shippingPrice });
                 onOrderUpdate(result.order);
                 // Limpiar el flag de cambio pendiente después de que el padre se actualice
                 setTimeout(() => setHasPendingChange(false), 100);

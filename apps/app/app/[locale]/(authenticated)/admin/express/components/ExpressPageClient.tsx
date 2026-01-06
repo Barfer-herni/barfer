@@ -376,17 +376,11 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
 
     // Función para actualizar una orden específica en el estado local
     const handleOrderUpdate = useCallback((updatedOrder: Order) => {
-        console.log('🔄 handleOrderUpdate called:', { 
-            orderId: updatedOrder._id, 
-            shippingPrice: updatedOrder.shippingPrice 
-        });
-        setOrders(prevOrders => {
-            const updated = prevOrders.map(order => 
+        setOrders(prevOrders => 
+            prevOrders.map(order => 
                 String(order._id) === String(updatedOrder._id) ? updatedOrder : order
-            );
-            console.log('📦 Orders updated, count:', updated.length);
-            return updated;
-        });
+            )
+        );
     }, []);
 
     // Función para mover un pedido arriba o abajo en el orden (mantener para compatibilidad con flechas)
@@ -493,6 +487,19 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
             setPuntosEnvio(result.puntosEnvio);
         }
     };
+
+    // Establecer fecha de hoy por defecto si no hay fecha en la URL (solo al montar)
+    const hasInitializedDate = useRef(false);
+    useEffect(() => {
+        if (!hasInitializedDate.current && !fromFromUrl && !toFromUrl) {
+            hasInitializedDate.current = true;
+            const today = format(new Date(), 'yyyy-MM-dd');
+            const params = new URLSearchParams(searchParams.toString());
+            params.set('from', today);
+            params.set('to', today);
+            router.replace(`${pathname}?${params.toString()}`);
+        }
+    }, [fromFromUrl, toFromUrl, searchParams, pathname, router]);
 
     // Si no es admin y hay puntos de envío, seleccionar automáticamente si no hay selección (URL o estado)
     useEffect(() => {
