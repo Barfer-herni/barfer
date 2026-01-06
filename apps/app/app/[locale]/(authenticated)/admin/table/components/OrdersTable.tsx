@@ -99,9 +99,9 @@ function DraggableTableRow({ row, children, isDragEnabled }: { row: any; childre
     };
 
     const rowClassName = shouldHighlightRow(row) === 'green'
-        ? 'bg-green-100 dark:bg-green-900/40'
+        ? 'bg-green-100 dark:bg-green-900/40 hover:bg-green-100 dark:hover:bg-green-900/40'
         : shouldHighlightRow(row) === 'orange'
-            ? 'bg-orange-100 dark:bg-orange-900/40'
+            ? 'bg-orange-100 dark:bg-orange-900/40 hover:bg-orange-100 dark:hover:bg-orange-900/40'
             : '';
 
     if (!isDragEnabled) {
