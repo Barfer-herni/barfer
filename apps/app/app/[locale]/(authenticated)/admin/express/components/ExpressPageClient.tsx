@@ -31,6 +31,7 @@ import {
 } from '../actions';
 import type { DeliveryArea, Order, Stock, DetalleEnvio, PuntoEnvio, ProductForStock } from '@repo/data-services';
 import { OrdersDataTable } from '../../table/components/OrdersDataTable';
+import { DateRangeFilter } from '../../table/components/DateRangeFilter';
 import type { ColumnDef, PaginationState, SortingState } from '@tanstack/react-table';
 import { createExpressColumns } from './expressColumns';
 import { ResumenGeneralTables } from './ResumenGeneralTables';
@@ -589,14 +590,40 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     }, []);
 
     // Comparar si dos productos son el mismo (producto y peso)
+    // NOTA: Los productos nuevos se guardan como "SECCION PRODUCTO" (ej: "PERRO POLLO")
+    // Los productos viejos pueden estar como solo "POLLO"
+    // Los productos de referencia vienen con section separada (ej: section="PERRO", product="POLLO")
     const isSameProduct = useCallback((stockItem: Stock, product: ProductForStock): boolean => {
-        const stockProductNormalized = normalizeProductName(stockItem.producto || '');
-        const productNormalized = normalizeProductName(product.product || '');
+        const stockProductUpper = (stockItem.producto || '').toUpperCase().trim();
+        const productProductUpper = (product.product || '').toUpperCase().trim();
+        const productSectionUpper = (product.section || '').toUpperCase().trim();
         const stockWeightNormalized = normalizeWeight(stockItem.peso);
         const productWeightNormalized = normalizeWeight(product.weight);
 
-        return stockProductNormalized === productNormalized && stockWeightNormalized === productWeightNormalized;
-    }, [normalizeProductName, normalizeWeight]);
+        // Comparar pesos primero (más específico)
+        const weightMatches = stockWeightNormalized === productWeightNormalized;
+        if (!weightMatches) return false;
+
+        // Construir el nombre completo del producto de referencia (SECCION PRODUCTO)
+        const fullProductName = `${productSectionUpper} ${productProductUpper}`.trim();
+        
+        // 1. Formato nuevo: coincidencia exacta con sección incluida
+        if (stockProductUpper === fullProductName) {
+            return true;
+        }
+        
+        // 2. Formato viejo: solo nombre de producto, sin sección
+        // IMPORTANTE: Solo aceptar si el stock NO tiene ninguna sección
+        if (stockProductUpper === productProductUpper) {
+            const hasSection = stockProductUpper.includes('PERRO') || 
+                             stockProductUpper.includes('GATO') || 
+                             stockProductUpper.includes('BIG DOG') ||
+                             stockProductUpper.includes('OTROS');
+            return !hasSection;
+        }
+
+        return false;
+    }, [normalizeWeight]);
 
     // Filtrar stock por fecha seleccionada desde URL
     const getStockForDate = useCallback((): Stock[] => {
@@ -841,9 +868,11 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                 if (!fromDate) return; // Necesitamos una fecha para crear stock
 
                                 const pedidosDelDiaCalculado = calculatePedidosDelDia(product);
+                                // Guardar el producto con la sección para distinguir PERRO de GATO
+                                const productoConSeccion = `${product.section} ${product.product}`.trim();
                                 const stockData: any = {
                                     puntoEnvio: selectedPuntoEnvio,
-                                    producto: product.product,
+                                    producto: productoConSeccion,
                                     peso: product.weight || undefined,
                                     stockInicial: currentStockInicial,
                                     llevamos: currentLlevamos,
@@ -877,6 +906,22 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                         // Si tenemos el producto, actualizar también pedidosDelDia
                         if (product) {
                             updateData.pedidosDelDia = calculatePedidosDelDia(product);
+                            
+                            // IMPORTANTE: Actualizar el nombre del producto para incluir la sección
+                            // Esto corrige registros viejos que solo tienen "POLLO" sin "PERRO" o "GATO"
+                            const currentStock = stock.find(s => String(s._id) === stockId);
+                            if (currentStock) {
+                                const currentProductUpper = (currentStock.producto || '').toUpperCase();
+                                const hasSection = currentProductUpper.includes('PERRO') || 
+                                                  currentProductUpper.includes('GATO') || 
+                                                  currentProductUpper.includes('BIG DOG');
+                                
+                                // Si el registro viejo no tiene sección, agregársela
+                                if (!hasSection) {
+                                    const productoConSeccion = `${product.section} ${product.product}`.trim();
+                                    updateData.producto = productoConSeccion;
+                                }
+                            }
                         }
 
                         const result = await updateStockAction(stockId, updateData);
@@ -1223,18 +1268,23 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                         <TabsContent value="stock" className="mt-6">
                             <Card>
                                 <CardHeader>
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <CardTitle>Stock</CardTitle>
-                                            <CardDescription>
-                                                Gestión de stock día a día para este punto de envío
-                                            </CardDescription>
+                                    <div className="flex flex-col gap-4">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <CardTitle>Stock</CardTitle>
+                                                <CardDescription>
+                                                    Gestión de stock día a día para este punto de envío
+                                                </CardDescription>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <Button onClick={() => setShowAddStockModal(true)} disabled={!selectedPuntoEnvio}>
+                                                    <Plus className="h-4 w-4 mr-2" />
+                                                    Agregar producto
+                                                </Button>
+                                            </div>
                                         </div>
                                         <div className="flex items-center gap-4">
-                                            <Button onClick={() => setShowAddStockModal(true)} disabled={!selectedPuntoEnvio}>
-                                                <Plus className="h-4 w-4 mr-2" />
-                                                Agregar producto
-                                            </Button>
+                                            <DateRangeFilter />
                                         </div>
                                     </div>
                                 </CardHeader>
