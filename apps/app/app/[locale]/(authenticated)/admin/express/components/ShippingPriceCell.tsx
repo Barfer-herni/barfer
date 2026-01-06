@@ -1,25 +1,43 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Input } from '@repo/design-system/components/ui/input';
 import { updateOrderAction } from '../../table/actions';
+import type { Order } from '@repo/data-services';
 
 interface ShippingPriceCellProps {
     orderId: string;
     currentPrice: number;
     onUpdate?: () => void;
+    onOrderUpdate?: (updatedOrder: Order) => void;
 }
 
-export function ShippingPriceCell({ orderId, currentPrice, onUpdate }: ShippingPriceCellProps) {
+export function ShippingPriceCell({ orderId, currentPrice, onUpdate, onOrderUpdate }: ShippingPriceCellProps) {
+    // Estado local optimista: muestra el valor actualizado inmediatamente
+    const [optimisticPrice, setOptimisticPrice] = useState<number>(currentPrice || 0);
     const [value, setValue] = useState<string>(currentPrice?.toString() || '0');
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [hasPendingChange, setHasPendingChange] = useState(false);
+
+    // Sincronizar con el prop cuando cambia (por ejemplo, después de un refresh externo)
+    // PERO solo si NO hay un cambio pendiente (para no sobrescribir el valor optimista)
+    useEffect(() => {
+        if (!isEditing && !isSaving && !hasPendingChange) {
+            // Solo actualizar si el currentPrice es diferente del optimisticPrice
+            if (currentPrice !== optimisticPrice) {
+                console.log('🔄 ShippingPriceCell sync:', { orderId, currentPrice, optimisticPrice });
+                setOptimisticPrice(currentPrice || 0);
+                setValue(currentPrice?.toString() || '0');
+            }
+        }
+    }, [currentPrice, isEditing, isSaving, hasPendingChange, optimisticPrice, orderId]);
 
     const handleBlur = async () => {
         if (isSaving) return;
         
         const numValue = Number(value);
-        const currentNumValue = currentPrice || 0;
+        const currentNumValue = optimisticPrice;
         
         // Si el valor no cambió, solo salir del modo edición
         if (numValue === currentNumValue) {
@@ -34,8 +52,11 @@ export function ShippingPriceCell({ orderId, currentPrice, onUpdate }: ShippingP
             return;
         }
 
+        // Actualización optimista: mostrar el nuevo valor inmediatamente
+        setOptimisticPrice(numValue);
+        setHasPendingChange(true);
         setIsSaving(true);
-        setIsEditing(false); // Salir del modo edición inmediatamente
+        setIsEditing(false);
         
         try {
             const result = await updateOrderAction(orderId, {
@@ -43,14 +64,24 @@ export function ShippingPriceCell({ orderId, currentPrice, onUpdate }: ShippingP
             });
 
             if (!result.success) {
-                // Revertir el valor si falla
-                setValue(currentNumValue.toString());
+                // Revertir el valor optimista si falla
+                setOptimisticPrice(currentPrice || 0);
+                setValue((currentPrice || 0).toString());
+                setHasPendingChange(false);
                 alert(result.error || 'Error al actualizar el costo de envío');
+            } else if (result.order && onOrderUpdate) {
+                // Actualizar el estado del padre con la orden actualizada
+                console.log('✅ ShippingPriceCell saved:', { orderId, newPrice: numValue, orderFromServer: result.order.shippingPrice });
+                onOrderUpdate(result.order);
+                // Limpiar el flag de cambio pendiente después de que el padre se actualice
+                setTimeout(() => setHasPendingChange(false), 100);
             }
             // NO llamar a onUpdate para evitar refresh completo
         } catch (error) {
-            // Revertir el valor si hay error
-            setValue(currentNumValue.toString());
+            // Revertir el valor optimista si hay error
+            setOptimisticPrice(currentPrice || 0);
+            setValue((currentPrice || 0).toString());
+            setHasPendingChange(false);
             console.error('Error updating shipping price:', error);
             alert('Error al actualizar el costo de envío');
         } finally {
@@ -62,7 +93,7 @@ export function ShippingPriceCell({ orderId, currentPrice, onUpdate }: ShippingP
         if (e.key === 'Enter') {
             e.currentTarget.blur();
         } else if (e.key === 'Escape') {
-            setValue(currentPrice?.toString() || '0');
+            setValue(optimisticPrice.toString());
             setIsEditing(false);
         }
     };
@@ -88,8 +119,8 @@ export function ShippingPriceCell({ orderId, currentPrice, onUpdate }: ShippingP
         );
     }
 
-    // Mostrar valor formateado cuando no está editando
-    const rounded = Math.round(currentPrice || 0);
+    // Mostrar valor optimista formateado cuando no está editando
+    const rounded = Math.round(optimisticPrice);
     const formatted = new Intl.NumberFormat('es-AR', {
         style: 'currency',
         currency: 'ARS',
@@ -99,9 +130,9 @@ export function ShippingPriceCell({ orderId, currentPrice, onUpdate }: ShippingP
 
     return (
         <div 
-            className="font-medium text-center min-w-[100px] text-sm cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors"
+            className={`font-medium text-center min-w-[100px] text-sm cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors ${isSaving ? 'opacity-60' : ''}`}
             onClick={handleFocus}
-            title="Click para editar"
+            title={isSaving ? "Guardando..." : "Click para editar"}
         >
             {formatted}
         </div>

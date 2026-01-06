@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Select,
     SelectContent,
@@ -43,11 +43,20 @@ const ESTADO_LABELS_SHORT: Record<EstadoEnvio, string> = {
 export function EstadoEnvioCell({ orderId, currentEstado = 'pendiente', onUpdate }: EstadoEnvioCellProps) {
     const [estado, setEstado] = useState<EstadoEnvio>(currentEstado);
     const [isUpdating, setIsUpdating] = useState(false);
+    const [hasLocalChange, setHasLocalChange] = useState(false);
+
+    // Sincronizar el estado local con el prop solo si no hay cambios locales pendientes
+    useEffect(() => {
+        if (!isUpdating && !hasLocalChange) {
+            setEstado(currentEstado);
+        }
+    }, [currentEstado, isUpdating, hasLocalChange]);
 
     const handleEstadoChange = async (newEstado: EstadoEnvio) => {
         if (newEstado === estado) return;
 
         setIsUpdating(true);
+        setHasLocalChange(true);
         const previousEstado = estado;
 
         // Actualización optimista
@@ -59,17 +68,27 @@ export function EstadoEnvioCell({ orderId, currentEstado = 'pendiente', onUpdate
             if (!result.success) {
                 // Revertir en caso de error
                 setEstado(previousEstado);
+                setHasLocalChange(false);
                 toast({
                     title: 'Error',
                     description: 'Error al actualizar el estado de envío',
                     variant: 'destructive',
                 });
                 console.error('Error al actualizar estado:', result.error);
+            } else {
+                // Mostrar confirmación de éxito
+                toast({
+                    title: '¡Actualizado!',
+                    description: `Estado cambiado a: ${ESTADO_LABELS[newEstado]}`,
+                });
+                // Mantener el cambio local hasta que se confirme desde el servidor
+                setTimeout(() => setHasLocalChange(false), 1000);
             }
             // NO llamar a onUpdate para evitar refresh completo
         } catch (error) {
             // Revertir en caso de error
             setEstado(previousEstado);
+            setHasLocalChange(false);
             toast({
                 title: 'Error',
                 description: 'Error al actualizar el estado de envío',

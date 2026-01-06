@@ -184,9 +184,8 @@ export async function updateEstadoEnvioAction(orderId: string, estadoEnvio: 'pen
     try {
         const result = await updateEstadoEnvio(orderId, estadoEnvio);
 
-        if (result.success) {
-            revalidatePath('/admin/express');
-        }
+        // No revalidamos la ruta para evitar recargas lentas
+        // El componente usa optimistic updates para actualización instantánea
 
         return result;
     } catch (error) {

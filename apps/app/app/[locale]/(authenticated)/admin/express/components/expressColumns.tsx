@@ -15,7 +15,8 @@ import { ChevronUp, ChevronDown } from 'lucide-react';
 export const createExpressColumns = (
     onOrderUpdated?: () => void | Promise<void>,
     onMoveOrder?: (orderId: string, direction: 'up' | 'down') => void,
-    isDragEnabled?: boolean
+    isDragEnabled?: boolean,
+    onOrderUpdate?: (updatedOrder: Order) => void
 ): ColumnDef<Order>[] => [
     // Columna de prioridad: muestra flechas si NO está habilitado el drag
     // Si el drag está habilitado, esta columna se oculta porque el drag handle se renderiza en OrdersTable
@@ -163,6 +164,7 @@ export const createExpressColumns = (
                     orderId={orderId}
                     currentPrice={shippingPrice}
                     onUpdate={onOrderUpdated}
+                    onOrderUpdate={onOrderUpdate}
                 />
             );
         },

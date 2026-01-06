@@ -37,7 +37,6 @@ import { ResumenGeneralTables } from './ResumenGeneralTables';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
-import { DateRangeFilter } from '../../table/components/DateRangeFilter';
 
 interface ExpressPageClientProps {
     dictionary: Dictionary;
@@ -374,6 +373,21 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         // Forzar re-render incrementando el estado
         setOrderPriorityVersion(prev => prev + 1);
     }, [fromFromUrl, toFromUrl, selectedPuntoEnvio, orders, getSavedOrder, saveOrder]);
+
+    // Función para actualizar una orden específica en el estado local
+    const handleOrderUpdate = useCallback((updatedOrder: Order) => {
+        console.log('🔄 handleOrderUpdate called:', { 
+            orderId: updatedOrder._id, 
+            shippingPrice: updatedOrder.shippingPrice 
+        });
+        setOrders(prevOrders => {
+            const updated = prevOrders.map(order => 
+                String(order._id) === String(updatedOrder._id) ? updatedOrder : order
+            );
+            console.log('📦 Orders updated, count:', updated.length);
+            return updated;
+        });
+    }, []);
 
     // Función para mover un pedido arriba o abajo en el orden (mantener para compatibilidad con flechas)
     const moveOrder = useCallback((orderId: string, direction: 'up' | 'down') => {
@@ -1008,16 +1022,8 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
             </div>
 
             <div className="px-5">
-                {/* Filtros: Fecha y Punto de Envío */}
+                {/* Filtros: Punto de Envío */}
                 <div className="mb-6 space-y-4">
-                    {/* Filtro de Fecha */}
-                    <div>
-                        <label className="text-sm font-medium mb-2 block">
-                            📅 Seleccionar Fecha
-                        </label>
-                        <DateRangeFilter />
-                    </div>
-
                     {/* Selector de punto de envío */}
                     <div className="flex items-center gap-4">
                         <div className="flex-1">
@@ -1142,7 +1148,8 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                         columns={createExpressColumns(
                                             undefined, // No recargar datos al actualizar
                                             moveOrder,
-                                            isDragEnabled // Pasar flag para ocultar columna de flechas si drag está habilitado
+                                            isDragEnabled, // Pasar flag para ocultar columna de flechas si drag está habilitado
+                                            handleOrderUpdate // Pasar callback para actualizar orden
                                         )}
                                         data={paginatedOrders}
                                         pageCount={Math.ceil(filteredAndSortedOrders.length / pageSizeFromUrl)}
