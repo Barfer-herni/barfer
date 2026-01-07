@@ -12,7 +12,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@repo/design-system/components/ui/select';
-import { Plus, Package, ShoppingCart, BarChart3, Edit2, Save, X, ChevronUp, ChevronDown, GripVertical, Search } from 'lucide-react';
+import { Plus, Package, ShoppingCart, BarChart3, Edit2, Save, X, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Input } from '@repo/design-system/components/ui/input';
@@ -64,10 +64,6 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     const [activeTab, setActiveTab] = useState<string>(initialTabFromUrl);
 
     const [puntosEnvio, setPuntosEnvio] = useState<PuntoEnvio[]>(initialPuntosEnvio);
-    
-    // Estado para el input de búsqueda
-    const [searchInput, setSearchInput] = useState(searchParams.get('search') || '');
-    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Función auxiliar para actualizar URL
     const updateUrlParams = useCallback((param: string, value: string) => {
@@ -92,52 +88,6 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         updateUrlParams('tab', value);
     };
 
-    // Funciones para manejar la búsqueda
-    const navigateToSearch = useCallback((value: string) => {
-        const params = new URLSearchParams(searchParams.toString());
-        params.set('page', '1');
-        if (value.trim()) {
-            params.set('search', value);
-        } else {
-            params.delete('search');
-        }
-        router.replace(`${pathname}?${params.toString()}`);
-    }, [pathname, router, searchParams]);
-
-    const handleSearchChange = useCallback((value: string) => {
-        setSearchInput(value);
-
-        // Limpiar el timeout anterior si existe
-        if (searchTimeoutRef.current) {
-            clearTimeout(searchTimeoutRef.current);
-        }
-
-        // Si el campo está vacío, ejecutar la búsqueda inmediatamente
-        if (value.trim() === '') {
-            navigateToSearch('');
-        } else {
-            // Para valores no vacíos, usar debounce
-            searchTimeoutRef.current = setTimeout(() => {
-                navigateToSearch(value);
-            }, 500);
-        }
-    }, [navigateToSearch]);
-
-    const handleSearchKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            navigateToSearch(searchInput);
-        }
-    }, [searchInput, navigateToSearch]);
-
-    // Limpiar timeout al desmontar
-    useEffect(() => {
-        return () => {
-            if (searchTimeoutRef.current) {
-                clearTimeout(searchTimeoutRef.current);
-            }
-        };
-    }, []);
 
     // Debug: verificar datos recibidos
     useEffect(() => {
@@ -261,9 +211,15 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         // A. Filtrar por Búsqueda
         if (searchFromUrl) {
             const searchLower = searchFromUrl.toLowerCase();
+            // Normalizar búsqueda de teléfono: remover espacios, guiones y paréntesis
+            const searchNormalized = searchFromUrl.replace(/[\s\-()]/g, '');
+            
             result = result.filter(order => {
                 // Construir nombre completo para búsqueda
                 const fullName = `${order.user?.name || ''} ${order.user?.lastName || ''}`.toLowerCase().trim();
+                
+                // Normalizar teléfono para búsqueda
+                const phoneNormalized = (order.address?.phone || '').replace(/[\s\-()]/g, '');
                 
                 return (
                     // Búsqueda por nombre completo (nombre + apellido)
@@ -274,6 +230,10 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                     (order.user?.lastName || '').toLowerCase().includes(searchLower) ||
                     // Búsqueda por email
                     (order.user?.email || '').toLowerCase().includes(searchLower) ||
+                    // Búsqueda por teléfono (normalizado sin espacios ni guiones)
+                    phoneNormalized.includes(searchNormalized) ||
+                    // Búsqueda por teléfono (formato original)
+                    (order.address?.phone || '').toLowerCase().includes(searchLower) ||
                     // Búsqueda por total
                     (order.total?.toString() || '').includes(searchLower) ||
                     // Búsqueda por ID
@@ -1202,18 +1162,6 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 {/* Mostrar Tabs normales si hay un punto específico seleccionado */}
                 {selectedPuntoEnvio && selectedPuntoEnvio !== 'all' && (
                     <div className="space-y-4">
-                        {/* Input de búsqueda */}
-                        <div className="relative w-full max-w-md">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                placeholder="Buscar por nombre, email, dirección..."
-                                value={searchInput}
-                                onChange={(e) => handleSearchChange(e.target.value)}
-                                onKeyDown={handleSearchKeyDown}
-                                className="pl-9"
-                            />
-                        </div>
-
                         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                             <TabsList className={isAdmin ? "grid w-full grid-cols-3" : "grid w-full grid-cols-2"}>
                                 <TabsTrigger value="orders" className="flex items-center gap-2">

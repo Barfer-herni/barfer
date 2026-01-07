@@ -198,21 +198,12 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     // Función para manejar cambios en el filtro de búsqueda
     const handleSearchChange = useCallback((value: string) => {
         setSearchInput(value);
-
-        // Limpiar el timeout anterior si existe
-        if (searchTimeoutRef.current) {
-            clearTimeout(searchTimeoutRef.current);
-        }
-
-        // Si el campo está vacío, ejecutar la búsqueda inmediatamente
+        
+        // Si el campo está vacío, ejecutar la búsqueda inmediatamente para mostrar todos los resultados
         if (value.trim() === '') {
             navigateToSearch('');
-        } else {
-            // Para valores no vacíos, usar debounce
-            searchTimeoutRef.current = setTimeout(() => {
-                navigateToSearch(value);
-            }, 500);
         }
+        // Para valores no vacíos, NO buscar automáticamente - esperar Enter o clic en botón
     }, [navigateToSearch]);
 
     // Función para manejar la búsqueda cuando se presiona Enter
@@ -226,7 +217,12 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             event.preventDefault();
             handleSearchSubmit(searchInput);
         }
-    }, [searchInput, handleSearchSubmit]);
+        // Escape para limpiar el campo y ejecutar búsqueda vacía
+        if (event.key === 'Escape') {
+            setSearchInput('');
+            navigateToSearch('');
+        }
+    }, [searchInput, handleSearchSubmit, navigateToSearch]);
 
     const handleEditClick = async (row: any) => {
         setEditingRowId(row.id);
