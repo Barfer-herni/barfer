@@ -12,7 +12,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@repo/design-system/components/ui/select';
-import { Plus, Package, ShoppingCart, BarChart3, Edit2, Save, X, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
+import { Plus, Package, ShoppingCart, BarChart3, Edit2, Save, X, ChevronUp, ChevronDown, GripVertical, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Input } from '@repo/design-system/components/ui/input';
@@ -64,6 +64,10 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     const [activeTab, setActiveTab] = useState<string>(initialTabFromUrl);
 
     const [puntosEnvio, setPuntosEnvio] = useState<PuntoEnvio[]>(initialPuntosEnvio);
+    
+    // Estado para el input de búsqueda
+    const [searchInput, setSearchInput] = useState(searchParams.get('search') || '');
+    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Función auxiliar para actualizar URL
     const updateUrlParams = useCallback((param: string, value: string) => {
@@ -87,6 +91,53 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         setActiveTab(value);
         updateUrlParams('tab', value);
     };
+
+    // Funciones para manejar la búsqueda
+    const navigateToSearch = useCallback((value: string) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('page', '1');
+        if (value.trim()) {
+            params.set('search', value);
+        } else {
+            params.delete('search');
+        }
+        router.replace(`${pathname}?${params.toString()}`);
+    }, [pathname, router, searchParams]);
+
+    const handleSearchChange = useCallback((value: string) => {
+        setSearchInput(value);
+
+        // Limpiar el timeout anterior si existe
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+        }
+
+        // Si el campo está vacío, ejecutar la búsqueda inmediatamente
+        if (value.trim() === '') {
+            navigateToSearch('');
+        } else {
+            // Para valores no vacíos, usar debounce
+            searchTimeoutRef.current = setTimeout(() => {
+                navigateToSearch(value);
+            }, 500);
+        }
+    }, [navigateToSearch]);
+
+    const handleSearchKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            navigateToSearch(searchInput);
+        }
+    }, [searchInput, navigateToSearch]);
+
+    // Limpiar timeout al desmontar
+    useEffect(() => {
+        return () => {
+            if (searchTimeoutRef.current) {
+                clearTimeout(searchTimeoutRef.current);
+            }
+        };
+    }, []);
 
     // Debug: verificar datos recibidos
     useEffect(() => {
@@ -113,11 +164,13 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     // Refs para flags que previenen creación duplicada
     const savingFlags = useRef<Record<string, boolean>>({});
 
-    // Configurar sensores para drag and drop
+    // Configurar sensores para drag and drop con mejor compatibilidad cross-platform
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
-                distance: 8, // Requiere mover 8px antes de activar el drag (evita clicks accidentales)
+                distance: 5, // Reducido de 8 a 5px para mejor respuesta en Windows
+                tolerance: 5, // Añadir tolerancia para movimientos imprecisos
+                delay: 0, // Sin delay para respuesta inmediata
             },
         }),
         useSensor(KeyboardSensor)
@@ -208,20 +261,33 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         // A. Filtrar por Búsqueda
         if (searchFromUrl) {
             const searchLower = searchFromUrl.toLowerCase();
-            result = result.filter(order =>
-                (order.user?.name || '').toLowerCase().includes(searchLower) ||
-                (order.user?.lastName || '').toLowerCase().includes(searchLower) ||
-                (order.user?.email || '').toLowerCase().includes(searchLower) ||
-                (order.total?.toString() || '').includes(searchLower) ||
-                (typeof order._id === 'string' && order._id.includes(searchLower)) ||
-                (order.items || []).some((item: any) =>
-                    (item.name || '').toLowerCase().includes(searchLower) ||
-                    (item.fullName || '').toLowerCase().includes(searchLower)
-                ) ||
-                // Búsqueda por dirección
-                (order.address?.address || '').toLowerCase().includes(searchLower) ||
-                (order.address?.city || '').toLowerCase().includes(searchLower)
-            );
+            result = result.filter(order => {
+                // Construir nombre completo para búsqueda
+                const fullName = `${order.user?.name || ''} ${order.user?.lastName || ''}`.toLowerCase().trim();
+                
+                return (
+                    // Búsqueda por nombre completo (nombre + apellido)
+                    fullName.includes(searchLower) ||
+                    // Búsqueda por nombre individual
+                    (order.user?.name || '').toLowerCase().includes(searchLower) ||
+                    // Búsqueda por apellido individual
+                    (order.user?.lastName || '').toLowerCase().includes(searchLower) ||
+                    // Búsqueda por email
+                    (order.user?.email || '').toLowerCase().includes(searchLower) ||
+                    // Búsqueda por total
+                    (order.total?.toString() || '').includes(searchLower) ||
+                    // Búsqueda por ID
+                    (typeof order._id === 'string' && order._id.includes(searchLower)) ||
+                    // Búsqueda por items
+                    (order.items || []).some((item: any) =>
+                        (item.name || '').toLowerCase().includes(searchLower) ||
+                        (item.fullName || '').toLowerCase().includes(searchLower)
+                    ) ||
+                    // Búsqueda por dirección
+                    (order.address?.address || '').toLowerCase().includes(searchLower) ||
+                    (order.address?.city || '').toLowerCase().includes(searchLower)
+                );
+            });
         }
 
         // B. Filtrar por Rango de Fechas
@@ -252,10 +318,18 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         }
 
         // D. Ordenar
-        // Primero aplicar el orden guardado en localStorage (solo si no hay sort activo y hay fecha/punto seleccionados)
-        if (!sortFromUrl && fromFromUrl && selectedPuntoEnvio && selectedPuntoEnvio !== 'all') {
-            result = applySavedOrder(result, fromFromUrl, selectedPuntoEnvio);
+        // SIEMPRE aplicar el orden guardado en localStorage si hay punto seleccionado
+        // El orden manual tiene prioridad sobre el ordenamiento de columnas
+        if (selectedPuntoEnvio && selectedPuntoEnvio !== 'all') {
+            const dateKey = fromFromUrl || 'all-dates';
+            result = applySavedOrder(result, dateKey, selectedPuntoEnvio);
+            // Si no hay orden guardado, usar orden por defecto
+            const savedOrderIds = getSavedOrder(dateKey, selectedPuntoEnvio);
+            if (savedOrderIds.length === 0) {
+                result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            }
         } else if (sortFromUrl) {
+            // Solo aplicar ordenamiento de columnas si no hay punto específico
             const [sortId, sortDesc] = sortFromUrl.split('.');
             const isDesc = sortDesc === 'desc';
 
@@ -283,18 +357,8 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 return 0;
             });
         } else {
-            // Default sort: createdAt desc (solo si no hay orden guardado)
-            if (!fromFromUrl || !selectedPuntoEnvio || selectedPuntoEnvio === 'all') {
-                result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-            } else {
-                // Si hay fecha y punto pero no hay orden guardado, aplicar orden guardado vacío (sin cambio)
-                result = applySavedOrder(result, fromFromUrl, selectedPuntoEnvio);
-                // Si no había orden guardado, ordenar por createdAt desc
-                const savedOrderIds = getSavedOrder(fromFromUrl, selectedPuntoEnvio);
-                if (savedOrderIds.length === 0) {
-                    result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-                }
-            }
+            // Default sort: createdAt desc
+            result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         }
 
         return result;
@@ -314,7 +378,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
             return;
         }
 
-        if (!fromFromUrl || !selectedPuntoEnvio || selectedPuntoEnvio === 'all') {
+        if (!selectedPuntoEnvio || selectedPuntoEnvio === 'all') {
             return;
         }
 
@@ -322,8 +386,11 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         const activeId = String(active.id);
         const overId = String(over.id);
 
+        // Usar 'all-dates' como clave si no hay fecha específica
+        const dateKey = fromFromUrl || 'all-dates';
+
         // Obtener el orden actual guardado
-        let currentOrderIds = getSavedOrder(fromFromUrl, selectedPuntoEnvio);
+        let currentOrderIds = getSavedOrder(dateKey, selectedPuntoEnvio);
 
         // Filtrar pedidos por fecha y punto de envío para obtener la lista completa del día
         let filteredOrders = [...orders];
@@ -369,7 +436,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         const newOrderIds = arrayMove(currentOrderIds, oldIndex, newIndex);
 
         // Guardar el nuevo orden
-        saveOrder(fromFromUrl, selectedPuntoEnvio, newOrderIds);
+        saveOrder(dateKey, selectedPuntoEnvio, newOrderIds);
 
         // Forzar re-render incrementando el estado
         setOrderPriorityVersion(prev => prev + 1);
@@ -386,15 +453,18 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
 
     // Función para mover un pedido arriba o abajo en el orden (mantener para compatibilidad con flechas)
     const moveOrder = useCallback((orderId: string, direction: 'up' | 'down') => {
-        if (!fromFromUrl || !selectedPuntoEnvio || selectedPuntoEnvio === 'all') {
+        if (!selectedPuntoEnvio || selectedPuntoEnvio === 'all') {
             return;
         }
 
         // Normalizar el orderId a string
         const normalizedOrderId = String(orderId);
 
+        // Usar 'all-dates' como clave si no hay fecha específica
+        const dateKey = fromFromUrl || 'all-dates';
+
         // Obtener el orden actual guardado
-        let currentOrderIds = getSavedOrder(fromFromUrl, selectedPuntoEnvio);
+        let currentOrderIds = getSavedOrder(dateKey, selectedPuntoEnvio);
         
         // Filtrar pedidos por fecha y punto de envío para obtener la lista completa del día
         let filteredOrders = [...orders];
@@ -456,7 +526,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         }
 
         // Guardar el nuevo orden
-        saveOrder(fromFromUrl, selectedPuntoEnvio, currentOrderIds);
+        saveOrder(dateKey, selectedPuntoEnvio, currentOrderIds);
 
         // Forzar re-render incrementando el estado (esto hará que filteredAndSortedOrders se recalcule)
         setOrderPriorityVersion(prev => prev + 1);
@@ -489,18 +559,18 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         }
     };
 
-    // Establecer fecha de hoy por defecto si no hay fecha en la URL (solo al montar)
-    const hasInitializedDate = useRef(false);
-    useEffect(() => {
-        if (!hasInitializedDate.current && !fromFromUrl && !toFromUrl) {
-            hasInitializedDate.current = true;
-            const today = format(new Date(), 'yyyy-MM-dd');
-            const params = new URLSearchParams(searchParams.toString());
-            params.set('from', today);
-            params.set('to', today);
-            router.replace(`${pathname}?${params.toString()}`);
-        }
-    }, [fromFromUrl, toFromUrl, searchParams, pathname, router]);
+    // NO establecer fecha por defecto - permitir ver todas las órdenes sin filtro de fecha
+    // const hasInitializedDate = useRef(false);
+    // useEffect(() => {
+    //     if (!hasInitializedDate.current && !fromFromUrl && !toFromUrl) {
+    //         hasInitializedDate.current = true;
+    //         const today = format(new Date(), 'yyyy-MM-dd');
+    //         const params = new URLSearchParams(searchParams.toString());
+    //         params.set('from', today);
+    //         params.set('to', today);
+    //         router.replace(`${pathname}?${params.toString()}`);
+    //     }
+    // }, [fromFromUrl, toFromUrl, searchParams, pathname, router]);
 
     // Si no es admin y hay puntos de envío, seleccionar automáticamente si no hay selección (URL o estado)
     useEffect(() => {
@@ -510,16 +580,16 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         }
     }, [isAdmin, puntosEnvio, selectedPuntoEnvio]);
 
-    // Cargar datos cuando se selecciona un punto de envío Y hay una fecha seleccionada
+    // Cargar datos cuando se selecciona un punto de envío (con o sin fecha)
     useEffect(() => {
-        if (selectedPuntoEnvio && fromFromUrl) {
+        if (selectedPuntoEnvio) {
             loadTablasData(selectedPuntoEnvio);
         } else {
             setOrders([]);
             setStock([]);
             setDetalle([]);
         }
-    }, [selectedPuntoEnvio, fromFromUrl]);
+    }, [selectedPuntoEnvio, fromFromUrl, toFromUrl]);
 
     const loadTablasData = async (puntoEnvio: string, options: { skipLocalUpdate?: boolean; silent?: boolean } = {}) => {
         const { skipLocalUpdate = false, silent = false } = options;
@@ -1131,36 +1201,49 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
 
                 {/* Mostrar Tabs normales si hay un punto específico seleccionado */}
                 {selectedPuntoEnvio && selectedPuntoEnvio !== 'all' && (
-                    <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                        <TabsList className={isAdmin ? "grid w-full grid-cols-3" : "grid w-full grid-cols-2"}>
-                            <TabsTrigger value="orders" className="flex items-center gap-2">
-                                <ShoppingCart className="h-4 w-4" />
-                                Órdenes ({orders.length})
-                            </TabsTrigger>
-                            <TabsTrigger value="stock" className="flex items-center gap-2">
-                                <Package className="h-4 w-4" />
-                                Stock ({stock.length})
-                            </TabsTrigger>
-                            {isAdmin && (
-                                <TabsTrigger value="detalle" className="flex items-center gap-2">
-                                    <BarChart3 className="h-4 w-4" />
-                                    Detalle ({detalle.length})
+                    <div className="space-y-4">
+                        {/* Input de búsqueda */}
+                        <div className="relative w-full max-w-md">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Buscar por nombre, email, dirección..."
+                                value={searchInput}
+                                onChange={(e) => handleSearchChange(e.target.value)}
+                                onKeyDown={handleSearchKeyDown}
+                                className="pl-9"
+                            />
+                        </div>
+
+                        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+                            <TabsList className={isAdmin ? "grid w-full grid-cols-3" : "grid w-full grid-cols-2"}>
+                                <TabsTrigger value="orders" className="flex items-center gap-2">
+                                    <ShoppingCart className="h-4 w-4" />
+                                    Órdenes ({filteredAndSortedOrders.length})
                                 </TabsTrigger>
-                            )}
-                        </TabsList>
+                                <TabsTrigger value="stock" className="flex items-center gap-2">
+                                    <Package className="h-4 w-4" />
+                                    Stock ({stock.length})
+                                </TabsTrigger>
+                                {isAdmin && (
+                                    <TabsTrigger value="detalle" className="flex items-center gap-2">
+                                        <BarChart3 className="h-4 w-4" />
+                                        Detalle ({detalle.length})
+                                    </TabsTrigger>
+                                )}
+                            </TabsList>
 
                         <TabsContent value="orders" className="mt-6">
-                            {!fromFromUrl || !selectedPuntoEnvio || selectedPuntoEnvio === 'all' ? (
+                            {!selectedPuntoEnvio || selectedPuntoEnvio === 'all' ? (
                                 <Card>
                                     <CardHeader>
                                         <CardTitle>Órdenes Express</CardTitle>
                                         <CardDescription>
-                                            Selecciona una fecha y un punto de envío para ver las órdenes
+                                            Selecciona un punto de envío para ver las órdenes
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent>
                                         <div className="text-center py-8 text-muted-foreground">
-                                            <p className="text-lg mb-2">📅 Selecciona una fecha y un punto de envío específico para comenzar</p>
+                                            <p className="text-lg mb-2">📍 Selecciona un punto de envío específico para comenzar</p>
                                             <p className="text-sm">Los datos se cargarán automáticamente</p>
                                         </div>
                                     </CardContent>
@@ -1188,8 +1271,8 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                     </CardContent>
                                 </Card>
                             ) : (() => {
-                                // Determinar si el drag está habilitado (solo si no hay sort activo y hay fecha/punto seleccionados)
-                                const isDragEnabled = Boolean(!sortFromUrl && fromFromUrl && selectedPuntoEnvio && selectedPuntoEnvio !== 'all');
+                                // SIEMPRE habilitar drag cuando hay un punto de envío específico seleccionado
+                                const isDragEnabled = Boolean(selectedPuntoEnvio && selectedPuntoEnvio !== 'all');
                                 
                                 // Crear array de IDs para SortableContext
                                 const itemIds = paginatedOrders.map((order) => String(order._id));
@@ -1226,41 +1309,18 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                     />
                                 );
 
-                                // Si drag está habilitado, envolver con DndContext
-                                if (isDragEnabled) {
-                                    return (
-                                        <DndContext
-                                            sensors={sensors}
-                                            collisionDetection={closestCenter}
-                                            onDragEnd={handleDragEnd}
-                                            modifiers={[restrictToVerticalAxis]}
-                                        >
-                                            <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-                                                {tableComponent}
-                                            </SortableContext>
-                                        </DndContext>
-                                    );
-                                }
-
-                                // Si drag NO está habilitado, mostrar mensaje y tabla normal
+                                // SIEMPRE envolver con DndContext cuando hay punto de envío
                                 return (
-                                    <div className="space-y-4">
-                                        {sortFromUrl && (
-                                            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
-                                                <p className="text-sm text-yellow-800">
-                                                    <strong>⚠️ Nota:</strong> El reordenamiento manual está desactivado mientras hay un ordenamiento activo. Elimina el ordenamiento para poder arrastrar las filas.
-                                                </p>
-                                            </div>
-                                        )}
-                                        {(!fromFromUrl || !selectedPuntoEnvio || selectedPuntoEnvio === 'all') && (
-                                            <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
-                                                <p className="text-sm text-gray-800">
-                                                    <strong>ℹ️ Info:</strong> Selecciona una fecha y un punto de envío específico para habilitar el reordenamiento manual.
-                                                </p>
-                                            </div>
-                                        )}
-                                        {tableComponent}
-                                    </div>
+                                    <DndContext
+                                        sensors={sensors}
+                                        collisionDetection={closestCenter}
+                                        onDragEnd={handleDragEnd}
+                                        modifiers={[restrictToVerticalAxis]}
+                                    >
+                                        <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                                            {tableComponent}
+                                        </SortableContext>
+                                    </DndContext>
                                 );
                             })()}
                         </TabsContent>
@@ -1628,7 +1688,8 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                 </TabsContent>
                             )
                         }
-                    </Tabs >
+                        </Tabs>
+                    </div>
                 )
                 }
             </div >

@@ -89,6 +89,11 @@ function DraggableTableRow({ row, children, isDragEnabled }: { row: any; childre
     } = useSortable({
         id: String(row.id),
         disabled: !isDragEnabled,
+        // Mejorar compatibilidad cross-platform
+        transition: {
+            duration: 200,
+            easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
+        },
     });
 
     const style = {
@@ -96,6 +101,8 @@ function DraggableTableRow({ row, children, isDragEnabled }: { row: any; childre
         transition,
         opacity: isDragging ? 0.5 : 1,
         cursor: isDragging ? 'grabbing' : undefined,
+        // Forzar aceleración por hardware para mejor rendimiento
+        willChange: isDragging ? 'transform' : undefined,
     };
 
     const rowClassName = shouldHighlightRow(row) === 'green'
@@ -130,8 +137,15 @@ function DraggableTableRow({ row, children, isDragEnabled }: { row: any; childre
                     ref={setActivatorNodeRef}
                     {...attributes}
                     {...listeners}
-                    className="cursor-grab active:cursor-grabbing flex items-center justify-center hover:bg-blue-100 rounded p-2 transition-colors"
+                    className="cursor-grab active:cursor-grabbing flex items-center justify-center hover:bg-blue-100 rounded p-2 transition-colors touch-none"
                     title="Arrastra para reordenar"
+                    style={{
+                        // Prevenir selección de texto durante el drag
+                        userSelect: 'none',
+                        WebkitUserSelect: 'none',
+                        // Mejorar compatibilidad con Windows
+                        touchAction: 'none',
+                    }}
                 >
                     <GripVertical className="h-5 w-5 text-gray-600" />
                 </div>

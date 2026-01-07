@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useTransition, useEffect } from 'react';
+import { useState, useCallback, useTransition, useEffect, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { Input } from '@repo/design-system/components/ui/input';
@@ -90,6 +90,18 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
         subtotal: number;
     }>>([]);
     const [puntosEnvio, setPuntosEnvio] = useState<Array<{ _id: string; nombre: string }>>([]);
+    
+    // Ref para el timeout del debounce
+    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Limpiar timeout al desmontar
+    useEffect(() => {
+        return () => {
+            if (searchTimeoutRef.current) {
+                clearTimeout(searchTimeoutRef.current);
+            }
+        };
+    }, []);
 
     // Cargar puntos de envío al montar el componente
     useEffect(() => {
@@ -153,7 +165,11 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
         startTransition(() => {
             const params = new URLSearchParams(searchParams);
             params.set('page', '1');
-            params.set('search', value);
+            if (value.trim()) {
+                params.set('search', value);
+            } else {
+                params.delete('search');
+            }
             router.push(`${pathname}?${params.toString()}`);
         });
     }, [pathname, router, searchParams]);
@@ -179,27 +195,23 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
         });
     }, [pathname, router, searchParams]);
 
-    // Debounced search con useCallback
-    const debouncedSearch = useCallback(
-        (() => {
-            let timeoutId: NodeJS.Timeout;
-            return (value: string) => {
-                clearTimeout(timeoutId);
-                timeoutId = setTimeout(() => {
-                    navigateToSearch(value);
-                }, 500);
-            };
-        })(),
-        [navigateToSearch]
-    );
-
     // Función para manejar cambios en el filtro de búsqueda
     const handleSearchChange = useCallback((value: string) => {
         setSearchInput(value);
 
-        // Si el campo está vacío, ejecutar la búsqueda automáticamente para mostrar todos los resultados
+        // Limpiar el timeout anterior si existe
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+        }
+
+        // Si el campo está vacío, ejecutar la búsqueda inmediatamente
         if (value.trim() === '') {
             navigateToSearch('');
+        } else {
+            // Para valores no vacíos, usar debounce
+            searchTimeoutRef.current = setTimeout(() => {
+                navigateToSearch(value);
+            }, 500);
         }
     }, [navigateToSearch]);
 

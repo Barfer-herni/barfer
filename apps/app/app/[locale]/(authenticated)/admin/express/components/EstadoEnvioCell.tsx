@@ -10,6 +10,7 @@ import {
 } from '@repo/design-system/components/ui/select';
 import { updateEstadoEnvioAction } from '../actions';
 import { toast } from '@repo/design-system/hooks/use-toast';
+import type { Order } from '@repo/data-services';
 
 type EstadoEnvio = 'pendiente' | 'pidiendo' | 'en-viaje' | 'listo';
 
@@ -17,6 +18,7 @@ interface EstadoEnvioCellProps {
     orderId: string;
     currentEstado?: EstadoEnvio;
     onUpdate?: () => void;
+    onOrderUpdate?: (updatedOrder: Order) => void;
 }
 
 const ESTADO_COLORS: Record<EstadoEnvio, string> = {
@@ -40,7 +42,7 @@ const ESTADO_LABELS_SHORT: Record<EstadoEnvio, string> = {
     'listo': 'Listo',
 };
 
-export function EstadoEnvioCell({ orderId, currentEstado = 'pendiente', onUpdate }: EstadoEnvioCellProps) {
+export function EstadoEnvioCell({ orderId, currentEstado = 'pendiente', onUpdate, onOrderUpdate }: EstadoEnvioCellProps) {
     const [estado, setEstado] = useState<EstadoEnvio>(currentEstado);
     const [isUpdating, setIsUpdating] = useState(false);
     const [hasLocalChange, setHasLocalChange] = useState(false);
@@ -76,13 +78,17 @@ export function EstadoEnvioCell({ orderId, currentEstado = 'pendiente', onUpdate
                 });
                 console.error('Error al actualizar estado:', result.error);
             } else {
+                // Actualizar el estado del padre con la orden actualizada
+                if (result.order && onOrderUpdate) {
+                    onOrderUpdate(result.order);
+                }
                 // Mostrar confirmación de éxito
                 toast({
                     title: '¡Actualizado!',
                     description: `Estado cambiado a: ${ESTADO_LABELS[newEstado]}`,
                 });
                 // Mantener el cambio local hasta que se confirme desde el servidor
-                setTimeout(() => setHasLocalChange(false), 1000);
+                setTimeout(() => setHasLocalChange(false), 100);
             }
             // NO llamar a onUpdate para evitar refresh completo
         } catch (error) {
