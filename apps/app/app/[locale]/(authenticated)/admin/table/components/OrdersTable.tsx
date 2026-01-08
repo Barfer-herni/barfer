@@ -196,7 +196,7 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
             pagination,
             rowSelection,
         },
-        getRowId: (row) => row._id,
+        getRowId: (row) => String(row._id), // Siempre convertir a string para consistencia
         manualPagination: true,
         manualSorting: true,
         manualFiltering: true,

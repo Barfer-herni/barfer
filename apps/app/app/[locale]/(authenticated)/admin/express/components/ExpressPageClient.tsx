@@ -172,7 +172,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
 
         // Crear un mapa de pedidos por ID (normalizado a string)
         const orderMap = new Map(orders.map(order => [String(order._id), order]));
-        
+
         // Crear un set de IDs que tenemos (normalizado a string)
         const availableIds = new Set(orders.map(order => String(order._id)));
 
@@ -213,14 +213,14 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
             const searchLower = searchFromUrl.toLowerCase();
             // Normalizar búsqueda de teléfono: remover espacios, guiones y paréntesis
             const searchNormalized = searchFromUrl.replace(/[\s\-()]/g, '');
-            
+
             result = result.filter(order => {
                 // Construir nombre completo para búsqueda
                 const fullName = `${order.user?.name || ''} ${order.user?.lastName || ''}`.toLowerCase().trim();
-                
+
                 // Normalizar teléfono para búsqueda
                 const phoneNormalized = (order.address?.phone || '').replace(/[\s\-()]/g, '');
-                
+
                 return (
                     // Búsqueda por nombre completo (nombre + apellido)
                     fullName.includes(searchLower) ||
@@ -349,46 +349,22 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         // Usar 'all-dates' como clave si no hay fecha específica
         const dateKey = fromFromUrl || 'all-dates';
 
-        // Obtener el orden actual guardado
-        let currentOrderIds = getSavedOrder(dateKey, selectedPuntoEnvio);
+        // Obtener la lista actual de IDs desde filteredAndSortedOrders
+        // Esta lista ya tiene todos los filtros aplicados (búsqueda, fechas, tipo de orden, punto de envío)
+        const currentOrderIds = filteredAndSortedOrders.map(order => String(order._id));
 
-        // Filtrar pedidos por fecha y punto de envío para obtener la lista completa del día
-        let filteredOrders = [...orders];
-        if (fromFromUrl || toFromUrl) {
-            filteredOrders = filteredOrders.filter(order => {
-                let orderDateStr: string;
-                if (order.deliveryDay) {
-                    const deliveryDate = new Date(order.deliveryDay);
-                    orderDateStr = deliveryDate.toISOString().substring(0, 10);
-                } else {
-                    const orderDate = new Date(order.createdAt);
-                    const argDate = new Date(orderDate.getTime() - (3 * 60 * 60 * 1000));
-                    orderDateStr = argDate.toISOString().substring(0, 10);
-                }
-                const passesFrom = !fromFromUrl || orderDateStr >= fromFromUrl;
-                const passesTo = !toFromUrl || orderDateStr <= toFromUrl;
-                return passesFrom && passesTo;
-            });
-        }
-        filteredOrders = filteredOrders.filter(order => order.puntoEnvio === selectedPuntoEnvio);
-
-        // Si no hay orden guardado, crear uno basado en los pedidos filtrados, ordenados por createdAt desc
-        if (currentOrderIds.length === 0) {
-            const sortedOrders = [...filteredOrders].sort((a, b) =>
-                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            );
-            currentOrderIds = sortedOrders.map(order => String(order._id));
-        }
-
-        // Normalizar todos los IDs en currentOrderIds
-        currentOrderIds = currentOrderIds.map(id => String(id));
-
-        // Encontrar los índices
+        // Verificar que los IDs arrastrados existan en la lista actual
         const oldIndex = currentOrderIds.indexOf(activeId);
         const newIndex = currentOrderIds.indexOf(overId);
 
         if (oldIndex === -1 || newIndex === -1) {
-            console.warn('No se pudieron encontrar los índices para el drag and drop');
+            console.warn('No se pudieron encontrar los índices para el drag and drop', {
+                activeId,
+                overId,
+                oldIndex,
+                newIndex,
+                totalItems: currentOrderIds.length
+            });
             return;
         }
 
@@ -400,12 +376,12 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
 
         // Forzar re-render incrementando el estado
         setOrderPriorityVersion(prev => prev + 1);
-    }, [fromFromUrl, toFromUrl, selectedPuntoEnvio, orders, getSavedOrder, saveOrder]);
+    }, [fromFromUrl, selectedPuntoEnvio, filteredAndSortedOrders, saveOrder]);
 
     // Función para actualizar una orden específica en el estado local
     const handleOrderUpdate = useCallback((updatedOrder: Order) => {
-        setOrders(prevOrders => 
-            prevOrders.map(order => 
+        setOrders(prevOrders =>
+            prevOrders.map(order =>
                 String(order._id) === String(updatedOrder._id) ? updatedOrder : order
             )
         );
@@ -423,74 +399,37 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         // Usar 'all-dates' como clave si no hay fecha específica
         const dateKey = fromFromUrl || 'all-dates';
 
-        // Obtener el orden actual guardado
-        let currentOrderIds = getSavedOrder(dateKey, selectedPuntoEnvio);
-        
-        // Filtrar pedidos por fecha y punto de envío para obtener la lista completa del día
-        let filteredOrders = [...orders];
-        if (fromFromUrl || toFromUrl) {
-            filteredOrders = filteredOrders.filter(order => {
-                let orderDateStr: string;
-                if (order.deliveryDay) {
-                    const deliveryDate = new Date(order.deliveryDay);
-                    orderDateStr = deliveryDate.toISOString().substring(0, 10);
-                } else {
-                    const orderDate = new Date(order.createdAt);
-                    const argDate = new Date(orderDate.getTime() - (3 * 60 * 60 * 1000));
-                    orderDateStr = argDate.toISOString().substring(0, 10);
-                }
-                const passesFrom = !fromFromUrl || orderDateStr >= fromFromUrl;
-                const passesTo = !toFromUrl || orderDateStr <= toFromUrl;
-                return passesFrom && passesTo;
-            });
-        }
-        filteredOrders = filteredOrders.filter(order => order.puntoEnvio === selectedPuntoEnvio);
-        
-        // Si no hay orden guardado, crear uno basado en los pedidos filtrados, ordenados por createdAt desc
-        if (currentOrderIds.length === 0) {
-            const sortedOrders = [...filteredOrders].sort((a, b) => 
-                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            );
-            currentOrderIds = sortedOrders.map(order => String(order._id));
-        }
-
-        // Normalizar todos los IDs en currentOrderIds
-        currentOrderIds = currentOrderIds.map(id => String(id));
+        // Obtener la lista actual de IDs desde filteredAndSortedOrders
+        const currentOrderIds = filteredAndSortedOrders.map(order => String(order._id));
 
         // Encontrar el índice del pedido
         const currentIndex = currentOrderIds.indexOf(normalizedOrderId);
-        
-        if (currentIndex === -1) {
-            // Si el pedido no está en el orden guardado, agregarlo al final
-            currentOrderIds.push(normalizedOrderId);
-            // Si es 'up', moverlo una posición arriba
-            if (direction === 'up' && currentOrderIds.length > 1) {
-                const newIndex = currentOrderIds.length - 1;
-                [currentOrderIds[newIndex], currentOrderIds[newIndex - 1]] = 
-                    [currentOrderIds[newIndex - 1], currentOrderIds[newIndex]];
-            }
-        } else {
-            // Calcular el nuevo índice
-            let newIndex: number;
-            if (direction === 'up') {
-                if (currentIndex === 0) return; // Ya está arriba
-                newIndex = currentIndex - 1;
-            } else {
-                if (currentIndex === currentOrderIds.length - 1) return; // Ya está abajo
-                newIndex = currentIndex + 1;
-            }
 
-            // Intercambiar posiciones
-            [currentOrderIds[currentIndex], currentOrderIds[newIndex]] = 
-                [currentOrderIds[newIndex], currentOrderIds[currentIndex]];
+        if (currentIndex === -1) {
+            console.warn('No se encontró el pedido en la lista actual:', normalizedOrderId);
+            return;
         }
+
+        // Calcular el nuevo índice
+        let newIndex: number;
+        if (direction === 'up') {
+            if (currentIndex === 0) return; // Ya está arriba
+            newIndex = currentIndex - 1;
+        } else {
+            if (currentIndex === currentOrderIds.length - 1) return; // Ya está abajo
+            newIndex = currentIndex + 1;
+        }
+
+        // Intercambiar posiciones
+        [currentOrderIds[currentIndex], currentOrderIds[newIndex]] =
+            [currentOrderIds[newIndex], currentOrderIds[currentIndex]];
 
         // Guardar el nuevo orden
         saveOrder(dateKey, selectedPuntoEnvio, currentOrderIds);
 
         // Forzar re-render incrementando el estado (esto hará que filteredAndSortedOrders se recalcule)
         setOrderPriorityVersion(prev => prev + 1);
-    }, [fromFromUrl, toFromUrl, selectedPuntoEnvio, orders, getSavedOrder, saveOrder]);
+    }, [fromFromUrl, selectedPuntoEnvio, filteredAndSortedOrders, saveOrder]);
 
 
 
@@ -636,19 +575,19 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
 
         // Construir el nombre completo del producto de referencia (SECCION PRODUCTO)
         const fullProductName = `${productSectionUpper} ${productProductUpper}`.trim();
-        
+
         // 1. Formato nuevo: coincidencia exacta con sección incluida
         if (stockProductUpper === fullProductName) {
             return true;
         }
-        
+
         // 2. Formato viejo: solo nombre de producto, sin sección
         // IMPORTANTE: Solo aceptar si el stock NO tiene ninguna sección
         if (stockProductUpper === productProductUpper) {
-            const hasSection = stockProductUpper.includes('PERRO') || 
-                             stockProductUpper.includes('GATO') || 
-                             stockProductUpper.includes('BIG DOG') ||
-                             stockProductUpper.includes('OTROS');
+            const hasSection = stockProductUpper.includes('PERRO') ||
+                stockProductUpper.includes('GATO') ||
+                stockProductUpper.includes('BIG DOG') ||
+                stockProductUpper.includes('OTROS');
             return !hasSection;
         }
 
@@ -936,16 +875,16 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                         // Si tenemos el producto, actualizar también pedidosDelDia
                         if (product) {
                             updateData.pedidosDelDia = calculatePedidosDelDia(product);
-                            
+
                             // IMPORTANTE: Actualizar el nombre del producto para incluir la sección
                             // Esto corrige registros viejos que solo tienen "POLLO" sin "PERRO" o "GATO"
                             const currentStock = stock.find(s => String(s._id) === stockId);
                             if (currentStock) {
                                 const currentProductUpper = (currentStock.producto || '').toUpperCase();
-                                const hasSection = currentProductUpper.includes('PERRO') || 
-                                                  currentProductUpper.includes('GATO') || 
-                                                  currentProductUpper.includes('BIG DOG');
-                                
+                                const hasSection = currentProductUpper.includes('PERRO') ||
+                                    currentProductUpper.includes('GATO') ||
+                                    currentProductUpper.includes('BIG DOG');
+
                                 // Si el registro viejo no tiene sección, agregársela
                                 if (!hasSection) {
                                     const productoConSeccion = `${product.section} ${product.product}`.trim();
@@ -1180,193 +1119,283 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                 )}
                             </TabsList>
 
-                        <TabsContent value="orders" className="mt-6">
-                            {!selectedPuntoEnvio || selectedPuntoEnvio === 'all' ? (
+                            <TabsContent value="orders" className="mt-6">
+                                {!selectedPuntoEnvio || selectedPuntoEnvio === 'all' ? (
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle>Órdenes Express</CardTitle>
+                                            <CardDescription>
+                                                Selecciona un punto de envío para ver las órdenes
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="text-center py-8 text-muted-foreground">
+                                                <p className="text-lg mb-2">📍 Selecciona un punto de envío específico para comenzar</p>
+                                                <p className="text-sm">Los datos se cargarán automáticamente</p>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ) : isLoading ? (
+                                    <Card>
+                                        <CardContent className="py-8">
+                                            <div className="text-center text-muted-foreground">
+                                                <p>Cargando órdenes...</p>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ) : orders.length === 0 ? (
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle>Órdenes Express</CardTitle>
+                                            <CardDescription>
+                                                Órdenes con paymentMethod: "bank-transfer" asociadas a este punto de envío
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <div className="text-center py-8 text-muted-foreground">
+                                                <p>No hay órdenes express para este punto de envío</p>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ) : (() => {
+                                    // SIEMPRE habilitar drag cuando hay un punto de envío específico seleccionado
+                                    const isDragEnabled = Boolean(selectedPuntoEnvio && selectedPuntoEnvio !== 'all');
+
+                                    // Crear array de IDs para SortableContext usando la lista COMPLETA filtrada
+                                    // Esto permite que el drag and drop funcione correctamente con paginación
+                                    const itemIds = filteredAndSortedOrders.map((order) => String(order._id));
+
+                                    const tableComponent = (
+                                        <OrdersDataTable
+                                            fontSize="text-sm"
+                                            columns={createExpressColumns(
+                                                undefined, // No recargar datos al actualizar
+                                                moveOrder,
+                                                isDragEnabled, // Pasar flag para ocultar columna de flechas si drag está habilitado
+                                                handleOrderUpdate // Pasar callback para actualizar orden
+                                            )}
+                                            data={paginatedOrders}
+                                            pageCount={Math.ceil(filteredAndSortedOrders.length / pageSizeFromUrl)}
+                                            total={filteredAndSortedOrders.length}
+                                            pagination={{
+                                                pageIndex: pageFromUrl - 1,
+                                                pageSize: pageSizeFromUrl,
+                                            }}
+                                            sorting={sortFromUrl ? [{
+                                                id: sortFromUrl.split('.')[0],
+                                                desc: sortFromUrl.split('.')[1] === 'desc'
+                                            }] : [{ id: 'createdAt', desc: true }]}
+                                            canEdit={canEdit}
+                                            canDelete={canDelete}
+                                            onOrderUpdated={async () => {
+                                                // Recargar solo si es necesario (edición completa, no campos inline)
+                                                if (selectedPuntoEnvio) {
+                                                    await loadTablasData(selectedPuntoEnvio, { silent: true });
+                                                }
+                                            }}
+                                            isDragEnabled={isDragEnabled}
+                                        />
+                                    );
+
+                                    // SIEMPRE envolver con DndContext cuando hay punto de envío
+                                    return (
+                                        <DndContext
+                                            sensors={sensors}
+                                            collisionDetection={closestCenter}
+                                            onDragEnd={handleDragEnd}
+                                            modifiers={[restrictToVerticalAxis]}
+                                        >
+                                            <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                                                {tableComponent}
+                                            </SortableContext>
+                                        </DndContext>
+                                    );
+                                })()}
+                            </TabsContent>
+
+                            <TabsContent value="stock" className="mt-6">
                                 <Card>
                                     <CardHeader>
-                                        <CardTitle>Órdenes Express</CardTitle>
-                                        <CardDescription>
-                                            Selecciona un punto de envío para ver las órdenes
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="text-center py-8 text-muted-foreground">
-                                            <p className="text-lg mb-2">📍 Selecciona un punto de envío específico para comenzar</p>
-                                            <p className="text-sm">Los datos se cargarán automáticamente</p>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ) : isLoading ? (
-                                <Card>
-                                    <CardContent className="py-8">
-                                        <div className="text-center text-muted-foreground">
-                                            <p>Cargando órdenes...</p>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ) : orders.length === 0 ? (
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Órdenes Express</CardTitle>
-                                        <CardDescription>
-                                            Órdenes con paymentMethod: "bank-transfer" asociadas a este punto de envío
-                                        </CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="text-center py-8 text-muted-foreground">
-                                            <p>No hay órdenes express para este punto de envío</p>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ) : (() => {
-                                // SIEMPRE habilitar drag cuando hay un punto de envío específico seleccionado
-                                const isDragEnabled = Boolean(selectedPuntoEnvio && selectedPuntoEnvio !== 'all');
-                                
-                                // Crear array de IDs para SortableContext
-                                const itemIds = paginatedOrders.map((order) => String(order._id));
-
-                                const tableComponent = (
-                                    <OrdersDataTable
-                                        fontSize="text-sm"
-                                        columns={createExpressColumns(
-                                            undefined, // No recargar datos al actualizar
-                                            moveOrder,
-                                            isDragEnabled, // Pasar flag para ocultar columna de flechas si drag está habilitado
-                                            handleOrderUpdate // Pasar callback para actualizar orden
-                                        )}
-                                        data={paginatedOrders}
-                                        pageCount={Math.ceil(filteredAndSortedOrders.length / pageSizeFromUrl)}
-                                        total={filteredAndSortedOrders.length}
-                                        pagination={{
-                                            pageIndex: pageFromUrl - 1,
-                                            pageSize: pageSizeFromUrl,
-                                        }}
-                                        sorting={sortFromUrl ? [{
-                                            id: sortFromUrl.split('.')[0],
-                                            desc: sortFromUrl.split('.')[1] === 'desc'
-                                        }] : [{ id: 'createdAt', desc: true }]}
-                                        canEdit={canEdit}
-                                        canDelete={canDelete}
-                                        onOrderUpdated={async () => {
-                                            // Recargar solo si es necesario (edición completa, no campos inline)
-                                            if (selectedPuntoEnvio) {
-                                                await loadTablasData(selectedPuntoEnvio, { silent: true });
-                                            }
-                                        }}
-                                        isDragEnabled={isDragEnabled}
-                                    />
-                                );
-
-                                // SIEMPRE envolver con DndContext cuando hay punto de envío
-                                return (
-                                    <DndContext
-                                        sensors={sensors}
-                                        collisionDetection={closestCenter}
-                                        onDragEnd={handleDragEnd}
-                                        modifiers={[restrictToVerticalAxis]}
-                                    >
-                                        <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-                                            {tableComponent}
-                                        </SortableContext>
-                                    </DndContext>
-                                );
-                            })()}
-                        </TabsContent>
-
-                        <TabsContent value="stock" className="mt-6">
-                            <Card>
-                                <CardHeader>
-                                    <div className="flex flex-col gap-4">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <CardTitle>Stock</CardTitle>
-                                                <CardDescription>
-                                                    Gestión de stock día a día para este punto de envío
-                                                </CardDescription>
+                                        <div className="flex flex-col gap-4">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <CardTitle>Stock</CardTitle>
+                                                    <CardDescription>
+                                                        Gestión de stock día a día para este punto de envío
+                                                    </CardDescription>
+                                                </div>
+                                                <div className="flex items-center gap-4">
+                                                    <Button onClick={() => setShowAddStockModal(true)} disabled={!selectedPuntoEnvio}>
+                                                        <Plus className="h-4 w-4 mr-2" />
+                                                        Agregar producto
+                                                    </Button>
+                                                </div>
                                             </div>
                                             <div className="flex items-center gap-4">
-                                                <Button onClick={() => setShowAddStockModal(true)} disabled={!selectedPuntoEnvio}>
-                                                    <Plus className="h-4 w-4 mr-2" />
-                                                    Agregar producto
-                                                </Button>
+                                                <DateRangeFilter />
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-4">
-                                            <DateRangeFilter />
-                                        </div>
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    {isLoading ? (
-                                        <div className="text-center py-8 text-muted-foreground">
-                                            <p>Cargando stock...</p>
-                                        </div>
-                                    ) : !selectedPuntoEnvio ? (
-                                        <div className="text-center py-8 text-muted-foreground">
-                                            <p>Selecciona un punto de envío para ver el stock</p>
-                                        </div>
-                                    ) : productsForStock.length === 0 ? (
-                                        <div className="text-center py-8 text-muted-foreground">
-                                            <p>Cargando productos...</p>
-                                        </div>
-                                    ) : (
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-sm">
-                                                <thead>
-                                                    <tr className="border-b bg-gray-50">
-                                                        <th className="text-left p-2 font-semibold">Sección</th>
-                                                        <th className="text-left p-2 font-semibold">Producto</th>
-                                                        <th className="text-left p-2 font-semibold">Peso/Sabor</th>
-                                                        <th className="text-right p-2 font-semibold">Stock Inicial</th>
-                                                        <th className="text-right p-2 font-semibold">Llevamos</th>
-                                                        <th className="text-right p-2 font-semibold">Pedidos del Día</th>
-                                                        <th className="text-right p-2 font-semibold">Stock Final</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {[...productsForStock].sort((a, b) => {
-                                                        const orderA = getProductOrder(a.product, a.section);
-                                                        const orderB = getProductOrder(b.product, b.section);
+                                    </CardHeader>
+                                    <CardContent>
+                                        {isLoading ? (
+                                            <div className="text-center py-8 text-muted-foreground">
+                                                <p>Cargando stock...</p>
+                                            </div>
+                                        ) : !selectedPuntoEnvio ? (
+                                            <div className="text-center py-8 text-muted-foreground">
+                                                <p>Selecciona un punto de envío para ver el stock</p>
+                                            </div>
+                                        ) : productsForStock.length === 0 ? (
+                                            <div className="text-center py-8 text-muted-foreground">
+                                                <p>Cargando productos...</p>
+                                            </div>
+                                        ) : (
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-sm">
+                                                    <thead>
+                                                        <tr className="border-b bg-gray-50">
+                                                            <th className="text-left p-2 font-semibold">Sección</th>
+                                                            <th className="text-left p-2 font-semibold">Producto</th>
+                                                            <th className="text-left p-2 font-semibold">Peso/Sabor</th>
+                                                            <th className="text-right p-2 font-semibold">Stock Inicial</th>
+                                                            <th className="text-right p-2 font-semibold">Llevamos</th>
+                                                            <th className="text-right p-2 font-semibold">Pedidos del Día</th>
+                                                            <th className="text-right p-2 font-semibold">Stock Final</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {[...productsForStock].sort((a, b) => {
+                                                            const orderA = getProductOrder(a.product, a.section);
+                                                            const orderB = getProductOrder(b.product, b.section);
 
-                                                        // Si tienen el mismo orden, ordenar por peso
-                                                        if (orderA === orderB) {
-                                                            const weightA = (a.weight || '').toUpperCase();
-                                                            const weightB = (b.weight || '').toUpperCase();
-                                                            return weightA.localeCompare(weightB);
-                                                        }
+                                                            // Si tienen el mismo orden, ordenar por peso
+                                                            if (orderA === orderB) {
+                                                                const weightA = (a.weight || '').toUpperCase();
+                                                                const weightB = (b.weight || '').toUpperCase();
+                                                                return weightA.localeCompare(weightB);
+                                                            }
 
-                                                        return orderA - orderB;
-                                                    }).map((product) => {
-                                                        // Buscar registros de stock para este producto en la fecha seleccionada
-                                                        const stockForDate = getStockForDate();
-                                                        // Usar la función de comparación normalizada
-                                                        const stockRecords = stockForDate.filter(s => isSameProduct(s, product));
+                                                            return orderA - orderB;
+                                                        }).map((product) => {
+                                                            // Buscar registros de stock para este producto en la fecha seleccionada
+                                                            const stockForDate = getStockForDate();
+                                                            // Usar la función de comparación normalizada
+                                                            const stockRecords = stockForDate.filter(s => isSameProduct(s, product));
 
-                                                        // Si hay múltiples registros, tomar solo el más reciente (por fecha de creación)
-                                                        const uniqueStockRecord = stockRecords.length > 0
-                                                            ? stockRecords.sort((a, b) => {
-                                                                const dateA = new Date(a.createdAt || a.fecha || 0).getTime();
-                                                                const dateB = new Date(b.createdAt || b.fecha || 0).getTime();
-                                                                return dateB - dateA;
-                                                            })[0]
-                                                            : null;
+                                                            // Si hay múltiples registros, tomar solo el más reciente (por fecha de creación)
+                                                            const uniqueStockRecord = stockRecords.length > 0
+                                                                ? stockRecords.sort((a, b) => {
+                                                                    const dateA = new Date(a.createdAt || a.fecha || 0).getTime();
+                                                                    const dateB = new Date(b.createdAt || b.fecha || 0).getTime();
+                                                                    return dateB - dateA;
+                                                                })[0]
+                                                                : null;
 
-                                                        // Obtener el color de la fila para este producto
-                                                        const rowColorClass = getProductRowColor(product.product, product.section);
+                                                            // Obtener el color de la fila para este producto
+                                                            const rowColorClass = getProductRowColor(product.product, product.section);
 
-                                                        // Calcular pedidos del día en vivo
-                                                        const pedidosDelDia = calculatePedidosDelDia(product);
+                                                            // Calcular pedidos del día en vivo
+                                                            const pedidosDelDia = calculatePedidosDelDia(product);
 
-                                                        // Si no hay registros, mostrar una fila vacía con campos siempre editables
-                                                        if (!uniqueStockRecord) {
-                                                            const emptyId = `new-${product.section}-${product.product}-${product.weight || 'no-weight'}`;
-                                                            const localValues = localStockValues[emptyId] || { stockInicial: 0, llevamos: 0 };
-                                                            const stockInicial = localValues.stockInicial ?? 0;
-                                                            const llevamos = localValues.llevamos ?? 0;
-                                                            const stockFinalCalculado = stockInicial + llevamos - pedidosDelDia;
+                                                            // Si no hay registros, mostrar una fila vacía con campos siempre editables
+                                                            if (!uniqueStockRecord) {
+                                                                const emptyId = `new-${product.section}-${product.product}-${product.weight || 'no-weight'}`;
+                                                                const localValues = localStockValues[emptyId] || { stockInicial: 0, llevamos: 0 };
+                                                                const stockInicial = localValues.stockInicial ?? 0;
+                                                                const llevamos = localValues.llevamos ?? 0;
+                                                                const stockFinalCalculado = stockInicial + llevamos - pedidosDelDia;
+
+                                                                return (
+                                                                    <tr key={`${product.section}-${product.product}-${product.weight || 'no-weight'}`} className={`border-b ${rowColorClass}`}>
+                                                                        <td className="p-2 font-bold text-gray-700">{product.section}</td>
+                                                                        <td className="p-2 font-bold">{product.product}</td>
+                                                                        <td className="p-2 font-bold text-gray-600">{product.weight || '-'}</td>
+                                                                        <td className="p-2 text-right">
+                                                                            <div className="flex justify-end">
+                                                                                <Input
+                                                                                    type="number"
+                                                                                    min="0"
+                                                                                    value={stockInicial}
+                                                                                    onChange={(e) => {
+                                                                                        const inputValue = e.target.value;
+                                                                                        if (inputValue === '') return;
+                                                                                        const newValue = Number(inputValue);
+                                                                                        if (!isNaN(newValue) && newValue >= 0) {
+                                                                                            saveStockValue(emptyId, 'stockInicial', newValue, product);
+                                                                                        }
+                                                                                    }}
+                                                                                    onBlur={(e) => {
+                                                                                        const inputValue = e.target.value;
+                                                                                        if (inputValue === '' || isNaN(Number(inputValue))) {
+                                                                                            saveStockValue(emptyId, 'stockInicial', 0, product);
+                                                                                        }
+                                                                                    }}
+                                                                                    onKeyDown={(e) => {
+                                                                                        if (stockInicial === 0 && /[0-9]/.test(e.key) &&
+                                                                                            e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' &&
+                                                                                            e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Enter') {
+                                                                                            e.preventDefault();
+                                                                                            saveStockValue(emptyId, 'stockInicial', Number(e.key), product);
+                                                                                        }
+                                                                                    }}
+                                                                                    className="w-20 text-right h-8 font-bold"
+                                                                                />
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="p-2 text-right">
+                                                                            <div className="flex justify-end">
+                                                                                <Input
+                                                                                    type="number"
+                                                                                    min="0"
+                                                                                    value={llevamos}
+                                                                                    onChange={(e) => {
+                                                                                        const inputValue = e.target.value;
+                                                                                        if (inputValue === '') return;
+                                                                                        const newValue = Number(inputValue);
+                                                                                        if (!isNaN(newValue) && newValue >= 0) {
+                                                                                            saveStockValue(emptyId, 'llevamos', newValue, product);
+                                                                                        }
+                                                                                    }}
+                                                                                    onBlur={(e) => {
+                                                                                        const inputValue = e.target.value;
+                                                                                        if (inputValue === '' || isNaN(Number(inputValue))) {
+                                                                                            saveStockValue(emptyId, 'llevamos', 0, product);
+                                                                                        }
+                                                                                    }}
+                                                                                    onKeyDown={(e) => {
+                                                                                        if (llevamos === 0 && /[0-9]/.test(e.key) &&
+                                                                                            e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' &&
+                                                                                            e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Enter') {
+                                                                                            e.preventDefault();
+                                                                                            saveStockValue(emptyId, 'llevamos', Number(e.key), product);
+                                                                                        }
+                                                                                    }}
+                                                                                    className="w-20 text-right h-8 font-bold"
+                                                                                />
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="p-2 text-center">
+                                                                            <span className="font-semibold text-gray-700">{pedidosDelDia}</span>
+                                                                        </td>
+                                                                        <td className="p-2 text-right font-bold">
+                                                                            {stockFinalCalculado}
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            }
+
+                                                            // Si hay registro, usar sus valores
+                                                            const stockId = String(uniqueStockRecord._id);
+                                                            const localValues = localStockValues[stockId] || {
+                                                                stockInicial: uniqueStockRecord.stockInicial,
+                                                                llevamos: uniqueStockRecord.llevamos
+                                                            };
+                                                            const stockInicial = localValues.stockInicial ?? uniqueStockRecord.stockInicial ?? 0;
+                                                            const llevamos = localValues.llevamos ?? uniqueStockRecord.llevamos ?? 0;
+                                                            const displayStockFinal = stockInicial + llevamos - pedidosDelDia;
 
                                                             return (
-                                                                <tr key={`${product.section}-${product.product}-${product.weight || 'no-weight'}`} className={`border-b ${rowColorClass}`}>
+                                                                <tr key={`${product.section}-${product.product}-${product.weight || 'no-weight'}-${stockId}`} className={`border-b ${rowColorClass}`}>
                                                                     <td className="p-2 font-bold text-gray-700">{product.section}</td>
                                                                     <td className="p-2 font-bold">{product.product}</td>
                                                                     <td className="p-2 font-bold text-gray-600">{product.weight || '-'}</td>
@@ -1378,16 +1407,16 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                                 value={stockInicial}
                                                                                 onChange={(e) => {
                                                                                     const inputValue = e.target.value;
-                                                                                    if (inputValue === '') return;
-                                                                                    const newValue = Number(inputValue);
+                                                                                    const newValue = inputValue === '' ? 0 : (parseInt(inputValue, 10) || 0);
                                                                                     if (!isNaN(newValue) && newValue >= 0) {
-                                                                                        saveStockValue(emptyId, 'stockInicial', newValue, product);
+                                                                                        saveStockValue(stockId, 'stockInicial', newValue, product);
                                                                                     }
                                                                                 }}
                                                                                 onBlur={(e) => {
                                                                                     const inputValue = e.target.value;
-                                                                                    if (inputValue === '' || isNaN(Number(inputValue))) {
-                                                                                        saveStockValue(emptyId, 'stockInicial', 0, product);
+                                                                                    const finalValue = inputValue === '' || isNaN(Number(inputValue)) ? 0 : parseInt(inputValue, 10);
+                                                                                    if (!isNaN(finalValue) && finalValue >= 0) {
+                                                                                        saveStockValue(stockId, 'stockInicial', finalValue, product);
                                                                                     }
                                                                                 }}
                                                                                 onKeyDown={(e) => {
@@ -1395,7 +1424,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                                         e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' &&
                                                                                         e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Enter') {
                                                                                         e.preventDefault();
-                                                                                        saveStockValue(emptyId, 'stockInicial', Number(e.key), product);
+                                                                                        saveStockValue(stockId, 'stockInicial', Number(e.key), product);
                                                                                     }
                                                                                 }}
                                                                                 className="w-20 text-right h-8 font-bold"
@@ -1410,16 +1439,16 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                                 value={llevamos}
                                                                                 onChange={(e) => {
                                                                                     const inputValue = e.target.value;
-                                                                                    if (inputValue === '') return;
-                                                                                    const newValue = Number(inputValue);
+                                                                                    const newValue = inputValue === '' ? 0 : (parseInt(inputValue, 10) || 0);
                                                                                     if (!isNaN(newValue) && newValue >= 0) {
-                                                                                        saveStockValue(emptyId, 'llevamos', newValue, product);
+                                                                                        saveStockValue(stockId, 'llevamos', newValue, product);
                                                                                     }
                                                                                 }}
                                                                                 onBlur={(e) => {
                                                                                     const inputValue = e.target.value;
-                                                                                    if (inputValue === '' || isNaN(Number(inputValue))) {
-                                                                                        saveStockValue(emptyId, 'llevamos', 0, product);
+                                                                                    const finalValue = inputValue === '' || isNaN(Number(inputValue)) ? 0 : parseInt(inputValue, 10);
+                                                                                    if (!isNaN(finalValue) && finalValue >= 0) {
+                                                                                        saveStockValue(stockId, 'llevamos', finalValue, product);
                                                                                     }
                                                                                 }}
                                                                                 onKeyDown={(e) => {
@@ -1427,7 +1456,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                                         e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' &&
                                                                                         e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Enter') {
                                                                                         e.preventDefault();
-                                                                                        saveStockValue(emptyId, 'llevamos', Number(e.key), product);
+                                                                                        saveStockValue(stockId, 'llevamos', Number(e.key), product);
                                                                                     }
                                                                                 }}
                                                                                 className="w-20 text-right h-8 font-bold"
@@ -1438,204 +1467,115 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                         <span className="font-semibold text-gray-700">{pedidosDelDia}</span>
                                                                     </td>
                                                                     <td className="p-2 text-right font-bold">
-                                                                        {stockFinalCalculado}
+                                                                        {displayStockFinal}
                                                                     </td>
                                                                 </tr>
                                                             );
-                                                        }
-
-                                                        // Si hay registro, usar sus valores
-                                                        const stockId = String(uniqueStockRecord._id);
-                                                        const localValues = localStockValues[stockId] || {
-                                                            stockInicial: uniqueStockRecord.stockInicial,
-                                                            llevamos: uniqueStockRecord.llevamos
-                                                        };
-                                                        const stockInicial = localValues.stockInicial ?? uniqueStockRecord.stockInicial ?? 0;
-                                                        const llevamos = localValues.llevamos ?? uniqueStockRecord.llevamos ?? 0;
-                                                        const displayStockFinal = stockInicial + llevamos - pedidosDelDia;
-
-                                                        return (
-                                                            <tr key={`${product.section}-${product.product}-${product.weight || 'no-weight'}-${stockId}`} className={`border-b ${rowColorClass}`}>
-                                                                <td className="p-2 font-bold text-gray-700">{product.section}</td>
-                                                                <td className="p-2 font-bold">{product.product}</td>
-                                                                <td className="p-2 font-bold text-gray-600">{product.weight || '-'}</td>
-                                                                <td className="p-2 text-right">
-                                                                    <div className="flex justify-end">
-                                                                        <Input
-                                                                            type="number"
-                                                                            min="0"
-                                                                            value={stockInicial}
-                                                                            onChange={(e) => {
-                                                                                const inputValue = e.target.value;
-                                                                                const newValue = inputValue === '' ? 0 : (parseInt(inputValue, 10) || 0);
-                                                                                if (!isNaN(newValue) && newValue >= 0) {
-                                                                                    saveStockValue(stockId, 'stockInicial', newValue, product);
-                                                                                }
-                                                                            }}
-                                                                            onBlur={(e) => {
-                                                                                const inputValue = e.target.value;
-                                                                                const finalValue = inputValue === '' || isNaN(Number(inputValue)) ? 0 : parseInt(inputValue, 10);
-                                                                                if (!isNaN(finalValue) && finalValue >= 0) {
-                                                                                    saveStockValue(stockId, 'stockInicial', finalValue, product);
-                                                                                }
-                                                                            }}
-                                                                            onKeyDown={(e) => {
-                                                                                if (stockInicial === 0 && /[0-9]/.test(e.key) &&
-                                                                                    e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' &&
-                                                                                    e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Enter') {
-                                                                                    e.preventDefault();
-                                                                                    saveStockValue(stockId, 'stockInicial', Number(e.key), product);
-                                                                                }
-                                                                            }}
-                                                                            className="w-20 text-right h-8 font-bold"
-                                                                        />
-                                                                    </div>
-                                                                </td>
-                                                                <td className="p-2 text-right">
-                                                                    <div className="flex justify-end">
-                                                                        <Input
-                                                                            type="number"
-                                                                            min="0"
-                                                                            value={llevamos}
-                                                                            onChange={(e) => {
-                                                                                const inputValue = e.target.value;
-                                                                                const newValue = inputValue === '' ? 0 : (parseInt(inputValue, 10) || 0);
-                                                                                if (!isNaN(newValue) && newValue >= 0) {
-                                                                                    saveStockValue(stockId, 'llevamos', newValue, product);
-                                                                                }
-                                                                            }}
-                                                                            onBlur={(e) => {
-                                                                                const inputValue = e.target.value;
-                                                                                const finalValue = inputValue === '' || isNaN(Number(inputValue)) ? 0 : parseInt(inputValue, 10);
-                                                                                if (!isNaN(finalValue) && finalValue >= 0) {
-                                                                                    saveStockValue(stockId, 'llevamos', finalValue, product);
-                                                                                }
-                                                                            }}
-                                                                            onKeyDown={(e) => {
-                                                                                if (llevamos === 0 && /[0-9]/.test(e.key) &&
-                                                                                    e.key !== 'Backspace' && e.key !== 'Delete' && e.key !== 'Tab' &&
-                                                                                    e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'Enter') {
-                                                                                    e.preventDefault();
-                                                                                    saveStockValue(stockId, 'llevamos', Number(e.key), product);
-                                                                                }
-                                                                            }}
-                                                                            className="w-20 text-right h-8 font-bold"
-                                                                        />
-                                                                    </div>
-                                                                </td>
-                                                                <td className="p-2 text-center">
-                                                                    <span className="font-semibold text-gray-700">{pedidosDelDia}</span>
-                                                                </td>
-                                                                <td className="p-2 text-right font-bold">
-                                                                    {displayStockFinal}
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    })}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-
-                        {
-                            isAdmin && (
-                                <TabsContent value="detalle" className="mt-6">
-                                    {(() => {
-                                        // Calcular totales
-                                        const totalEnvios = orders.length; // Usar órdenes filtradas por fecha y punto de envío si es necesario
-                                        const totalIngresos = orders.reduce((sum, order) => sum + (order.total || 0), 0);
-                                        const totalCostoEnvio = orders.reduce((sum, order) => sum + (order.shippingPrice || 0), 0);
-                                        const porcentajeCosto = totalIngresos > 0 ? ((totalCostoEnvio / totalIngresos) * 100).toFixed(1) : '0';
-                                        const costoEnvioPromedio = totalEnvios > 0 ? totalCostoEnvio / totalEnvios : 0;
-
-                                        return (
-                                            <div className="grid gap-4 md:grid-cols-4 mb-6">
-                                                <Card>
-                                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                                        <CardTitle className="text-sm font-medium">
-                                                            Cantidad de Envíos
-                                                        </CardTitle>
-                                                        <Package className="h-4 w-4 text-muted-foreground" />
-                                                    </CardHeader>
-                                                    <CardContent>
-                                                        <div className="text-2xl font-bold">{totalEnvios}</div>
-                                                    </CardContent>
-                                                </Card>
-                                                <Card>
-                                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                                        <CardTitle className="text-sm font-medium">
-                                                            Costo de Envío Total
-                                                        </CardTitle>
-                                                        <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                                                    </CardHeader>
-                                                    <CardContent>
-                                                        <div className="text-2xl font-bold">
-                                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(totalCostoEnvio)}
-                                                        </div>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            Equivale al {porcentajeCosto}% de los ingresos
-                                                        </p>
-                                                    </CardContent>
-                                                </Card>
-                                                <Card>
-                                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                                        <CardTitle className="text-sm font-medium">
-                                                            Costo de Envío Promedio
-                                                        </CardTitle>
-                                                        <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-                                                    </CardHeader>
-                                                    <CardContent>
-                                                        <div className="text-2xl font-bold">
-                                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(costoEnvioPromedio)}
-                                                        </div>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            Por pedido
-                                                        </p>
-                                                    </CardContent>
-                                                </Card>
-                                                <Card>
-                                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                                                        <CardTitle className="text-sm font-medium">
-                                                            Ingresos Totales
-                                                        </CardTitle>
-                                                        <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                                                    </CardHeader>
-                                                    <CardContent>
-                                                        <div className="text-2xl font-bold">
-                                                            {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(totalIngresos)}
-                                                        </div>
-                                                    </CardContent>
-                                                </Card>
+                                                        })}
+                                                    </tbody>
+                                                </table>
                                             </div>
-                                        );
-                                    })()}
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </TabsContent>
 
-                                    {isLoading ? (
-                                        <Card>
-                                            <CardContent className="py-8">
-                                                <div className="text-center text-muted-foreground">
-                                                    <p>Cargando detalle...</p>
+                            {
+                                isAdmin && (
+                                    <TabsContent value="detalle" className="mt-6">
+                                        {(() => {
+                                            // Calcular totales
+                                            const totalEnvios = orders.length; // Usar órdenes filtradas por fecha y punto de envío si es necesario
+                                            const totalIngresos = orders.reduce((sum, order) => sum + (order.total || 0), 0);
+                                            const totalCostoEnvio = orders.reduce((sum, order) => sum + (order.shippingPrice || 0), 0);
+                                            const porcentajeCosto = totalIngresos > 0 ? ((totalCostoEnvio / totalIngresos) * 100).toFixed(1) : '0';
+                                            const costoEnvioPromedio = totalEnvios > 0 ? totalCostoEnvio / totalEnvios : 0;
+
+                                            return (
+                                                <div className="grid gap-4 md:grid-cols-4 mb-6">
+                                                    <Card>
+                                                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                                            <CardTitle className="text-sm font-medium">
+                                                                Cantidad de Envíos
+                                                            </CardTitle>
+                                                            <Package className="h-4 w-4 text-muted-foreground" />
+                                                        </CardHeader>
+                                                        <CardContent>
+                                                            <div className="text-2xl font-bold">{totalEnvios}</div>
+                                                        </CardContent>
+                                                    </Card>
+                                                    <Card>
+                                                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                                            <CardTitle className="text-sm font-medium">
+                                                                Costo de Envío Total
+                                                            </CardTitle>
+                                                            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                                                        </CardHeader>
+                                                        <CardContent>
+                                                            <div className="text-2xl font-bold">
+                                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(totalCostoEnvio)}
+                                                            </div>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                Equivale al {porcentajeCosto}% de los ingresos
+                                                            </p>
+                                                        </CardContent>
+                                                    </Card>
+                                                    <Card>
+                                                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                                            <CardTitle className="text-sm font-medium">
+                                                                Costo de Envío Promedio
+                                                            </CardTitle>
+                                                            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+                                                        </CardHeader>
+                                                        <CardContent>
+                                                            <div className="text-2xl font-bold">
+                                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(costoEnvioPromedio)}
+                                                            </div>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                Por pedido
+                                                            </p>
+                                                        </CardContent>
+                                                    </Card>
+                                                    <Card>
+                                                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                                            <CardTitle className="text-sm font-medium">
+                                                                Ingresos Totales
+                                                            </CardTitle>
+                                                            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                                                        </CardHeader>
+                                                        <CardContent>
+                                                            <div className="text-2xl font-bold">
+                                                                {new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(totalIngresos)}
+                                                            </div>
+                                                        </CardContent>
+                                                    </Card>
                                                 </div>
-                                            </CardContent>
-                                        </Card>
-                                    ) : detalle.length === 0 ? (
-                                        <Card>
-                                            <CardContent className="py-8">
-                                                <div className="text-center text-muted-foreground">
-                                                    <p>No hay datos de detalle disponibles para el punto de envío seleccionado.</p>
-                                                    <p className="text-sm mt-2">Los datos de detalle se generan automáticamente cuando se procesan los envíos.</p>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ) : (
-                                        <DetalleTable data={detalle} />
-                                    )}
-                                </TabsContent>
-                            )
-                        }
+                                            );
+                                        })()}
+
+                                        {isLoading ? (
+                                            <Card>
+                                                <CardContent className="py-8">
+                                                    <div className="text-center text-muted-foreground">
+                                                        <p>Cargando detalle...</p>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ) : detalle.length === 0 ? (
+                                            <Card>
+                                                <CardContent className="py-8">
+                                                    <div className="text-center text-muted-foreground">
+                                                        <p>No hay datos de detalle disponibles para el punto de envío seleccionado.</p>
+                                                        <p className="text-sm mt-2">Los datos de detalle se generan automáticamente cuando se procesan los envíos.</p>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ) : (
+                                            <DetalleTable data={detalle} />
+                                        )}
+                                    </TabsContent>
+                                )
+                            }
                         </Tabs>
                     </div>
                 )
