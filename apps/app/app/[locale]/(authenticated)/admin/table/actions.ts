@@ -235,13 +235,14 @@ export async function calculatePriceAction(
         }>;
     }>,
     orderType: 'minorista' | 'mayorista',
-    paymentMethod: string
+    paymentMethod: string,
+    deliveryDate?: string | Date
 ) {
     'use server';
 
     try {
         // NUEVO: Usar la función exacta que maneja el formato de la BD
-        const result = await calculateOrderTotalExact(items, orderType, paymentMethod);
+        const result = await calculateOrderTotalExact(items, orderType, paymentMethod, deliveryDate);
 
         if (result.success) {
             return {
@@ -303,7 +304,8 @@ export async function getProductsFromPricesAction() {
 export async function calculateExactPriceAction(
     formattedProduct: string,
     orderType: 'minorista' | 'mayorista',
-    paymentMethod: string
+    paymentMethod: string,
+    deliveryDate?: string | Date
 ) {
     'use server';
 
@@ -311,7 +313,8 @@ export async function calculateExactPriceAction(
         const result = await getPriceFromFormattedProduct(
             formattedProduct,
             orderType,
-            paymentMethod
+            paymentMethod,
+            deliveryDate
         );
 
         if (result.success) {
@@ -358,6 +361,27 @@ export async function duplicateOrderAction(id: string) {
             originalOrder.address.phone = normalizedPhone;
         }
 
+        // Recalcular el precio con los precios del mes de la fecha de entrega
+        let recalculatedTotal = originalOrder.total;
+        try {
+            const result = await calculatePriceAction(
+                originalOrder.items || [],
+                originalOrder.orderType || 'minorista',
+                originalOrder.paymentMethod || '',
+                originalOrder.deliveryDay // Usar la fecha de entrega del pedido original
+            );
+            
+            if (result.success && result.total !== undefined) {
+                recalculatedTotal = result.total;
+                console.log(`💰 Precio recalculado para orden duplicada (fecha: ${originalOrder.deliveryDay}): ${originalOrder.total} → ${recalculatedTotal}`);
+            } else {
+                console.warn(`⚠️ No se pudo recalcular el precio, usando el original: ${originalOrder.total}`);
+            }
+        } catch (error) {
+            console.error('Error recalculando precio al duplicar:', error);
+            // Si falla el cálculo, usar el precio original
+        }
+
         // Crear una copia de la orden con modificaciones para indicar que es duplicada
         const duplicatedOrderData = {
             ...originalOrder,
@@ -368,6 +392,8 @@ export async function duplicateOrderAction(id: string) {
             updatedAt: new Date().toISOString(),
             // Mantener la fecha de entrega original para que el usuario pueda modificarla si es necesario
             deliveryDay: originalOrder.deliveryDay,
+            // IMPORTANTE: Usar el precio recalculado con los precios actuales
+            total: recalculatedTotal,
             // Normalizar campos opcionales que pueden causar problemas de validación
             deliveryArea: {
                 ...originalOrder.deliveryArea,

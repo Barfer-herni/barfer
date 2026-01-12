@@ -12,6 +12,7 @@ interface ExactPriceParams {
     weight: string | null;
     orderType: 'minorista' | 'mayorista';
     paymentMethod: string;
+    deliveryDate?: string | Date; // Fecha de entrega para buscar precios del mes correspondiente
 }
 
 /**
@@ -26,7 +27,7 @@ export async function getExactProductPrice(params: ExactPriceParams): Promise<{
     debug?: any;
 }> {
     try {
-        const { section, product, weight, orderType, paymentMethod } = params;
+        const { section, product, weight, orderType, paymentMethod, deliveryDate } = params;
 
         // Determinar el tipo de precio basado en orderType y paymentMethod
         let priceType: PriceType;
@@ -46,14 +47,25 @@ export async function getExactProductPrice(params: ExactPriceParams): Promise<{
         // Buscar directamente en la base de datos con los valores exactos
         const collection = await getCollection('prices');
 
+        // Determinar la fecha a usar para buscar precios
+        // Si se proporciona deliveryDate, usar esa fecha; si no, usar la fecha de hoy
+        let searchDate: string;
+        if (deliveryDate) {
+            // Convertir deliveryDate a formato YYYY-MM-DD
+            const date = typeof deliveryDate === 'string' ? new Date(deliveryDate) : deliveryDate;
+            searchDate = date.toISOString().split('T')[0];
+        } else {
+            searchDate = new Date().toISOString().split('T')[0];
+        }
+
         // Construir el query exacto (insensible a mayúsculas/minúsculas)
         const query: any = {
             section: section.toUpperCase(),
             product: { $regex: `^${product.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' }, // Insensible a mayúsculas/minúsculas
             priceType,
             isActive: true,
-            // Solo tomar precios cuya fecha efectiva sea menor o igual a hoy
-            effectiveDate: { $lte: new Date().toISOString().split('T')[0] }
+            // Solo tomar precios cuya fecha efectiva sea menor o igual a la fecha de búsqueda
+            effectiveDate: { $lte: searchDate }
         };
 
         // Manejo especial para CORNALITOS - el peso está en el nombre del producto
@@ -308,12 +320,14 @@ export function parseFormattedProduct(formattedProduct: string): {
  * @param formattedProduct - Producto en formato "section - product - weight"
  * @param orderType - Tipo de orden (minorista/mayorista)
  * @param paymentMethod - Método de pago
+ * @param deliveryDate - Fecha de entrega (opcional, por defecto usa la fecha actual)
  * @returns Resultado con el precio
  */
 export async function getPriceFromFormattedProduct(
     formattedProduct: string,
     orderType: 'minorista' | 'mayorista',
-    paymentMethod: string
+    paymentMethod: string,
+    deliveryDate?: string | Date
 ): Promise<{
     success: boolean;
     price?: number;
@@ -328,7 +342,8 @@ export async function getPriceFromFormattedProduct(
             product,
             weight,
             orderType,
-            paymentMethod
+            paymentMethod,
+            deliveryDate
         });
     } catch (error) {
         return {
@@ -344,6 +359,7 @@ export async function getPriceFromFormattedProduct(
  * @param items - Items de la orden
  * @param orderType - Tipo de orden (minorista/mayorista)
  * @param paymentMethod - Método de pago
+ * @param deliveryDate - Fecha de entrega (opcional, por defecto usa la fecha actual)
  * @returns Total calculado y precios por item
  */
 export async function calculateOrderTotalExact(
@@ -356,7 +372,8 @@ export async function calculateOrderTotalExact(
         }>;
     }>,
     orderType: 'minorista' | 'mayorista',
-    paymentMethod: string
+    paymentMethod: string,
+    deliveryDate?: string | Date
 ): Promise<{
     success: boolean;
     total?: number;
@@ -379,7 +396,8 @@ export async function calculateOrderTotalExact(
             console.log(`🔍 ITEM EXACTO:`, {
                 name: item.name,
                 fullName: item.fullName,
-                options: item.options
+                options: item.options,
+                deliveryDate: deliveryDate ? (typeof deliveryDate === 'string' ? deliveryDate : deliveryDate.toISOString()) : 'usando fecha actual'
             });
 
             // Si tenemos fullName (formato de la BD), usarlo directamente
@@ -387,7 +405,8 @@ export async function calculateOrderTotalExact(
                 const result = await getPriceFromFormattedProduct(
                     item.fullName,
                     orderType,
-                    paymentMethod
+                    paymentMethod,
+                    deliveryDate
                 );
 
                 if (result.success && result.price !== undefined) {

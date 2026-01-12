@@ -135,7 +135,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 total: ''
             }));
         }
-    }, [createFormData.items, createFormData.orderType, createFormData.paymentMethod]);
+    }, [createFormData.items, createFormData.orderType, createFormData.paymentMethod, createFormData.deliveryDay]);
 
     // useEffect para calcular precio automáticamente en la edición inline
     useEffect(() => {
@@ -155,7 +155,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 handleChange('total', 0);
             }
         }
-    }, [editValues.items, editValues.orderType, editValues.paymentMethod, editingRowId, shouldAutoCalculatePrice]);
+    }, [editValues.items, editValues.orderType, editValues.paymentMethod, editValues.deliveryDay, editingRowId, shouldAutoCalculatePrice]);
 
 
 
@@ -330,7 +330,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
 
     const handleChange = (field: string, value: any) => {
         // Activar cálculo automático si se modifican campos relevantes
-        if (field === 'items' || field === 'orderType' || field === 'paymentMethod') {
+        if (field === 'items' || field === 'orderType' || field === 'paymentMethod' || field === 'deliveryDay') {
             setShouldAutoCalculatePrice(true);
         }
 
@@ -389,7 +389,8 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             const result = await calculatePriceAction(
                 processedItems,
                 editValues.orderType,
-                editValues.paymentMethod
+                editValues.paymentMethod,
+                editValues.deliveryDay // Pasar la fecha de entrega para usar los precios del mes correspondiente
             );
 
             if (result.success && result.total !== undefined) {
@@ -770,7 +771,8 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             const priceResult = await calculatePriceAction(
                 validItems,
                 createFormData.orderType,
-                createFormData.paymentMethod
+                createFormData.paymentMethod,
+                createFormData.deliveryDay
             );
 
             if (!priceResult.success || !priceResult.itemPrices) {
@@ -848,7 +850,8 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
             const result = await calculatePriceAction(
                 processedItems,
                 createFormData.orderType,
-                createFormData.paymentMethod
+                createFormData.paymentMethod,
+                createFormData.deliveryDay // Pasar la fecha de entrega para usar los precios del mes correspondiente
             );
 
             if (result.success && result.total !== undefined) {
