@@ -714,12 +714,21 @@ export const mapDBProductToSelectOption = (dbProductName: string, dbOptionName: 
             product = dbProductName;
         }
     } else if (dbProductName.startsWith('HUESOS RECREATIVOS') ||
-        dbProductName.startsWith('BOX DE COMPLEMENTOS') ||
-        dbProductName.startsWith('HUESOS CARNOSOS') ||
-        dbProductName.startsWith('HUESO CARNOSO')) {
+        dbProductName.startsWith('BOX DE COMPLEMENTOS')) {
         section = 'OTROS';
         product = dbProductName;
         // Estos productos no tienen peso adicional
+        weight = '';
+    } else if (dbProductName.startsWith('HUESOS CARNOSOS') || dbProductName.startsWith('HUESO CARNOSO')) {
+        section = 'OTROS';
+        // CORRECCIÓN: Si el producto es solo "HUESOS CARNOSOS" sin el peso, agregar "5KG"
+        // porque en la BD se almacena como "HUESOS CARNOSOS 5KG"
+        if (dbProductName === 'HUESOS CARNOSOS' || dbProductName === 'HUESO CARNOSO') {
+            product = 'HUESOS CARNOSOS 5KG';
+        } else {
+            product = dbProductName;
+        }
+        // Estos productos no tienen peso adicional (el peso está en el nombre)
         weight = '';
     } else if (dbProductName.includes('OREJA') ||
         dbProductName.includes('TREAT') ||

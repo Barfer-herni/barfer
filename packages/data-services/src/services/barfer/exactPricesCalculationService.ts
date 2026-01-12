@@ -97,7 +97,9 @@ export async function getExactProductPrice(params: ExactPriceParams): Promise<{
                 priceType,
                 orderType,
                 paymentMethod
-            }
+            },
+            todayDate: new Date().toISOString().split('T')[0],
+            queryStringified: JSON.stringify(query, null, 2)
         });
 
         // Buscar el precio más reciente para este producto
@@ -185,7 +187,17 @@ export function parseFormattedProduct(formattedProduct: string): {
     product: string;
     weight: string | null;
 } {
-    const parts = formattedProduct.split(' - ');
+    // Primero, eliminar cualquier sufijo de cantidad (ej: " - x1", " - x2", etc.)
+    // Este sufijo es solo para visualización y no forma parte del nombre del producto
+    let cleanedProduct = formattedProduct.replace(/\s*-\s*x\d+\s*$/i, '').trim();
+    
+    console.log(`🔧 [DEBUG] parseFormattedProduct - INPUT:`, {
+        original: `"${formattedProduct}"`,
+        cleaned: `"${cleanedProduct}"`,
+        timestamp: new Date().toISOString()
+    });
+    
+    const parts = cleanedProduct.split(' - ');
 
     if (parts.length < 2) {
         throw new Error(`Formato de producto inválido: ${formattedProduct}`);
@@ -216,13 +228,52 @@ export function parseFormattedProduct(formattedProduct: string): {
             product = sectionParts[2]; // "POLLO"
             weight = parts[1].trim(); // "5KG"
         }
-    } else if (section.toUpperCase().includes('HUESOS CARNOSOS') || section.toUpperCase().includes('HUESO CARNOSO')) {
-        // Formato: "HUESOS CARNOSOS - 5KG"
+    } else if (section.toUpperCase() === 'OTROS' && 
+               (product.toUpperCase().includes('HUESOS CARNOSOS') || product.toUpperCase().includes('HUESO CARNOSO'))) {
+        // Formato: "OTROS - HUESOS CARNOSOS 5KG" o "OTROS - HUESO CARNOSO 5KG"
         // En la DB: section = "OTROS", product = "HUESOS CARNOSOS 5KG", weight = null
         // El peso está incluido en el nombre del producto, no como campo separado
-        section = 'OTROS';
-        product = `${parts[0].trim()} ${parts[1].trim()}`; // "HUESOS CARNOSOS 5KG"
+        
+        console.log(`🦴 [DEBUG] HUESOS CARNOSOS detectado - ANTES:`, {
+            section: `"${section}"`,
+            product: `"${product}"`,
+            weight: weight ? `"${weight}"` : null,
+            productIncludes: {
+                huesosCarnosos: product.toUpperCase().includes('HUESOS CARNOSOS'),
+                huesoCarnoso: product.toUpperCase().includes('HUESO CARNOSO')
+            }
+        });
+        
+        // Normalizar "HUESO CARNOSO" a "HUESOS CARNOSOS"
+        const normalizedProduct = product.toUpperCase().replace('HUESO CARNOSO', 'HUESOS CARNOSOS');
+        
+        // El producto ya viene con el peso incluido (ej: "HUESOS CARNOSOS 5KG")
+        product = normalizedProduct;
         weight = null; // El peso está en el nombre del producto
+        
+        console.log(`🦴 [DEBUG] HUESOS CARNOSOS parseado - DESPUÉS:`, {
+            section: `"${section}"`,
+            product: `"${product}"`,
+            weight: weight ? `"${weight}"` : null
+        });
+    } else if (section.toUpperCase().includes('HUESOS CARNOSOS') || section.toUpperCase().includes('HUESO CARNOSO')) {
+        // Formato legacy: "HUESOS CARNOSOS - 5KG" (sin sección OTROS al inicio)
+        // En la DB: section = "OTROS", product = "HUESOS CARNOSOS 5KG", weight = null
+        section = 'OTROS';
+        
+        // Normalizar "HUESO CARNOSO" a "HUESOS CARNOSOS"
+        const normalizedName = parts[0].trim().toUpperCase().replace('HUESO CARNOSO', 'HUESOS CARNOSOS');
+        
+        // Si hay un segundo parámetro (peso), concatenarlo
+        if (parts.length >= 2 && parts[1].trim()) {
+            product = `${normalizedName} ${parts[1].trim().toUpperCase()}`; // "HUESOS CARNOSOS 5KG"
+        } else {
+            product = normalizedName; // "HUESOS CARNOSOS"
+        }
+        
+        weight = null; // El peso está en el nombre del producto
+        
+        console.log(`🦴 [DEBUG] HUESOS CARNOSOS (legacy) parseado: section="${section}", product="${product}", weight="${weight}"`);
     } else if (section.toUpperCase().includes('BOX DE COMPLEMENTOS') || section.toUpperCase().includes('BOX COMPLEMENTOS')) {
         // Formato: "BOX DE COMPLEMENTOS - 1U" o "BOX DE COMPLEMENTOS"
         // En la DB: section = "OTROS", product = "BOX DE COMPLEMENTOS", weight = null
@@ -241,7 +292,13 @@ export function parseFormattedProduct(formattedProduct: string): {
         weight = null;
     }
 
-    console.log(`🔧 Parseo de producto: "${formattedProduct}" -> section: "${section}", product: "${product}", weight: "${weight}"`);
+    console.log(`🔧 [DEBUG] parseFormattedProduct - OUTPUT:`, {
+        formattedProduct: `"${formattedProduct}"`,
+        section: `"${section}"`,
+        product: `"${product}"`,
+        weight: weight ? `"${weight}"` : null,
+        timestamp: new Date().toISOString()
+    });
 
     return { section, product, weight };
 }
