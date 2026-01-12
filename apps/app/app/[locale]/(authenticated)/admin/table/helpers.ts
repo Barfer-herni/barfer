@@ -842,7 +842,11 @@ export const mapSelectOptionToDBFormat = (selectOption: string): { name: string,
                     cleanName = `BOX GATO ${product}`;
                 }
             } else if (section === 'RAW') {
+                // Para productos RAW, el nombre del producto ya incluye toda la información
+                // (ej: "TRAQUEA X1", "OREJA X50", "POLLO 100GRS")
+                // No hay peso adicional, todo está en el nombre
                 cleanName = product;
+                mappedOption = ''; // Los productos RAW no usan option, todo está en el nombre
             } else if (section === 'OTROS') {
                 cleanName = product;
             } else {

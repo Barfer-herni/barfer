@@ -174,10 +174,15 @@ export const columns: ColumnDef<Order>[] = [
                             displayOption = '';
                         }
 
-                        // Si el item.name ya contiene el peso (como "GATO VACA 5KG"), no mostrar displayOption
-                        // para evitar duplicación
                         const itemName = item.name || '';
-                        const hasWeightInName = /\d+KG|\d+GRS|\d+G/.test(itemName);
+                        
+                        // Caso especial: BIG DOG - SIEMPRE mostrar el sabor (opción)
+                        // El nombre es "BIG DOG (15kg)" y la opción es el sabor (VACA, POLLO, etc.)
+                        const isBigDog = /BIG\s+DOG/i.test(itemName);
+                        
+                        // Si el item.name ya contiene el peso (como "GATO VACA 5KG"), no mostrar displayOption
+                        // para evitar duplicación, EXCEPTO para BIG DOG que necesita mostrar el sabor
+                        const hasWeightInName = /\d+KG|\d+GRS|\d+G/i.test(itemName);
 
                         // Verificar si el nombre ya incluye una cantidad en formato " - x\d+" al final
                         // IMPORTANTE: No confundir con productos que tienen multiplicadores en el nombre (ej: "OREJA X50")
@@ -187,7 +192,8 @@ export const columns: ColumnDef<Order>[] = [
                         return (
                             <div key={`${item.id}-${index}`}>
                                 {itemName}
-                                {!hasWeightInName && displayOption ? ` - ${displayOption}` : ''}
+                                {/* Para BIG DOG, siempre mostrar el sabor. Para otros productos con peso, no mostrar displayOption */}
+                                {(isBigDog || !hasWeightInName) && displayOption ? ` - ${displayOption}` : ''}
                                 {!hasQuantityInName ? ` - x${quantity}` : ''}
                             </div>
                         );
