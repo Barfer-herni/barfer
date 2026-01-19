@@ -48,6 +48,19 @@ export function DateRangeFilter({
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const [isOpen, setIsOpen] = React.useState(false);
+    const [isMobile, setIsMobile] = React.useState(false);
+
+    // Detectar si es móvil
+    React.useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768); // 768px es el breakpoint md de Tailwind
+        };
+        
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     const from = searchParams.get('from');
     const to = searchParams.get('to');
@@ -134,7 +147,7 @@ export function DateRangeFilter({
                         defaultMonth={selectedDate?.from}
                         selected={selectedDate}
                         onSelect={setSelectedDate}
-                        numberOfMonths={2}
+                        numberOfMonths={isMobile ? 1 : 2}
                         locale={es}
                     />
                     <div className="flex justify-between p-2 border-t">

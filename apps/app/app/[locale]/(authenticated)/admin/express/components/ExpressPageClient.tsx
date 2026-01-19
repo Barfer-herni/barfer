@@ -20,6 +20,8 @@ import { toast } from '@repo/design-system/hooks/use-toast';
 import { AddStockModal } from './AddStockModal';
 import { DetalleTable } from './DetalleTable';
 import { CreatePuntoEnvioModal } from './CreatePuntoEnvioModal';
+import { DuplicateOrderModal } from './DuplicateOrderModal';
+import { EstadoEnvioFilter } from './EstadoEnvioFilter';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@repo/design-system/components/ui/tabs';
 import {
     getExpressOrdersAction,
@@ -28,6 +30,7 @@ import {
     getProductsForStockAction,
     updateStockAction,
     createStockAction,
+    duplicateExpressOrderAction,
 } from '../actions';
 import type { DeliveryArea, Order, Stock, DetalleEnvio, PuntoEnvio, ProductForStock } from '@repo/data-services';
 import { OrdersDataTable } from '../../table/components/OrdersDataTable';
@@ -58,6 +61,8 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
 
     const [showAddStockModal, setShowAddStockModal] = useState(false);
     const [showCreatePuntoEnvioModal, setShowCreatePuntoEnvioModal] = useState(false);
+    const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+    const [orderToDuplicate, setOrderToDuplicate] = useState<string | null>(null);
 
     // Inicializar estado con valor de URL si existe
     const [selectedPuntoEnvio, setSelectedPuntoEnvio] = useState<string>(initialPuntoIdFromUrl || '');
@@ -132,7 +137,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     const searchFromUrl = searchParams.get('search') || '';
     const fromFromUrl = searchParams.get('from');
     const toFromUrl = searchParams.get('to');
-    const orderTypeFromUrl = searchParams.get('orderType');
+    const estadosEnvioFromUrl = searchParams.get('estadosEnvio');
     const sortFromUrl = searchParams.get('sort');
 
     // Funciones helper para localStorage - Orden de prioridad de pedidos
@@ -272,9 +277,13 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
             });
         }
 
-        // C. Filtrar por Tipo de Orden
-        if (orderTypeFromUrl && orderTypeFromUrl !== 'all') {
-            result = result.filter(order => order.orderType === orderTypeFromUrl);
+        // C. Filtrar por Estado de Envío
+        if (estadosEnvioFromUrl && estadosEnvioFromUrl !== 'all') {
+            const selectedEstados = estadosEnvioFromUrl.split(',');
+            result = result.filter(order => {
+                const estadoEnvio = order.estadoEnvio || 'pendiente';
+                return selectedEstados.includes(estadoEnvio);
+            });
         }
 
         // D. Ordenar
@@ -322,7 +331,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         }
 
         return result;
-    }, [orders, searchFromUrl, fromFromUrl, toFromUrl, orderTypeFromUrl, sortFromUrl, selectedPuntoEnvio, applySavedOrder, getSavedOrder, orderPriorityVersion]);
+    }, [orders, searchFromUrl, fromFromUrl, toFromUrl, estadosEnvioFromUrl, sortFromUrl, selectedPuntoEnvio, applySavedOrder, getSavedOrder, orderPriorityVersion]);
 
     // 2. Paginar
     const paginatedOrders = useMemo(() => {
@@ -431,8 +440,6 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         setOrderPriorityVersion(prev => prev + 1);
     }, [fromFromUrl, selectedPuntoEnvio, filteredAndSortedOrders, saveOrder]);
 
-
-
     // Cargar productos para stock al montar el componente
     useEffect(() => {
         const loadProductsForStock = async () => {
@@ -539,6 +546,106 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
             if (!silent) setIsLoading(false);
         }
     };
+
+    // Función para manejar duplicación de pedidos
+    const handleDuplicate = useCallback(async (row: any) => {
+        console.log('🎯 handleDuplicate llamado con row:', row);
+        console.log('📍 Puntos de envío disponibles:', puntosEnvio.length);
+        
+        // Si el usuario tiene acceso a más de un punto de envío, mostrar modal
+        if (puntosEnvio.length > 1) {
+            console.log('✅ Mostrando modal (múltiples puntos)');
+            setOrderToDuplicate(row.id);
+            setShowDuplicateModal(true);
+        } else if (puntosEnvio.length === 1 || selectedPuntoEnvio) {
+            // Si solo tiene un punto de envío, duplicar directamente ahí
+            const targetPuntoEnvio = puntosEnvio[0]?.nombre || selectedPuntoEnvio;
+            
+            if (!targetPuntoEnvio) {
+                toast({
+                    title: 'Error',
+                    description: 'No hay punto de envío seleccionado',
+                    variant: 'destructive',
+                });
+                return;
+            }
+
+            try {
+                const result = await duplicateExpressOrderAction(row.id, targetPuntoEnvio);
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Error al duplicar');
+                }
+
+                // Recargar datos del punto de envío actual
+                if (selectedPuntoEnvio) {
+                    await loadTablasData(selectedPuntoEnvio, { silent: true });
+                }
+
+                toast({
+                    title: 'Éxito',
+                    description: result.message || 'Pedido duplicado correctamente',
+                });
+            } catch (error) {
+                toast({
+                    title: 'Error',
+                    description: error instanceof Error ? error.message : 'Error al duplicar la orden',
+                    variant: 'destructive',
+                });
+            }
+        } else {
+            toast({
+                title: 'Error',
+                description: 'No hay puntos de envío disponibles',
+                variant: 'destructive',
+            });
+        }
+    }, [puntosEnvio, selectedPuntoEnvio, toast]);
+
+    // Función para confirmar la duplicación con el punto de envío seleccionado
+    const handleConfirmDuplicate = useCallback(async (targetPuntoEnvio: string) => {
+        if (!orderToDuplicate) {
+            console.log('❌ No hay orderToDuplicate');
+            return;
+        }
+
+        console.log('🔄 Duplicando orden:', orderToDuplicate, 'a punto:', targetPuntoEnvio);
+
+        try {
+            const result = await duplicateExpressOrderAction(orderToDuplicate, targetPuntoEnvio);
+            
+            console.log('📦 Resultado de duplicación:', result);
+            
+            if (!result.success) {
+                const errorMsg = result.error || 'Error al duplicar';
+                console.error('❌ Error del servidor:', errorMsg);
+                throw new Error(errorMsg);
+            }
+
+            // Recargar datos del punto de envío actual
+            if (selectedPuntoEnvio) {
+                await loadTablasData(selectedPuntoEnvio, { silent: true });
+            }
+
+            toast({
+                title: 'Éxito',
+                description: result.message || 'Pedido duplicado correctamente',
+            });
+        } catch (error) {
+            console.error('❌ Error al duplicar:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Error al duplicar la orden';
+            console.error('❌ Mensaje de error completo:', errorMessage);
+            toast({
+                title: 'Error al duplicar',
+                description: errorMessage,
+                variant: 'destructive',
+            });
+            // También mostrar alert para asegurar que el usuario vea el error
+            alert(`Error al duplicar: ${errorMessage}`);
+        } finally {
+            setOrderToDuplicate(null);
+        }
+    }, [orderToDuplicate, selectedPuntoEnvio, toast]);
 
     // Normalizar nombre de producto para comparación (remover prefijos como "BOX PERRO", "BOX GATO", "BIG DOG")
     const normalizeProductName = useCallback((productName: string): string => {
@@ -1166,6 +1273,12 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                     const itemIds = filteredAndSortedOrders.map((order) => String(order._id));
 
                                     const tableComponent = (
+                                        <>
+                                            {/* Filtros */}
+                                            <div className="mb-4 flex flex-col sm:flex-row gap-4">
+                                                <DateRangeFilter />
+                                                <EstadoEnvioFilter />
+                                            </div>
                                         <OrdersDataTable
                                             fontSize="text-sm"
                                             columns={createExpressColumns(
@@ -1193,8 +1306,11 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                     await loadTablasData(selectedPuntoEnvio, { silent: true });
                                                 }
                                             }}
+                                            onDuplicate={handleDuplicate}
                                             isDragEnabled={isDragEnabled}
+                                            hideOrderTypeFilter={true}
                                         />
+                                        </>
                                     );
 
                                     // SIEMPRE envolver con DndContext cuando hay punto de envío
@@ -1259,8 +1375,8 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                             <th className="text-left p-2 font-semibold">Peso/Sabor</th>
                                                             <th className="text-right p-2 font-semibold">Stock Inicial</th>
                                                             <th className="text-right p-2 font-semibold">Llevamos</th>
-                                                            <th className="text-right p-2 font-semibold">Pedidos del Día</th>
-                                                            <th className="text-right p-2 font-semibold">Stock Final</th>
+                                                            <th className="text-center p-2 font-semibold">Pedidos del Día</th>
+                                                            <th className="text-center p-2 font-semibold">Stock Final</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -1377,7 +1493,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                         <td className="p-2 text-center">
                                                                             <span className="font-semibold text-gray-700">{pedidosDelDia}</span>
                                                                         </td>
-                                                                        <td className="p-2 text-right font-bold">
+                                                                        <td className="p-2 text-center font-bold">
                                                                             {stockFinalCalculado}
                                                                         </td>
                                                                     </tr>
@@ -1466,7 +1582,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                                     <td className="p-2 text-center">
                                                                         <span className="font-semibold text-gray-700">{pedidosDelDia}</span>
                                                                     </td>
-                                                                    <td className="p-2 text-right font-bold">
+                                                                    <td className="p-2 text-center font-bold">
                                                                         {displayStockFinal}
                                                                     </td>
                                                                 </tr>
@@ -1602,6 +1718,14 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 onPuntoEnvioCreated={() => {
                     handlePuntosEnvioRefresh();
                 }}
+            />
+
+            <DuplicateOrderModal
+                open={showDuplicateModal}
+                onOpenChange={setShowDuplicateModal}
+                puntosEnvio={puntosEnvio}
+                currentPuntoEnvio={selectedPuntoEnvio}
+                onConfirm={handleConfirmDuplicate}
             />
         </div >
     );

@@ -13,8 +13,11 @@ import {
     getProductsForStock,
     updateStockMongo,
     countOrdersByDay,
+    createOrder,
 } from '@repo/data-services';
 import { getCurrentUserWithPermissions } from '@repo/auth/server-permissions';
+import { calculatePriceAction } from '../table/actions';
+import { validateAndNormalizePhone } from '../table/helpers';
 
 export async function getDeliveryAreasWithPuntoEnvioAction() {
     try {
@@ -249,5 +252,134 @@ export async function getPedidosDelDiaAction(puntoEnvio: string, date: Date) {
             success: false,
             count: 0,
         };
+    }
+}
+
+// Acción para duplicar un pedido express en un punto de envío específico
+export async function duplicateExpressOrderAction(orderId: string, targetPuntoEnvio: string) {
+    'use server';
+
+    console.log('🚀 [SERVER] duplicateExpressOrderAction iniciada');
+    console.log('📦 [SERVER] orderId:', orderId);
+    console.log('📍 [SERVER] targetPuntoEnvio:', targetPuntoEnvio);
+
+    try {
+        // Validar que el usuario tenga permiso para el punto de envío destino
+        const userWithPermissions = await getCurrentUserWithPermissions();
+        const isAdmin = userWithPermissions?.isAdmin || false;
+        
+        console.log('👤 [SERVER] Usuario:', { isAdmin, puntoEnvio: userWithPermissions?.puntoEnvio });
+
+        if (!isAdmin) {
+            const userPuntosEnvio = Array.isArray(userWithPermissions?.puntoEnvio)
+                ? userWithPermissions.puntoEnvio
+                : (userWithPermissions?.puntoEnvio ? [userWithPermissions.puntoEnvio] : []);
+
+            if (!userPuntosEnvio.includes(targetPuntoEnvio)) {
+                return {
+                    success: false,
+                    error: 'No tienes permiso para duplicar pedidos en este punto de envío',
+                };
+            }
+        }
+
+        // Obtener la orden original
+        const { getCollection, ObjectId } = await import('@repo/database');
+        const ordersCollection = await getCollection('orders');
+        const originalOrder = await ordersCollection.findOne({ _id: new ObjectId(orderId) });
+
+        console.log('🔍 [SERVER] Orden original encontrada:', originalOrder ? 'SÍ' : 'NO');
+
+        if (!originalOrder) {
+            console.error('❌ [SERVER] Orden no encontrada con ID:', orderId);
+            return { success: false, error: 'Orden no encontrada' };
+        }
+
+        // Validar y normalizar el número de teléfono si está presente
+        if (originalOrder.address?.phone) {
+            const normalizedPhone = validateAndNormalizePhone(originalOrder.address.phone);
+            if (!normalizedPhone) {
+                return {
+                    success: false,
+                    error: 'El número de teléfono no es válido. Use el formato: La Plata (221 XXX-XXXX) o CABA/BA (11-XXXX-XXXX / 15-XXXX-XXXX)',
+                };
+            }
+            originalOrder.address.phone = normalizedPhone;
+        }
+
+        // Recalcular el precio con los precios del mes de la fecha de entrega
+        let recalculatedTotal = originalOrder.total;
+        try {
+            const result = await calculatePriceAction(
+                originalOrder.items || [],
+                originalOrder.orderType || 'minorista',
+                originalOrder.paymentMethod || '',
+                originalOrder.deliveryDay
+            );
+
+            if (result.success && result.total !== undefined) {
+                recalculatedTotal = result.total;
+                console.log(`💰 Precio recalculado para orden duplicada (fecha: ${originalOrder.deliveryDay}): ${originalOrder.total} → ${recalculatedTotal}`);
+            } else {
+                console.warn(`⚠️ No se pudo recalcular el precio, usando el original: ${originalOrder.total}`);
+            }
+        } catch (error) {
+            console.error('Error recalculando precio al duplicar:', error);
+        }
+
+        // Crear una copia de la orden con el nuevo punto de envío
+        const duplicatedOrderData = {
+            ...originalOrder,
+            _id: undefined,
+            status: 'pending' as const,
+            estadoEnvio: 'pendiente' as const, // Resetear estado de envío
+            puntoEnvio: targetPuntoEnvio, // Asignar el nuevo punto de envío
+            notesOwn: `DUPLICADO - ${originalOrder.notesOwn || ''}`,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            deliveryDay: originalOrder.deliveryDay,
+            total: recalculatedTotal,
+            deliveryArea: {
+                ...originalOrder.deliveryArea,
+                ...(originalOrder.deliveryArea?._id && { _id: originalOrder.deliveryArea._id }),
+                sheetName: originalOrder.deliveryArea?.sheetName || '',
+                whatsappNumber: originalOrder.deliveryArea?.whatsappNumber || '',
+            },
+            address: {
+                ...originalOrder.address,
+                betweenStreets: originalOrder.address?.betweenStreets || '',
+                floorNumber: originalOrder.address?.floorNumber || '',
+                departmentNumber: originalOrder.address?.departmentNumber || '',
+                zipCode: originalOrder.address?.zipCode || undefined,
+                reference: originalOrder.address?.reference || '',
+            },
+            coupon:
+                originalOrder.coupon && typeof originalOrder.coupon === 'object'
+                    ? originalOrder.coupon
+                    : undefined,
+        };
+
+        // Crear la orden duplicada
+        console.log('💾 [SERVER] Creando orden duplicada...');
+        const result = await createOrder(duplicatedOrderData as any);
+        
+        console.log('✅ [SERVER] Resultado de createOrder:', result);
+        
+        if (!result.success) {
+            console.error('❌ [SERVER] Error al crear orden:', result.error);
+            return { success: false, error: result.error };
+        }
+
+        console.log('🎉 [SERVER] Orden duplicada exitosamente:', result.order?._id);
+        
+        revalidatePath('/admin/express');
+        return {
+            success: true,
+            order: result.order,
+            message: `Pedido duplicado correctamente en ${targetPuntoEnvio}`,
+        };
+    } catch (error) {
+        console.error('❌ [SERVER] Error in duplicateExpressOrderAction:', error);
+        return { success: false, error: 'Error al duplicar la orden' };
     }
 }

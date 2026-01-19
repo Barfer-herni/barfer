@@ -52,8 +52,10 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     canEdit = false,
     canDelete = false,
     onOrderUpdated,
+    onDuplicate: customOnDuplicate,
     fontSize = 'text-xs',
     isDragEnabled = false,
+    hideOrderTypeFilter = false,
 }: DataTableProps<TData, TValue>) {
     const router = useRouter();
     const pathname = usePathname();
@@ -584,6 +586,13 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     };
 
     const handleDuplicate = async (row: any) => {
+        // Si hay un handler personalizado, usarlo en lugar del comportamiento por defecto
+        if (customOnDuplicate) {
+            await customOnDuplicate(row);
+            return;
+        }
+
+        // Comportamiento por defecto
         if (!confirm('¿Estás seguro de que quieres duplicar esta orden? Se creará una nueva orden con los mismos datos marcada como "DUPLICADO".')) {
             return;
         }
@@ -1137,7 +1146,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
                         <DateRangeFilter />
-                        <OrderTypeFilter />
+                        {!hideOrderTypeFilter && <OrderTypeFilter />}
                     </div>
                 </div>
 
@@ -1689,31 +1698,33 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                             </>
                         )}
 
-                        {/* Marcar como Entregado */}
-                        <Button
-                            variant="default"
-                            disabled={Object.keys(rowSelection).length === 0 || loading}
-                            onClick={async () => {
-                                const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
-                                setLoading(true);
-                                try {
-                                    const result = await updateOrdersStatusBulkAction(selectedIds, 'delivered');
-                                    if (result.success) {
-                                        setRowSelection({});
-                                        router.refresh();
-                                    } else {
-                                        alert('No se pudo actualizar el estado.');
+                        {/* Marcar como Entregado - Solo mostrar cuando hay selección */}
+                        {Object.keys(rowSelection).length > 0 && (
+                            <Button
+                                variant="default"
+                                disabled={loading}
+                                onClick={async () => {
+                                    const selectedIds = Object.keys(rowSelection).filter((id) => rowSelection[id]);
+                                    setLoading(true);
+                                    try {
+                                        const result = await updateOrdersStatusBulkAction(selectedIds, 'delivered');
+                                        if (result.success) {
+                                            setRowSelection({});
+                                            router.refresh();
+                                        } else {
+                                            alert('No se pudo actualizar el estado.');
+                                        }
+                                    } catch (e) {
+                                        alert('Ocurrió un error al actualizar las órdenes.');
+                                    } finally {
+                                        setLoading(false);
                                     }
-                                } catch (e) {
-                                    alert('Ocurrió un error al actualizar las órdenes.');
-                                } finally {
-                                    setLoading(false);
-                                }
-                            }}
-                            className="flex-1 sm:flex-none lg:flex-none"
-                        >
-                            Marcar como Entregado
-                        </Button>
+                                }}
+                                className="flex-1 sm:flex-none lg:flex-none"
+                            >
+                                Marcar como Entregado ({Object.keys(rowSelection).length})
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>

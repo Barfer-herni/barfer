@@ -10,8 +10,10 @@ export interface DataTableProps<TData extends { _id: string }, TValue> {
     canEdit?: boolean;
     canDelete?: boolean;
     onOrderUpdated?: () => void | Promise<void>;
+    onDuplicate?: (row: any) => void | Promise<void>;
     fontSize?: 'text-xs' | 'text-sm';
     isDragEnabled?: boolean;
+    hideOrderTypeFilter?: boolean;
 }
 
 export interface EditValues {
