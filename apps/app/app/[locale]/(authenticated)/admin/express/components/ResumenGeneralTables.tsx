@@ -137,7 +137,9 @@ export function ResumenGeneralTables({ orders, puntosEnvio, productsForStock, se
                             if (productName.includes('POLLO')) puntoData.flavors['GATO POLLO'] += totalItemWeight;
                             else if (productName.includes('VACA')) puntoData.flavors['GATO VACA'] += totalItemWeight;
                             else if (productName.includes('CORDERO')) puntoData.flavors['GATO CORDERO'] += totalItemWeight;
-                        } else if (productName.includes('HUESO')) {
+                        } else if ((productName.includes('HUESOS CARNOSOS') || productName.includes('HUESO CARNOSO')) && 
+                                   !productName.includes('RECREATIVO') && !productName.includes('CALDO')) {
+                            // Detectar Huesos Carnosos pero excluir Huesos Recreativos y Caldo de Huesos
                             puntoData.flavors['HUESOS CARNOSOS'] += totalItemWeight;
                         } else {
                             // Standard Perro

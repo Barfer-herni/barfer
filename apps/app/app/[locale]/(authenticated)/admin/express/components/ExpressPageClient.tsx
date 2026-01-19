@@ -757,29 +757,70 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         const productName = (product.product || '').toUpperCase().trim();
         const productWeight = product.weight ? (product.weight || '').toUpperCase().trim().replace(/\s+/g, '') : null;
 
+        // DEBUG: Log para HUESOS CARNOSOS
+        const isHuesosCarnosos = productName.includes('HUESOS CARNOSOS');
+        if (isHuesosCarnosos) {
+            console.log('🦴 [DEBUG HUESOS CARNOSOS] Calculando pedidos del día');
+            console.log('🦴 Product:', { section: sectionUpper, product: productName, weight: productWeight });
+            console.log('🦴 Órdenes del día filtradas:', ordersOfDay.length);
+        }
+
         ordersOfDay.forEach(order => {
             order.items.forEach((item: any) => {
                 const itemProduct = (item.name || '').toUpperCase().trim();
 
+                // DEBUG: Log para HUESOS CARNOSOS
+                if (isHuesosCarnosos) {
+                    console.log('🦴 [DEBUG] Item en orden:', {
+                        orderId: order._id,
+                        itemName: itemProduct,
+                        options: item.options,
+                        quantity: item.quantity
+                    });
+                }
+
                 // --- VALIDACIÓN DE SECCIÓN ---
                 // Evitar mezclar PERRO con GATO
-                if (sectionUpper.includes('GATO')) {
-                    if (!itemProduct.includes('GATO')) return; // Item no es de gato
-                } else if (sectionUpper.includes('PERRO')) {
-                    // Si la sección es perro, el item debe ser perro o big dog
-                    // O al menos NO debe ser de Gato (por si hay nombres genéricos, aunque Express usa BOX PERRO/GATO)
-                    if (itemProduct.includes('GATO')) return;
-                    // Opcional: Requerir PERRO o BIG DOG explícitamente si los nombres son consistentes
-                    if (!itemProduct.includes('PERRO') && !itemProduct.includes('BIG DOG')) return;
+                // IMPORTANTE: No aplicar esta validación a productos de la sección OTROS
+                if (!sectionUpper.includes('OTROS')) {
+                    if (sectionUpper.includes('GATO')) {
+                        if (!itemProduct.includes('GATO')) return; // Item no es de gato
+                    } else if (sectionUpper.includes('PERRO')) {
+                        // Si la sección es perro, el item debe ser perro o big dog
+                        // O al menos NO debe ser de Gato (por si hay nombres genéricos, aunque Express usa BOX PERRO/GATO)
+                        if (itemProduct.includes('GATO')) return;
+                        // Opcional: Requerir PERRO o BIG DOG explícitamente si los nombres son consistentes
+                        if (!itemProduct.includes('PERRO') && !itemProduct.includes('BIG DOG')) return;
+                    }
                 }
 
                 let isMatch = false;
 
+                // CASO ESPECIAL: Productos con peso en el nombre (ej: "HUESOS CARNOSOS 5KG")
+                // El productName incluye el peso (ej: "HUESOS CARNOSOS 5KG") pero el item puede venir sin él
+                if (!productWeight && productName.match(/\d+KG/i)) {
+                    // Extraer el nombre base sin el peso del productName
+                    const productNameWithoutWeight = productName.replace(/\s*\d+KG.*$/i, '').trim();
+                    
+                    // Verificar si el item coincide con el nombre base
+                    if (itemProduct.includes(productNameWithoutWeight)) {
+                        // Verificar el peso en las opciones del item
+                        if (item.options && item.options.length > 0) {
+                            const itemOptionName = (item.options[0]?.name || '').toUpperCase().trim();
+                            // Extraer el peso del productName
+                            const productWeightMatch = productName.match(/(\d+KG)/i);
+                            if (productWeightMatch && itemOptionName.includes(productWeightMatch[1])) {
+                                isMatch = true;
+                            }
+                        }
+                    }
+                }
+
                 // 1. Comparación directa
-                if (itemProduct === productName) isMatch = true;
+                if (!isMatch && itemProduct === productName) isMatch = true;
 
                 // 2. Comparación si el nombre del item incluye el nombre del producto
-                else if (itemProduct.includes(productName)) {
+                if (!isMatch && itemProduct.includes(productName)) {
                     // Verificar si hay peso
                     if (productWeight) {
                         let weightMatch = false;
@@ -795,7 +836,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                     }
                 }
                 // 3. Comparación removiendo prefijos comunes
-                else {
+                if (!isMatch) {
                     let extractedProductName = itemProduct;
                     extractedProductName = extractedProductName.replace(/^BOX\s+PERRO\s+/i, '');
                     extractedProductName = extractedProductName.replace(/^BOX\s+GATO\s+/i, '');
@@ -820,10 +861,21 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 if (isMatch) {
                     const qty = item.quantity || item.options?.[0]?.quantity || 1;
                     totalQuantity += qty;
+                    
+                    // DEBUG: Log para HUESOS CARNOSOS
+                    if (isHuesosCarnosos) {
+                        console.log('🦴 [DEBUG] ✅ MATCH encontrado! Cantidad:', qty, 'Total acumulado:', totalQuantity);
+                    }
+                } else if (isHuesosCarnosos) {
+                    console.log('🦴 [DEBUG] ❌ NO MATCH');
                 }
             });
         });
 
+        // DEBUG: Log final para HUESOS CARNOSOS
+        if (isHuesosCarnosos) {
+            console.log('🦴 [DEBUG] Total final de pedidos del día:', totalQuantity);
+        }
 
         return totalQuantity;
     }, [selectedPuntoEnvio, orders, searchParams]);    // Función para guardar automáticamente con debounce
