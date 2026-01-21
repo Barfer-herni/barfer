@@ -198,11 +198,14 @@ export async function getDetalleEnvioByPuntoEnvioMongo(
             }
         });
 
-        // Filtrar por punto de envío y sameDay
+        // Filtrar por punto de envío y sameDay (lógica express completa: sameDayDelivery OR bank-transfer)
         pipeline.push({
             $match: {
                 puntoEnvio: puntoEnvio,
-                'deliveryArea.sameDayDelivery': true,
+                $or: [
+                    { 'deliveryArea.sameDayDelivery': true },
+                    { paymentMethod: 'bank-transfer' }
+                ]
             }
         });
 

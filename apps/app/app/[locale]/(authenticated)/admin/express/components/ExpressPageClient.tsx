@@ -32,12 +32,12 @@ import {
     createStockAction,
     duplicateExpressOrderAction,
 } from '../actions';
-import type { DeliveryArea, Order, Stock, DetalleEnvio, PuntoEnvio, ProductForStock } from '@repo/data-services';
+import type { Order, Stock, DetalleEnvio, PuntoEnvio, ProductForStock } from '@repo/data-services';
 import { OrdersDataTable } from '../../table/components/OrdersDataTable';
 import { DateRangeFilter } from '../../table/components/DateRangeFilter';
-import type { ColumnDef, PaginationState, SortingState } from '@tanstack/react-table';
 import { createExpressColumns } from './expressColumns';
 import { ResumenGeneralTables } from './ResumenGeneralTables';
+import { MonthlyMetricsTable } from './MonthlyMetricsTable';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
@@ -551,7 +551,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     const handleDuplicate = useCallback(async (row: any) => {
         console.log('🎯 handleDuplicate llamado con row:', row);
         console.log('📍 Puntos de envío disponibles:', puntosEnvio.length);
-        
+
         // Si el usuario tiene acceso a más de un punto de envío, mostrar modal
         if (puntosEnvio.length > 1) {
             console.log('✅ Mostrando modal (múltiples puntos)');
@@ -560,7 +560,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         } else if (puntosEnvio.length === 1 || selectedPuntoEnvio) {
             // Si solo tiene un punto de envío, duplicar directamente ahí
             const targetPuntoEnvio = puntosEnvio[0]?.nombre || selectedPuntoEnvio;
-            
+
             if (!targetPuntoEnvio) {
                 toast({
                     title: 'Error',
@@ -572,7 +572,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
 
             try {
                 const result = await duplicateExpressOrderAction(row.id, targetPuntoEnvio);
-                
+
                 if (!result.success) {
                     throw new Error(result.error || 'Error al duplicar');
                 }
@@ -613,9 +613,9 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
 
         try {
             const result = await duplicateExpressOrderAction(orderToDuplicate, targetPuntoEnvio);
-            
+
             console.log('📦 Resultado de duplicación:', result);
-            
+
             if (!result.success) {
                 const errorMsg = result.error || 'Error al duplicar';
                 console.error('❌ Error del servidor:', errorMsg);
@@ -801,7 +801,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 if (!productWeight && productName.match(/\d+KG/i)) {
                     // Extraer el nombre base sin el peso del productName
                     const productNameWithoutWeight = productName.replace(/\s*\d+KG.*$/i, '').trim();
-                    
+
                     // Verificar si el item coincide con el nombre base
                     if (itemProduct.includes(productNameWithoutWeight)) {
                         // Verificar el peso en las opciones del item
@@ -861,7 +861,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 if (isMatch) {
                     const qty = item.quantity || item.options?.[0]?.quantity || 1;
                     totalQuantity += qty;
-                    
+
                     // DEBUG: Log para HUESOS CARNOSOS
                     if (isHuesosCarnosos) {
                         console.log('🦴 [DEBUG] ✅ MATCH encontrado! Cantidad:', qty, 'Total acumulado:', totalQuantity);
@@ -1253,7 +1253,6 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                         orders={orders}
                         puntosEnvio={puntosEnvio}
                         productsForStock={productsForStock}
-                        selectedDateStr={searchParams.get('from') || format(new Date(), 'yyyy-MM-dd')}
                     />
                 )}
 
@@ -1261,7 +1260,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 {selectedPuntoEnvio && selectedPuntoEnvio !== 'all' && (
                     <div className="space-y-4">
                         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                            <TabsList className={isAdmin ? "grid w-full grid-cols-3" : "grid w-full grid-cols-2"}>
+                            <TabsList className={isAdmin ? "grid w-full grid-cols-4" : "grid w-full grid-cols-3"}>
                                 <TabsTrigger value="orders" className="flex items-center gap-2">
                                     <ShoppingCart className="h-4 w-4" />
                                     Órdenes ({filteredAndSortedOrders.length})
@@ -1270,13 +1269,21 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                     <Package className="h-4 w-4" />
                                     Stock ({stock.length})
                                 </TabsTrigger>
+                                <TabsTrigger value="metrics" className="flex items-center gap-2">
+                                    <BarChart3 className="h-4 w-4" />
+                                    Métricas
+                                </TabsTrigger>
                                 {isAdmin && (
                                     <TabsTrigger value="detalle" className="flex items-center gap-2">
-                                        <BarChart3 className="h-4 w-4" />
+                                        <Edit2 className="h-4 w-4" />
                                         Detalle ({detalle.length})
                                     </TabsTrigger>
                                 )}
                             </TabsList>
+
+                            <TabsContent value="metrics" className="mt-6">
+                                <MonthlyMetricsTable orders={orders} puntoEnvioName={selectedPuntoEnvio} />
+                            </TabsContent>
 
                             <TabsContent value="orders" className="mt-6">
                                 {!selectedPuntoEnvio || selectedPuntoEnvio === 'all' ? (
@@ -1331,37 +1338,37 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                 <DateRangeFilter />
                                                 <EstadoEnvioFilter />
                                             </div>
-                                        <OrdersDataTable
-                                            fontSize="text-sm"
-                                            columns={createExpressColumns(
-                                                undefined, // No recargar datos al actualizar
-                                                moveOrder,
-                                                isDragEnabled, // Pasar flag para ocultar columna de flechas si drag está habilitado
-                                                handleOrderUpdate // Pasar callback para actualizar orden
-                                            )}
-                                            data={paginatedOrders}
-                                            pageCount={Math.ceil(filteredAndSortedOrders.length / pageSizeFromUrl)}
-                                            total={filteredAndSortedOrders.length}
-                                            pagination={{
-                                                pageIndex: pageFromUrl - 1,
-                                                pageSize: pageSizeFromUrl,
-                                            }}
-                                            sorting={sortFromUrl ? [{
-                                                id: sortFromUrl.split('.')[0],
-                                                desc: sortFromUrl.split('.')[1] === 'desc'
-                                            }] : [{ id: 'createdAt', desc: true }]}
-                                            canEdit={canEdit}
-                                            canDelete={canDelete}
-                                            onOrderUpdated={async () => {
-                                                // Recargar solo si es necesario (edición completa, no campos inline)
-                                                if (selectedPuntoEnvio) {
-                                                    await loadTablasData(selectedPuntoEnvio, { silent: true });
-                                                }
-                                            }}
-                                            onDuplicate={handleDuplicate}
-                                            isDragEnabled={isDragEnabled}
-                                            hideOrderTypeFilter={true}
-                                        />
+                                            <OrdersDataTable
+                                                fontSize="text-sm"
+                                                columns={createExpressColumns(
+                                                    undefined, // No recargar datos al actualizar
+                                                    moveOrder,
+                                                    isDragEnabled, // Pasar flag para ocultar columna de flechas si drag está habilitado
+                                                    handleOrderUpdate // Pasar callback para actualizar orden
+                                                )}
+                                                data={paginatedOrders}
+                                                pageCount={Math.ceil(filteredAndSortedOrders.length / pageSizeFromUrl)}
+                                                total={filteredAndSortedOrders.length}
+                                                pagination={{
+                                                    pageIndex: pageFromUrl - 1,
+                                                    pageSize: pageSizeFromUrl,
+                                                }}
+                                                sorting={sortFromUrl ? [{
+                                                    id: sortFromUrl.split('.')[0],
+                                                    desc: sortFromUrl.split('.')[1] === 'desc'
+                                                }] : [{ id: 'createdAt', desc: true }]}
+                                                canEdit={canEdit}
+                                                canDelete={canDelete}
+                                                onOrderUpdated={async () => {
+                                                    // Recargar solo si es necesario (edición completa, no campos inline)
+                                                    if (selectedPuntoEnvio) {
+                                                        await loadTablasData(selectedPuntoEnvio, { silent: true });
+                                                    }
+                                                }}
+                                                onDuplicate={handleDuplicate}
+                                                isDragEnabled={isDragEnabled}
+                                                hideOrderTypeFilter={true}
+                                            />
                                         </>
                                     );
 
