@@ -1,4 +1,4 @@
-import { getQuantityStatsByMonth, debugQuantityStats, testProductData } from '@repo/data-services/src/services/barfer';
+import { getQuantityStatsByMonth } from '@repo/data-services/src/services/barfer';
 import { QuantityAnalyticsClient } from './QuantityAnalyticsClient';
 
 interface QuantityAnalyticsTabProps {
@@ -17,8 +17,10 @@ export async function QuantityAnalyticsTab({ dateFilter, compareFilter, selected
     try {
         // Usar el año seleccionado o el año actual por defecto
         const currentYear = selectedYear || new Date().getFullYear();
-        const yearStart = new Date(currentYear, 0, 1); // 1 de enero del año seleccionado
-        const yearEnd = new Date(currentYear, 11, 31, 23, 59, 59, 999); // 31 de diciembre del año seleccionado
+        // IMPORTANTE: Usar UTC para evitar problemas de zona horaria (Argentina UTC-3)
+        // Esto asegura que coincida con la lógica de Express que compara en UTC
+        const yearStart = new Date(Date.UTC(currentYear, 0, 1, 0, 0, 0, 0));
+        const yearEnd = new Date(Date.UTC(currentYear, 11, 31, 23, 59, 59, 999));
 
 
 

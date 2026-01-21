@@ -29,19 +29,53 @@ export async function getExpressOrders(puntoEnvio?: string, from?: string, to?: 
 
         // Filtro por fecha si se proporciona
         if (from && from.trim() !== '' || to && to.trim() !== '') {
-            filter.deliveryDay = {};
+            const dateConditions: any[] = [];
+
+            // Preparar las fechas de filtro
+            let fromDateObj: Date | undefined;
+            let toDateObj: Date | undefined;
+
             if (from && from.trim() !== '') {
-                // Crear fecha desde string sin manipulación de zona horaria
                 const [year, month, day] = from.split('-').map(Number);
-                const fromDateObj = new Date(year, month - 1, day, 0, 0, 0, 0);
-                filter.deliveryDay.$gte = fromDateObj;
+                fromDateObj = new Date(year, month - 1, day, 0, 0, 0, 0);
             }
             if (to && to.trim() !== '') {
-                // Crear fecha desde string sin manipulación de zona horaria
                 const [year, month, day] = to.split('-').map(Number);
-                const toDateObj = new Date(year, month - 1, day, 23, 59, 59, 999);
-                filter.deliveryDay.$lte = toDateObj;
+                toDateObj = new Date(year, month - 1, day, 23, 59, 59, 999);
             }
+
+            // Condición 1: Filtrar por deliveryDay (Prioridad)
+            const deliveryDayMatch: any = {};
+            if (fromDateObj) deliveryDayMatch.$gte = fromDateObj;
+            if (toDateObj) deliveryDayMatch.$lte = toDateObj;
+
+            // Condición 2: Filtrar por createdAt (Fallback - solo si no hay deliveryDay)
+            // Nota: Idealmente ajustaríamos -3h aquí también, pero para query simple mantendremos el rango directo
+            // o ajustaremos el rango de búsqueda para compensar.
+            // Por simplicidad y consistencia con "si no hay deliveryDay, es la fecha de creación", usamos rango directo.
+            const createdAtMatch: any = {};
+            if (fromDateObj) createdAtMatch.$gte = fromDateObj;
+            if (toDateObj) createdAtMatch.$lte = toDateObj;
+
+            filter.$and = [
+                {
+                    $or: [
+                        { deliveryDay: deliveryDayMatch },
+                        {
+                            $and: [
+                                { deliveryDay: { $exists: false } },
+                                { createdAt: createdAtMatch }
+                            ]
+                        },
+                        {
+                            $and: [
+                                { deliveryDay: null },
+                                { createdAt: createdAtMatch }
+                            ]
+                        }
+                    ]
+                }
+            ];
         }
 
         const orders = await collection

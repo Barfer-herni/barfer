@@ -126,13 +126,6 @@ export async function debugOrdersByMonth(startDate?: Date, endDate?: Date): Prom
 
         // Mostrar algunas órdenes de ejemplo
         const sampleOrders = allOrders.slice(0, 5);
-        console.log('📝 Debug: Órdenes de ejemplo:', sampleOrders.map(order => ({
-            _id: order._id,
-            createdAt: order.createdAt,
-            orderType: order.orderType || 'minorista (por defecto)',
-            total: order.total,
-            status: order.status
-        })));
 
         return {
             totalOrders: allOrders.length,

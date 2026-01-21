@@ -30,14 +30,14 @@ export default async function AnalyticsPage({ searchParams }: AnalyticsPageProps
         from: new Date(params.from + 'T00:00:00.000Z'), // Forzar UTC
         to: new Date(params.to + 'T23:59:59.999Z')     // Forzar UTC
     } : {
-        // Por defecto: últimos 365 días para incluir más datos históricos y categorías como BIG DOG
+        // Por defecto: últimos 10 años (prácticamente "todo el historial") para coincidir con Express
         from: (() => {
             const now = new Date();
-            const oneYearAgo = subDays(now, 365);
+            const tenYearsAgo = subDays(now, 3650);
             return new Date(Date.UTC(
-                oneYearAgo.getUTCFullYear(),
-                oneYearAgo.getUTCMonth(),
-                oneYearAgo.getUTCDate(),
+                tenYearsAgo.getUTCFullYear(),
+                tenYearsAgo.getUTCMonth(),
+                tenYearsAgo.getUTCDate(),
                 0, 0, 0, 0
             ));
         })(),

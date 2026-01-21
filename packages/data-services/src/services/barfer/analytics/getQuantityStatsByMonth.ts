@@ -34,47 +34,26 @@ interface QuantityStatsByType {
 const getProductWeight = (productName: string, optionName: string): number => {
     const lowerProductName = productName.toLowerCase();
     const lowerOptionName = optionName.toLowerCase();
+    let weight = 0;
 
-    // Big Dog productos
-    if (lowerProductName.includes('big dog')) {
-        return 15; // Big Dog siempre es 15KG
-    }
-
-    // Extraer peso del nombre de la opción (ej: "5KG", "10KG", "2.5KG")
-    const weightMatch = lowerOptionName.match(/(\d+(?:\.\d+)?)\s*kg/i);
-    if (weightMatch) {
-        const weight = parseFloat(weightMatch[1]);
-        return weight;
-    }
-
-    // Buscar peso en el nombre del producto también
-    const productWeightMatch = lowerProductName.match(/(\d+(?:\.\d+)?)\s*kg/i);
+    // 1. Buscar peso en el nombre del producto (Prioridad 1 en Express)
+    const productWeightMatch = lowerProductName.match(/(\d+(?:\.\d+)?)\s*k?g?/i);
     if (productWeightMatch) {
-        const weight = parseFloat(productWeightMatch[1]);
-        return weight;
+        weight = parseFloat(productWeightMatch[1]);
     }
-
-    // Valores por defecto basados en el nombre del producto
-    if (lowerProductName.includes('huesos') || lowerProductName.includes('carnosos')) {
-        return 1; // Huesos carnosos
+    // 2. Si es BOX y no teniamos peso en nombre -> 10kg (Prioridad 2 en Express)
+    else if (lowerProductName.includes('box')) {
+        weight = 10;
     }
-
-    // Productos estándar - intentar extraer peso de diferentes formatos
-    if (lowerProductName.includes('pollo') || lowerProductName.includes('vaca') ||
-        lowerProductName.includes('cerdo') || lowerProductName.includes('cordero')) {
-
-        // Buscar patrones como "5kg", "10kg", "2.5kg" en el nombre del producto
-        const standardWeightMatch = lowerProductName.match(/(\d+(?:\.\d+)?)\s*k?g?/i);
-        if (standardWeightMatch) {
-            const weight = parseFloat(standardWeightMatch[1]);
-            return weight;
+    // 3. Buscar peso en opción (Prioridad 3 en Express)
+    else {
+        const weightMatch = lowerOptionName.match(/(\d+(?:\.\d+)?)\s*k?g?/i);
+        if (weightMatch) {
+            weight = parseFloat(weightMatch[1]);
         }
-
-        // Si no se encuentra, usar valor por defecto
-        return 5; // Productos estándar
     }
 
-    return 0; // Producto no reconocido
+    return weight;
 };
 
 /**
@@ -87,155 +66,39 @@ const categorizeProduct = (productName: string, optionName: string): {
     const lowerName = productName.toLowerCase();
     const lowerOptionName = optionName.toLowerCase();
 
-    // Big Dog productos (perro) - el nombre es "BIG DOG (15kg)" y la variante está en options
+    // Construir full name para búsquedas robustas (como hicimos en Express)
+    const fullName = `${lowerName} ${lowerOptionName}`;
+
+    // Big Dog productos (perro)
     if (lowerName.includes('big dog')) {
-        if (lowerOptionName.includes('pollo')) return { category: 'perro', subcategory: 'bigDogPollo' };
-        if (lowerOptionName.includes('vaca')) return { category: 'perro', subcategory: 'bigDogVaca' };
+        if (fullName.includes('pollo')) return { category: 'perro', subcategory: 'bigDogPollo' };
+        if (fullName.includes('vaca')) return { category: 'perro', subcategory: 'bigDogVaca' };
         return { category: 'perro', subcategory: 'bigDog' };
     }
 
     // Productos de gato
     if (lowerName.includes('gato')) {
-        if (lowerName.includes('pollo')) return { category: 'gato', subcategory: 'gatoPollo' };
-        if (lowerName.includes('vaca')) return { category: 'gato', subcategory: 'gatoVaca' };
-        if (lowerName.includes('cordero')) return { category: 'gato', subcategory: 'gatoCordero' };
+        if (fullName.includes('pollo')) return { category: 'gato', subcategory: 'gatoPollo' };
+        if (fullName.includes('vaca')) return { category: 'gato', subcategory: 'gatoVaca' };
+        if (fullName.includes('cordero')) return { category: 'gato', subcategory: 'gatoCordero' };
         return { category: 'gato', subcategory: 'gato' };
     }
 
     // Productos de perro estándar
-    if (lowerName.includes('pollo')) return { category: 'perro', subcategory: 'pollo' };
-    if (lowerName.includes('vaca')) return { category: 'perro', subcategory: 'vaca' };
-    if (lowerName.includes('cerdo')) return { category: 'perro', subcategory: 'cerdo' };
-    if (lowerName.includes('cordero')) return { category: 'perro', subcategory: 'cordero' };
+    if (fullName.includes('pollo')) return { category: 'perro', subcategory: 'pollo' };
+    if (fullName.includes('vaca')) return { category: 'perro', subcategory: 'vaca' };
+    if (fullName.includes('cerdo')) return { category: 'perro', subcategory: 'cerdo' };
+    if (fullName.includes('cordero')) return { category: 'perro', subcategory: 'cordero' };
 
-    // Otros productos
-    if (lowerName.includes('huesos') || lowerName.includes('carnosos')) {
+    // Otros productos - Lógica estricta de Express para Huesos
+    if ((lowerName.includes('huesos carnosos') || lowerName.includes('hueso carnoso')) &&
+        !lowerName.includes('recreativo') &&
+        !lowerName.includes('caldo')) {
         return { category: 'otros', subcategory: 'huesosCarnosos' };
     }
 
     return { category: 'otros', subcategory: 'otros' };
 };
-
-/**
- * Función de prueba simple para verificar productos
- */
-export async function testProductData(): Promise<void> {
-    try {
-        const collection = await getCollection('orders');
-
-        console.log('=== TEST: Verificando datos de productos ===');
-
-        // Obtener una orden de ejemplo
-        const sampleOrder = await collection.findOne({});
-
-        if (!sampleOrder) {
-            console.log('No se encontraron órdenes en la base de datos');
-            return;
-        }
-
-        console.log('Orden de ejemplo:', {
-            id: sampleOrder._id,
-            orderType: sampleOrder.orderType,
-            createdAt: sampleOrder.createdAt,
-            total: sampleOrder.total
-        });
-
-        if (sampleOrder.items && sampleOrder.items.length > 0) {
-            console.log('Productos en la orden:');
-            sampleOrder.items.forEach((item: any, index: number) => {
-                console.log(`  Producto ${index + 1}:`, {
-                    name: item.name,
-                    options: item.options?.length || 0
-                });
-
-                if (item.options) {
-                    item.options.forEach((option: any, optIndex: number) => {
-                        const weight = getProductWeight(item.name, option.name);
-                        const { category, subcategory } = categorizeProduct(item.name, option.name);
-
-                        console.log(`    Opción ${optIndex + 1}:`, {
-                            name: option.name,
-                            quantity: option.quantity,
-                            price: option.price,
-                            calculatedWeight: weight,
-                            category,
-                            subcategory
-                        });
-                    });
-                }
-            });
-        } else {
-            console.log('No hay productos en esta orden');
-        }
-
-    } catch (error) {
-        console.error('Error en test de productos:', error);
-        throw error;
-    }
-}
-
-/**
- * Función de debug para verificar los datos de cantidad
- */
-export async function debugQuantityStats(startDate?: Date, endDate?: Date): Promise<void> {
-    try {
-        const collection = await getCollection('orders');
-
-        console.log('=== DEBUG: Verificando datos de cantidad ===');
-        console.log('Fechas:', { startDate, endDate });
-
-        // 1. Verificar todas las órdenes en el período
-        const matchCondition: any = {};
-        if (startDate || endDate) {
-            matchCondition.createdAt = {};
-            if (startDate) matchCondition.createdAt.$gte = startDate;
-            if (endDate) matchCondition.createdAt.$lte = endDate;
-        }
-
-        const allOrders = await collection.find(matchCondition).limit(5).toArray();
-        console.log('Órdenes encontradas:', allOrders.length);
-
-        allOrders.forEach((order, index) => {
-            console.log(`Orden ${index + 1}:`, {
-                id: order._id,
-                orderType: order.orderType,
-                createdAt: order.createdAt,
-                total: order.total,
-                items: order.items?.length || 0
-            });
-
-            // Verificar items de la orden
-            if (order.items) {
-                order.items.forEach((item: any, itemIndex: number) => {
-                    console.log(`  Item ${itemIndex + 1}:`, {
-                        name: item.name,
-                        options: item.options?.length || 0
-                    });
-
-                    if (item.options) {
-                        item.options.forEach((option: any, optionIndex: number) => {
-                            const weight = getProductWeight(item.name, option.name);
-                            const { category, subcategory } = categorizeProduct(item.name, option.name);
-                            console.log(`    Option ${optionIndex + 1}:`, {
-                                name: option.name,
-                                quantity: option.quantity,
-                                price: option.price,
-                                calculatedWeight: weight,
-                                category,
-                                subcategory,
-                                totalWeight: weight * option.quantity
-                            });
-                        });
-                    }
-                });
-            }
-        });
-
-    } catch (error) {
-        console.error('Error en debug de cantidad:', error);
-        throw error;
-    }
-}
 
 export async function getQuantityStatsByMonth(startDate?: Date, endDate?: Date): Promise<QuantityStatsByType> {
     try {
@@ -245,10 +108,10 @@ export async function getQuantityStatsByMonth(startDate?: Date, endDate?: Date):
 
         const pipeline: any[] = [];
 
-        // Convertir createdAt a Date si es necesario
+        // Convertir createdAt a Date si es necesario y calcualr effectiveDate
         pipeline.push({
             $addFields: {
-                createdAt: {
+                createdAtTyped: {
                     $cond: [
                         { $eq: [{ $type: "$createdAt" }, "string"] },
                         { $toDate: "$createdAt" },
@@ -258,12 +121,23 @@ export async function getQuantityStatsByMonth(startDate?: Date, endDate?: Date):
             }
         });
 
-        // Aplicar filtros de fecha
+        pipeline.push({
+            $addFields: {
+                effectiveDate: {
+                    $ifNull: [
+                        "$deliveryDay",
+                        { $subtract: ["$createdAtTyped", 3 * 60 * 60 * 1000] }
+                    ]
+                }
+            }
+        });
+
+        // Aplicar filtros de fecha usando effectiveDate
         if (startDate || endDate) {
             const matchCondition: any = {};
-            matchCondition.createdAt = {};
-            if (startDate) matchCondition.createdAt.$gte = startDate;
-            if (endDate) matchCondition.createdAt.$lte = endDate;
+            matchCondition.effectiveDate = {};
+            if (startDate) matchCondition.effectiveDate.$gte = startDate;
+            if (endDate) matchCondition.effectiveDate.$lte = endDate;
             pipeline.push({ $match: matchCondition });
         }
 
@@ -274,7 +148,8 @@ export async function getQuantityStatsByMonth(startDate?: Date, endDate?: Date):
                     isSameDayDelivery: {
                         $or: [
                             { $eq: ["$deliveryArea.sameDayDelivery", true] },
-                            { $eq: ["$items.sameDayDelivery", true] }
+                            { $eq: ["$items.sameDayDelivery", true] },
+                            { $eq: ["$paymentMethod", "bank-transfer"] }
                         ]
                     },
                     isWholesale: {
@@ -288,31 +163,40 @@ export async function getQuantityStatsByMonth(startDate?: Date, endDate?: Date):
             },
             // Unwind items para procesar cada producto
             { $unwind: '$items' },
-            { $unwind: '$items.options' },
+            // IMPORTANTE: preserveNullAndEmptyArrays para no perder productos sin opciones (ej: BOX simples)
+            { $unwind: { path: '$items.options', preserveNullAndEmptyArrays: true } },
             // Agrupar por mes, tipo de cliente y producto
             {
                 $group: {
                     _id: {
-                        year: { $year: "$createdAt" },
-                        month: { $month: "$createdAt" },
+                        year: { $year: "$effectiveDate" },
+                        month: { $month: "$effectiveDate" },
                         clientType: {
                             $cond: [
-                                "$isWholesale",
-                                "mayorista",
+                                "$isSameDayDelivery",
+                                "sameDay",
                                 {
                                     $cond: [
-                                        "$isSameDayDelivery",
-                                        "sameDay",
+                                        "$isWholesale",
+                                        "mayorista",
                                         "minorista"
                                     ]
                                 }
                             ]
                         },
                         productName: "$items.name",
-                        optionName: "$items.options.name"
+                        // Si no hay opción, usar string vacío para validaciones
+                        optionName: { $ifNull: ["$items.options.name", ""] }
                     },
-                    totalQuantity: { $sum: "$items.options.quantity" },
-                    totalWeight: { $sum: { $multiply: ["$items.options.quantity", 1] } } // Placeholder, se calculará después
+                    // Si hay item.quantity, usarlo (Express logic: item.quantity || item.options[0].quantity).
+                    // Esto corrige el caso donde item.quantity = 2 y options.quantity = 1 (2 bolsas de 10kg).
+                    totalQuantity: {
+                        $sum: {
+                            $ifNull: ["$items.quantity", "$items.options.quantity"]
+                        }
+                    },
+                    // Placeholder (el peso se calcula después en el map)
+                    totalWeight: { $sum: 0 }
                 }
             },
             {
@@ -340,8 +224,6 @@ export async function getQuantityStatsByMonth(startDate?: Date, endDate?: Date):
             const productName = item._id.productName;
             const optionName = item._id.optionName;
             const quantity = item.totalQuantity;
-
-
 
             // Calcular peso real
             const weight = getProductWeight(productName, optionName);
@@ -376,8 +258,6 @@ export async function getQuantityStatsByMonth(startDate?: Date, endDate?: Date):
 
             // Categorizar producto
             const { subcategory } = categorizeProduct(productName, optionName);
-
-
 
             // Asignar peso a la categoría correspondiente
             switch (subcategory) {
@@ -415,8 +295,6 @@ export async function getQuantityStatsByMonth(startDate?: Date, endDate?: Date):
 
             groupedByMonth[month][clientType].totalMes += totalWeight;
         });
-
-
 
         // Calcular totales y redondear
         Object.keys(groupedByMonth).forEach(month => {

@@ -114,25 +114,27 @@ export function ResumenGeneralTables({ orders, puntosEnvio, productsForStock }: 
                         if (optMatch) weight = parseFloat(optMatch[1]);
                     }
 
+                    const fullName = `${productName} ${item.options?.[0]?.name || ''}`.toUpperCase();
+
                     if (weight > 0) {
                         const totalItemWeight = weight * qty;
                         puntoData.totalKilos += totalItemWeight;
 
                         if (productName.includes('BIG DOG')) {
-                            if (productName.includes('POLLO')) puntoData.flavors['BIG DOG POLLO'] += totalItemWeight;
-                            else if (productName.includes('VACA')) puntoData.flavors['BIG DOG VACA'] += totalItemWeight;
+                            if (fullName.includes('POLLO')) puntoData.flavors['BIG DOG POLLO'] += totalItemWeight;
+                            else if (fullName.includes('VACA')) puntoData.flavors['BIG DOG VACA'] += totalItemWeight;
                         } else if (productName.includes('GATO')) {
-                            if (productName.includes('POLLO')) puntoData.flavors['GATO POLLO'] += totalItemWeight;
-                            else if (productName.includes('VACA')) puntoData.flavors['GATO VACA'] += totalItemWeight;
-                            else if (productName.includes('CORDERO')) puntoData.flavors['GATO CORDERO'] += totalItemWeight;
+                            if (fullName.includes('POLLO')) puntoData.flavors['GATO POLLO'] += totalItemWeight;
+                            else if (fullName.includes('VACA')) puntoData.flavors['GATO VACA'] += totalItemWeight;
+                            else if (fullName.includes('CORDERO')) puntoData.flavors['GATO CORDERO'] += totalItemWeight;
                         } else if ((productName.includes('HUESOS CARNOSOS') || productName.includes('HUESO CARNOSO')) &&
                             !productName.includes('RECREATIVO') && !productName.includes('CALDO')) {
                             puntoData.flavors['HUESOS CARNOSOS'] += totalItemWeight;
                         } else {
-                            if (productName.includes('POLLO')) puntoData.flavors['POLLO'] += totalItemWeight;
-                            else if (productName.includes('VACA')) puntoData.flavors['VACA'] += totalItemWeight;
-                            else if (productName.includes('CERDO')) puntoData.flavors['CERDO'] += totalItemWeight;
-                            else if (productName.includes('CORDERO')) puntoData.flavors['CORDERO'] += totalItemWeight;
+                            if (fullName.includes('POLLO')) puntoData.flavors['POLLO'] += totalItemWeight;
+                            else if (fullName.includes('VACA')) puntoData.flavors['VACA'] += totalItemWeight;
+                            else if (fullName.includes('CERDO')) puntoData.flavors['CERDO'] += totalItemWeight;
+                            else if (fullName.includes('CORDERO')) puntoData.flavors['CORDERO'] += totalItemWeight;
                         }
                     }
                 });
