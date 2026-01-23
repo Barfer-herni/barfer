@@ -518,16 +518,19 @@ export interface UpdateStockData {
 export interface PuntoEnvio {
     _id: string | ObjectId;
     nombre: string;
+    cutoffTime?: string; // Hora de corte (HH:mm)
     createdAt: string;
     updatedAt: string;
 }
 
 export interface CreatePuntoEnvioData {
     nombre: string;
+    cutoffTime?: string;
 }
 
 export interface UpdatePuntoEnvioData {
     nombre?: string;
+    cutoffTime?: string;
 }
 
 // ===== ORDEN DE PRIORIDAD DE PEDIDOS =====

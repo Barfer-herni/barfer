@@ -31,31 +31,50 @@ export async function getExpressOrders(puntoEnvio?: string, from?: string, to?: 
         if (from && from.trim() !== '' || to && to.trim() !== '') {
             const dateConditions: any[] = [];
 
-            // Preparar las fechas de filtro
-            let fromDateObj: Date | undefined;
-            let toDateObj: Date | undefined;
+            // 1. Fechas para createdAt (Local Time -> UTC conversion implicita del server o explícita)
+            // Asumimos que 'from' y 'to' vienen como 'YYYY-MM-DD'.
+            // Al hacer new Date(Y, M, D) en el servidor, usa el timezone del servidor.
+            // Si el servidor está en UTC, new Date(2026, 0, 23) es 2026-01-23T00:00:00Z.
+            // Si el servidor está en -03:00, es 2026-01-23T03:00:00Z.
+            // Para createdAt queremos respetar el día local.
+
+            let fromDateLocal: Date | undefined;
+            let toDateLocal: Date | undefined;
 
             if (from && from.trim() !== '') {
                 const [year, month, day] = from.split('-').map(Number);
-                fromDateObj = new Date(year, month - 1, day, 0, 0, 0, 0);
+                fromDateLocal = new Date(year, month - 1, day, 0, 0, 0, 0);
             }
             if (to && to.trim() !== '') {
                 const [year, month, day] = to.split('-').map(Number);
-                toDateObj = new Date(year, month - 1, day, 23, 59, 59, 999);
+                toDateLocal = new Date(year, month - 1, day, 23, 59, 59, 999);
             }
 
-            // Condición 1: Filtrar por deliveryDay (Prioridad)
-            const deliveryDayMatch: any = {};
-            if (fromDateObj) deliveryDayMatch.$gte = fromDateObj;
-            if (toDateObj) deliveryDayMatch.$lte = toDateObj;
+            // 2. Fechas para deliveryDay (UTC Strict)
+            // deliveryDay se guarda como UTC Midnight (T00:00:00.000Z).
+            // Para encontrar deliveryDay de un día específico, buscamos en el rango UTC de ese día.
+            let fromDateUTC: Date | undefined;
+            let toDateUTC: Date | undefined;
 
-            // Condición 2: Filtrar por createdAt (Fallback - solo si no hay deliveryDay)
-            // Nota: Idealmente ajustaríamos -3h aquí también, pero para query simple mantendremos el rango directo
-            // o ajustaremos el rango de búsqueda para compensar.
-            // Por simplicidad y consistencia con "si no hay deliveryDay, es la fecha de creación", usamos rango directo.
+            if (from && from.trim() !== '') {
+                const [year, month, day] = from.split('-').map(Number);
+                fromDateUTC = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+            }
+            if (to && to.trim() !== '') {
+                const [year, month, day] = to.split('-').map(Number);
+                toDateUTC = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+            }
+
+
+            // Condición 1: Filtrar por deliveryDay (Usando rango UTC)
+            const deliveryDayMatch: any = {};
+            if (fromDateUTC) deliveryDayMatch.$gte = fromDateUTC;
+            if (toDateUTC) deliveryDayMatch.$lte = toDateUTC;
+
+            // Condición 2: Filtrar por createdAt (Usando rango Local)
             const createdAtMatch: any = {};
-            if (fromDateObj) createdAtMatch.$gte = fromDateObj;
-            if (toDateObj) createdAtMatch.$lte = toDateObj;
+            if (fromDateLocal) createdAtMatch.$gte = fromDateLocal;
+            if (toDateLocal) createdAtMatch.$lte = toDateLocal;
 
             filter.$and = [
                 {

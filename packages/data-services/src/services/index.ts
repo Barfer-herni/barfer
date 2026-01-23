@@ -30,6 +30,7 @@ export {
     getPuntoEnvioByIdMongo,
     updatePuntoEnvioMongo,
     deletePuntoEnvioMongo,
+    getPuntoEnvioByNameMongo,
 } from './puntoEnvioMongoService';
 export * from './orderPriorityMongoService';
 // stockMongoService y detalleEnvioMongoService están duplicados en barfer/stockService y barfer/detalleEnvioService

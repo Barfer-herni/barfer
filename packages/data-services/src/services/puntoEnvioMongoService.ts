@@ -26,6 +26,7 @@ export async function getAllPuntosEnvioMongo(): Promise<{
             return {
                 _id: doc._id.toString(),
                 nombre: nombre,
+                cutoffTime: doc.cutoffTime,
                 createdAt: doc.createdAt instanceof Date
                     ? doc.createdAt.toISOString()
                     : (typeof doc.createdAt === 'string' ? doc.createdAt : new Date().toISOString()),
@@ -47,6 +48,52 @@ export async function getAllPuntosEnvioMongo(): Promise<{
             puntosEnvio: [],
             total: 0,
             error: 'GET_ALL_PUNTOS_ENVIO_MONGO_ERROR',
+        };
+    }
+}
+
+/**
+ * Obtener un punto de envío por Nombre
+ */
+export async function getPuntoEnvioByNameMongo(nombre: string): Promise<{
+    success: boolean;
+    puntoEnvio?: PuntoEnvio;
+    message?: string;
+    error?: string;
+}> {
+    try {
+        const puntosEnvioCollection = await getCollection('puntos_envio');
+
+        const puntoEnvio = await puntosEnvioCollection.findOne({
+            nombre: { $regex: new RegExp(`^${nombre}$`, 'i') },
+        });
+
+        if (!puntoEnvio) {
+            return {
+                success: false,
+                message: 'Punto de envío no encontrado',
+                error: 'PUNTO_ENVIO_NOT_FOUND',
+            };
+        }
+
+        const formattedPuntoEnvio: PuntoEnvio = {
+            _id: puntoEnvio._id.toString(),
+            nombre: puntoEnvio.nombre,
+            cutoffTime: puntoEnvio.cutoffTime,
+            createdAt: puntoEnvio.createdAt?.toISOString() || new Date().toISOString(),
+            updatedAt: puntoEnvio.updatedAt?.toISOString() || new Date().toISOString(),
+        };
+
+        return {
+            success: true,
+            puntoEnvio: formattedPuntoEnvio,
+        };
+    } catch (error) {
+        console.error('Error in getPuntoEnvioByNameMongo:', error);
+        return {
+            success: false,
+            message: 'Error al obtener el punto de envío',
+            error: 'GET_PUNTO_ENVIO_BY_NAME_MONGO_ERROR',
         };
     }
 }
@@ -86,6 +133,7 @@ export async function getPuntoEnvioByIdMongo(id: string): Promise<{
         const formattedPuntoEnvio: PuntoEnvio = {
             _id: puntoEnvio._id.toString(),
             nombre: puntoEnvio.nombre,
+            cutoffTime: puntoEnvio.cutoffTime,
             createdAt: puntoEnvio.createdAt?.toISOString() || new Date().toISOString(),
             updatedAt: puntoEnvio.updatedAt?.toISOString() || new Date().toISOString(),
         };
@@ -132,6 +180,7 @@ export async function createPuntoEnvioMongo(data: CreatePuntoEnvioData): Promise
         const now = new Date();
         const puntoEnvioDoc = {
             nombre: data.nombre,
+            cutoffTime: data.cutoffTime,
             createdAt: now,
             updatedAt: now,
         };
@@ -141,6 +190,7 @@ export async function createPuntoEnvioMongo(data: CreatePuntoEnvioData): Promise
         const newPuntoEnvio: PuntoEnvio = {
             _id: result.insertedId.toString(),
             nombre: puntoEnvioDoc.nombre,
+            cutoffTime: puntoEnvioDoc.cutoffTime,
             createdAt: puntoEnvioDoc.createdAt.toISOString(),
             updatedAt: puntoEnvioDoc.updatedAt.toISOString(),
         };
@@ -217,6 +267,7 @@ export async function updatePuntoEnvioMongo(
         };
 
         if (data.nombre) updateDoc.nombre = data.nombre;
+        if (data.cutoffTime !== undefined) updateDoc.cutoffTime = data.cutoffTime;
 
         await puntosEnvioCollection.updateOne(
             { _id: new ObjectId(id) },

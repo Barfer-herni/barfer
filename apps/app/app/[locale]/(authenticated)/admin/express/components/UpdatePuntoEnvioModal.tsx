@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@repo/design-system/components/ui/button';
 import {
     Dialog,
@@ -13,27 +13,39 @@ import {
 import { Input } from '@repo/design-system/components/ui/input';
 import { Label } from '@repo/design-system/components/ui/label';
 import { toast } from '@repo/design-system/hooks/use-toast';
-import { createPuntoEnvioAction } from '../actions';
+import { updatePuntoEnvioAction } from '../actions';
+import type { PuntoEnvio } from '@repo/data-services';
 
-interface CreatePuntoEnvioModalProps {
+interface UpdatePuntoEnvioModalProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onPuntoEnvioCreated: () => void;
+    puntoEnvio: PuntoEnvio | null;
+    onPuntoEnvioUpdated: () => void;
 }
 
-export function CreatePuntoEnvioModal({
+export function UpdatePuntoEnvioModal({
     open,
     onOpenChange,
-    onPuntoEnvioCreated,
-}: CreatePuntoEnvioModalProps) {
+    puntoEnvio,
+    onPuntoEnvioUpdated,
+}: UpdatePuntoEnvioModalProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [nombre, setNombre] = useState('');
     const [cutoffTime, setCutoffTime] = useState('');
     const [error, setError] = useState('');
 
+    useEffect(() => {
+        if (puntoEnvio) {
+            setNombre(puntoEnvio.nombre);
+            setCutoffTime(puntoEnvio.cutoffTime || '');
+        }
+    }, [puntoEnvio]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+
+        if (!puntoEnvio) return;
 
         if (!nombre.trim()) {
             setError('El nombre es requerido');
@@ -43,7 +55,7 @@ export function CreatePuntoEnvioModal({
         setIsLoading(true);
 
         try {
-            const result = await createPuntoEnvioAction({
+            const result = await updatePuntoEnvioAction(String(puntoEnvio._id), {
                 nombre: nombre.trim(),
                 cutoffTime: cutoffTime || undefined,
             });
@@ -51,20 +63,15 @@ export function CreatePuntoEnvioModal({
             if (result.success) {
                 toast({
                     title: '¡Éxito!',
-                    description: result.message || 'Punto de envío creado correctamente',
+                    description: result.message || 'Punto de envío actualizado correctamente',
                 });
 
-                // Resetear formulario
-                setNombre('');
-                setCutoffTime('');
-                setError('');
-
-                onPuntoEnvioCreated();
+                onPuntoEnvioUpdated();
                 onOpenChange(false);
             } else {
                 toast({
                     title: 'Error',
-                    description: result.message || 'Error al crear el punto de envío',
+                    description: result.message || 'Error al actualizar el punto de envío',
                     variant: 'destructive',
                 });
             }
@@ -83,18 +90,18 @@ export function CreatePuntoEnvioModal({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                    <DialogTitle>Crear Punto de Envío</DialogTitle>
+                    <DialogTitle>Editar Punto de Envío</DialogTitle>
                     <DialogDescription>
-                        Crea un nuevo punto de envío. Se crearán automáticamente las tablas de órdenes, stock y detalle.
+                        Modifica los datos del punto de envío.
                     </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit}>
                     <div className="grid gap-4 py-4">
                         <div className="grid gap-2">
-                            <Label htmlFor="nombre">Nombre del Punto de Envío *</Label>
+                            <Label htmlFor="edit-nombre">Nombre del Punto de Envío *</Label>
                             <Input
-                                id="nombre"
+                                id="edit-nombre"
                                 placeholder="Ej: Córdoba"
                                 value={nombre}
                                 onChange={(e) => {
@@ -106,9 +113,9 @@ export function CreatePuntoEnvioModal({
                             />
                         </div>
                         <div className="grid gap-2">
-                            <Label htmlFor="cutoffTime">Hora de Corte (Opcional)</Label>
+                            <Label htmlFor="edit-cutoffTime">Hora de Corte (Opcional)</Label>
                             <Input
-                                id="cutoffTime"
+                                id="edit-cutoffTime"
                                 type="time"
                                 placeholder="Ej: 16:00"
                                 value={cutoffTime}
@@ -134,7 +141,7 @@ export function CreatePuntoEnvioModal({
                             Cancelar
                         </Button>
                         <Button type="submit" disabled={isLoading}>
-                            {isLoading ? 'Creando...' : 'Crear Punto de Envío'}
+                            {isLoading ? 'Guardando...' : 'Guardar Cambios'}
                         </Button>
                     </DialogFooter>
                 </form>
@@ -142,4 +149,3 @@ export function CreatePuntoEnvioModal({
         </Dialog>
     );
 }
-

@@ -162,6 +162,7 @@ export {
     updateStockMongo,
     deleteStockMongo
 } from './stockService';
+export { initializeStockForDate } from './initializeDayStock';
 
 // ===== DETALLE DE ENVÍO =====
 export {

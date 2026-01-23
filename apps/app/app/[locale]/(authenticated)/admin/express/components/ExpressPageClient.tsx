@@ -20,6 +20,7 @@ import { toast } from '@repo/design-system/hooks/use-toast';
 import { AddStockModal } from './AddStockModal';
 import { DetalleTable } from './DetalleTable';
 import { CreatePuntoEnvioModal } from './CreatePuntoEnvioModal';
+import { UpdatePuntoEnvioModal } from './UpdatePuntoEnvioModal';
 import { DuplicateOrderModal } from './DuplicateOrderModal';
 import { EstadoEnvioFilter } from './EstadoEnvioFilter';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@repo/design-system/components/ui/tabs';
@@ -33,6 +34,7 @@ import {
     duplicateExpressOrderAction,
     getOrderPriorityAction,
     saveOrderPriorityAction,
+    initializeStockForDateAction,
 } from '../actions';
 import type { Order, Stock, DetalleEnvio, PuntoEnvio, ProductForStock } from '@repo/data-services';
 import { OrdersDataTable } from '../../table/components/OrdersDataTable';
@@ -63,6 +65,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
 
     const [showAddStockModal, setShowAddStockModal] = useState(false);
     const [showCreatePuntoEnvioModal, setShowCreatePuntoEnvioModal] = useState(false);
+    const [showUpdatePuntoEnvioModal, setShowUpdatePuntoEnvioModal] = useState(false);
     const [showDuplicateModal, setShowDuplicateModal] = useState(false);
     const [orderToDuplicate, setOrderToDuplicate] = useState<string | null>(null);
 
@@ -572,6 +575,15 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 fromFromUrl || undefined,
                 toFromUrl || undefined
             );
+
+            // Si hay fecha y punto seleccionado, intentar inicializar stock del día (rollover)
+            if (puntoEnvio !== 'all' && fromFromUrl && !silent) {
+                // No esperamos result para no bloquear UI, pero necesitamos recargar si hubo cambios
+                // Mejor hacer: await init, luego getStock.
+                // Optimización: getStock primero, si vacío -> init -> getStock.
+                // En este caso, lo hacemos simple: intentar init antes de getStock
+                await initializeStockForDateAction(puntoEnvio, fromFromUrl);
+            }
 
             // Si es 'all', no traemos stock ni detalle específico por ahora (o podríamos adaptarlo luego)
             const stockPromise = puntoEnvio === 'all' ? Promise.resolve({ success: true, stock: [] }) : getStockByPuntoEnvioAction(puntoEnvio);
@@ -1304,10 +1316,20 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                             </Select>
                         </div>
                         {isAdmin && (
-                            <Button onClick={() => setShowCreatePuntoEnvioModal(true)} variant="outline" className="mt-6">
-                                <Plus className="mr-2 h-4 w-4" />
-                                Nuevo Punto
-                            </Button>
+                            <div className="flex gap-2 mt-6">
+                                <Button onClick={() => setShowCreatePuntoEnvioModal(true)} variant="outline">
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Nuevo Punto
+                                </Button>
+                                <Button
+                                    onClick={() => setShowUpdatePuntoEnvioModal(true)}
+                                    variant="outline"
+                                    disabled={!selectedPuntoEnvio || selectedPuntoEnvio === 'all'}
+                                >
+                                    <Edit2 className="mr-2 h-4 w-4" />
+                                    Editar
+                                </Button>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -1840,6 +1862,15 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 open={showCreatePuntoEnvioModal}
                 onOpenChange={setShowCreatePuntoEnvioModal}
                 onPuntoEnvioCreated={() => {
+                    handlePuntosEnvioRefresh();
+                }}
+            />
+
+            <UpdatePuntoEnvioModal
+                open={showUpdatePuntoEnvioModal}
+                onOpenChange={setShowUpdatePuntoEnvioModal}
+                puntoEnvio={puntosEnvio.find(p => p.nombre === selectedPuntoEnvio) || null}
+                onPuntoEnvioUpdated={() => {
                     handlePuntosEnvioRefresh();
                 }}
             />

@@ -153,7 +153,7 @@ export async function getDetalleEnvioByPuntoEnvioAction(puntoEnvio: string) {
     }
 }
 
-export async function createPuntoEnvioAction(data: { nombre: string }) {
+export async function createPuntoEnvioAction(data: { nombre: string; cutoffTime?: string }) {
     try {
         const result = await createPuntoEnvioMongo(data);
 
@@ -167,6 +167,25 @@ export async function createPuntoEnvioAction(data: { nombre: string }) {
         return {
             success: false,
             message: 'Error al crear el punto de envío',
+        };
+    }
+}
+
+export async function updatePuntoEnvioAction(id: string, data: { nombre?: string; cutoffTime?: string }) {
+    try {
+        const { updatePuntoEnvioMongo } = await import('@repo/data-services');
+        const result = await updatePuntoEnvioMongo(id, data);
+
+        if (result.success) {
+            revalidatePath('/admin/express');
+        }
+
+        return result;
+    } catch (error) {
+        console.error('Error updating punto de envío:', error);
+        return {
+            success: false,
+            message: 'Error al actualizar el punto de envío',
         };
     }
 }
@@ -455,6 +474,42 @@ export async function saveOrderPriorityAction(
         return {
             success: false,
             error: 'Error al guardar el orden de prioridad',
+        };
+    }
+}
+
+export async function initializeStockForDateAction(puntoEnvio: string, date: Date | string) {
+    try {
+        // Validar permisos del usuario
+        const userWithPermissions = await getCurrentUserWithPermissions();
+        const isAdmin = userWithPermissions?.isAdmin || false;
+
+        if (!isAdmin) {
+            const userPuntosEnvio = Array.isArray(userWithPermissions?.puntoEnvio)
+                ? userWithPermissions.puntoEnvio
+                : (userWithPermissions?.puntoEnvio ? [userWithPermissions.puntoEnvio] : []);
+
+            if (!userPuntosEnvio.includes(puntoEnvio)) {
+                return {
+                    success: false,
+                    error: 'No tienes permiso para modificar este punto de envío',
+                };
+            }
+        }
+
+        const { initializeStockForDate } = await import('@repo/data-services');
+        const result = await initializeStockForDate(puntoEnvio, date);
+
+        if (result.success && result.initialized) {
+            revalidatePath('/admin/express');
+        }
+
+        return result;
+    } catch (error) {
+        console.error('Error initializing stock for date:', error);
+        return {
+            success: false,
+            error: 'Error al inicializar el stock',
         };
     }
 }

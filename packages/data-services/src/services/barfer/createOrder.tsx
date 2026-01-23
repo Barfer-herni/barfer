@@ -140,6 +140,80 @@ function normalizeDeliveryDay(dateInput: string | Date | { $date: string }): Dat
     return localDate;
 }
 
+// Función para ajustar el día de entrega según horario de corte
+async function adjustDeliveryDateByCutoff(deliveryDate: Date, puntoEnvioName?: string): Promise<Date> {
+    if (!puntoEnvioName) return deliveryDate;
+
+    try {
+        const { getPuntoEnvioByNameMongo } = await import('../puntoEnvioMongoService');
+        const result = await getPuntoEnvioByNameMongo(puntoEnvioName);
+
+        if (!result.success || !result.puntoEnvio || !result.puntoEnvio.cutoffTime) {
+            return deliveryDate;
+        }
+
+        const cutoffTime = result.puntoEnvio.cutoffTime; // Format: "HH:mm"
+        const [cutoffHour, cutoffMinute] = cutoffTime.split(':').map(Number);
+
+        // Obtener la hora actual en la zona horaria de Argentina (UTC-3)
+        // Usamos la fecha del sistema, asumiendo que el server está en UTC o local
+        const now = new Date();
+        const argOffset = -3 * 60; // -3 hours in minutes
+        // Si el servidor ya está en -3 (o local dev), esto podría ajustar doble si no tenemos cuidado
+        // Mejor usar Intl para obtener la hora en Argentina
+        const formatter = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/Argentina/Buenos_Aires',
+            hour: 'numeric',
+            minute: 'numeric',
+            hour12: false
+        });
+
+        const parts = formatter.formatToParts(now);
+        const hourPart = parts.find(p => p.type === 'hour')?.value;
+        const minutePart = parts.find(p => p.type === 'minute')?.value;
+
+        if (!hourPart || !minutePart) return deliveryDate;
+
+        const currentHour = parseInt(hourPart);
+        const currentMinute = parseInt(minutePart);
+
+        // Verificar si se pasó el horario de corte
+        const isAfterCutoff = currentHour > cutoffHour || (currentHour === cutoffHour && currentMinute >= cutoffMinute);
+
+        if (isAfterCutoff) {
+            console.log(`🕒 Pedido después del corte (${cutoffTime}). H: ${currentHour}:${currentMinute}. Ajustando fecha...`);
+
+            // Si la fecha de entrega es HOY (o anterior)
+            // Comparar deliveryDate con Today (en Argentina)
+            const todayArg = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Argentina/Buenos_Aires' }));
+            todayArg.setHours(0, 0, 0, 0);
+
+            // Asegurar que deliveryDate esté a las 00:00 para comparar
+            const deliveryDateZero = new Date(deliveryDate);
+            deliveryDateZero.setHours(0, 0, 0, 0);
+
+            // Si la entrega es para hoy y ya pasó el corte, mover al siguiente día hábil
+            if (deliveryDateZero.getTime() <= todayArg.getTime()) {
+                const nextDay = new Date(deliveryDateZero);
+                nextDay.setDate(nextDay.getDate() + 1);
+
+                // Si cae Domingo (0), mover a Lunes
+                if (nextDay.getDay() === 0) {
+                    nextDay.setDate(nextDay.getDate() + 1);
+                }
+
+                console.log(`📅 Fecha ajustada de ${deliveryDateZero.toISOString()} a ${nextDay.toISOString()}`);
+                return nextDay;
+            }
+        }
+
+        return deliveryDate;
+    } catch (error) {
+        console.error('Error adjusting delivery date by cutoff:', error);
+        return deliveryDate;
+    }
+}
+
 export async function createOrder(data: z.infer<typeof createOrderSchema>): Promise<{ success: boolean; order?: Order; error?: string }> {
     try {
         console.log('🔵 Backend - Datos recibidos en createOrder:', {
@@ -162,6 +236,11 @@ export async function createOrder(data: z.infer<typeof createOrderSchema>): Prom
         // Normalizar el formato de deliveryDay si está presente
         if (validatedData.deliveryDay) {
             validatedData.deliveryDay = normalizeDeliveryDay(validatedData.deliveryDay);
+
+            // Ajustar fecha según horario de corte (solo para envíos express con punto definido)
+            if (validatedData.puntoEnvio) {
+                validatedData.deliveryDay = await adjustDeliveryDateByCutoff(validatedData.deliveryDay, validatedData.puntoEnvio);
+            }
         }
 
         // Normalizar el formato del schedule si está presente
