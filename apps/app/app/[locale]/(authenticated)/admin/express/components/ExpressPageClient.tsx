@@ -340,12 +340,22 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
             return;
         }
 
+        // REQUERIR que haya una fecha seleccionada
+        if (!fromFromUrl) {
+            toast({
+                title: 'Fecha requerida',
+                description: 'Debes seleccionar una fecha para ordenar los pedidos',
+                variant: 'destructive',
+            });
+            return;
+        }
+
         // Normalizar IDs a strings
         const activeId = String(active.id);
         const overId = String(over.id);
 
-        // Usar fecha actual si no hay filtro de fecha
-        const dateKey = fromFromUrl || format(new Date(), 'yyyy-MM-dd');
+        // Usar la fecha seleccionada (ya validada arriba)
+        const dateKey = fromFromUrl;
 
         // Obtener la lista actual de IDs desde filteredAndSortedOrders
         // Esta lista ya tiene todos los filtros aplicados (búsqueda, fechas, tipo de orden, punto de envío)
@@ -414,11 +424,21 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
             return;
         }
 
+        // REQUERIR que haya una fecha seleccionada
+        if (!fromFromUrl) {
+            toast({
+                title: 'Fecha requerida',
+                description: 'Debes seleccionar una fecha para ordenar los pedidos',
+                variant: 'destructive',
+            });
+            return;
+        }
+
         // Normalizar el orderId a string
         const normalizedOrderId = String(orderId);
 
-        // Usar fecha actual si no hay filtro de fecha
-        const dateKey = fromFromUrl || format(new Date(), 'yyyy-MM-dd');
+        // Usar la fecha seleccionada (ya validada arriba)
+        const dateKey = fromFromUrl;
 
         // Obtener la lista actual de IDs desde filteredAndSortedOrders
         const currentOrderIds = filteredAndSortedOrders.map(order => String(order._id));
@@ -1369,8 +1389,8 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                         </CardContent>
                                     </Card>
                                 ) : (() => {
-                                    // SIEMPRE habilitar drag cuando hay un punto de envío específico seleccionado
-                                    const isDragEnabled = Boolean(selectedPuntoEnvio && selectedPuntoEnvio !== 'all');
+                                    // SIEMPRE habilitar drag cuando hay un punto de envío específico seleccionado Y una fecha seleccionada
+                                    const isDragEnabled = Boolean(selectedPuntoEnvio && selectedPuntoEnvio !== 'all' && fromFromUrl);
 
                                     // Crear array de IDs para SortableContext usando la lista COMPLETA filtrada
                                     // Esto permite que el drag and drop funcione correctamente con paginación

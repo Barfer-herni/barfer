@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { signIn } from '@repo/data-services/src/services/authService';
 import { Dictionary } from '@repo/internationalization';
 import { SignInButton } from './SignInButton';
+import { PasswordInput } from './PasswordInput';
 import Link from 'next/link';
 
 interface SignInProps {
@@ -53,18 +54,12 @@ export const SignIn = ({ dictionary }: SignInProps) => {
                     />
                 </div>
 
-                <div className="space-y-2">
-                    <label htmlFor="password" className="text-sm font-medium text-gray-900 dark:text-white">
-                        {dictionary?.app?.auth?.signIn?.password || 'Contraseña'}
-                    </label>
-                    <input
-                        name="password"
-                        type="password"
-                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="••••••••"
-                        required
-                    />
-                </div>
+                <PasswordInput
+                    name="password"
+                    label={dictionary?.app?.auth?.signIn?.password || 'Contraseña'}
+                    placeholder="••••••••"
+                    required
+                />
 
                 <SignInButton dictionary={dictionary} />
             </form>
