@@ -68,6 +68,7 @@ export async function getExpressOrdersAction(puntoEnvio?: string, from?: string,
 
 export async function createStockAction(data: {
     puntoEnvio: string;
+    section?: string;
     producto: string;
     peso?: string;
     stockInicial: number;
@@ -235,6 +236,7 @@ export async function getProductsForStockAction() {
 export async function updateStockAction(
     id: string,
     data: {
+        section?: string;
         stockInicial?: number;
         llevamos?: number;
         pedidosDelDia?: number;

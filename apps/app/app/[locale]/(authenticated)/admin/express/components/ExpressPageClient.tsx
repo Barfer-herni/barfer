@@ -757,22 +757,35 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         const weightMatches = stockWeightNormalized === productWeightNormalized;
         if (!weightMatches) return false;
 
+        // CON SECCIÓN: Si el stock tiene el campo section, usarlo para comparar
+        if (stockItem.section) {
+            const stockSectionUpper = (stockItem.section || '').toUpperCase().trim();
+            if (stockSectionUpper !== productSectionUpper) return false;
+
+            // En este caso, el stockItem.producto puede ser el nombre base o el nombre con sección prepended
+            if (stockProductUpper === productProductUpper) return true;
+            if (stockProductUpper === `${stockSectionUpper} ${productProductUpper}`.trim()) return true;
+
+            return false;
+        }
+
+        // BACKWARD COMPATIBILITY: Sin campo section en el registro de stock
         // Construir el nombre completo del producto de referencia (SECCION PRODUCTO)
         const fullProductName = `${productSectionUpper} ${productProductUpper}`.trim();
 
-        // 1. Formato nuevo: coincidencia exacta con sección incluida
+        // 1. Formato nuevo (en string): coincidencia exacta con sección incluida
         if (stockProductUpper === fullProductName) {
             return true;
         }
 
-        // 2. Formato viejo: solo nombre de producto, sin sección
-        // IMPORTANTE: Solo aceptar si el stock NO tiene ninguna sección
+        // 2. Formato viejo: solo nombre de producto, sin sección prepended
+        // IMPORTANTE: Solo aceptar si el stock NO tiene ninguna sección conocida en el nombre
         if (stockProductUpper === productProductUpper) {
-            const hasSection = stockProductUpper.includes('PERRO') ||
+            const hasSectionInName = stockProductUpper.includes('PERRO') ||
                 stockProductUpper.includes('GATO') ||
                 stockProductUpper.includes('BIG DOG') ||
                 stockProductUpper.includes('OTROS');
-            return !hasSection;
+            return !hasSectionInName;
         }
 
         return false;
@@ -982,7 +995,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                     const currentValues = updated[stockId] || { stockInicial: stockItem.stockInicial, llevamos: stockItem.llevamos };
                     return prevStock.map(s =>
                         String(s._id) === stockId
-                            ? { ...s, [field]: value, stockFinal: currentValues.stockInicial - currentValues.llevamos }
+                            ? { ...s, [field]: value, stockFinal: currentValues.stockInicial + currentValues.llevamos - (s.pedidosDelDia || 0) }
                             : s
                     );
                 }
@@ -1051,6 +1064,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                     llevamos: currentLlevamos,
                                     stockFinal,
                                     pedidosDelDia: calculatePedidosDelDia(product),
+                                    section: product?.section,
                                 };
                                 const result = await updateStockAction(String(existingStock._id), updateData);
                                 if (result.success && result.stock) {
@@ -1083,6 +1097,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                     llevamos: currentLlevamos,
                                     stockFinal,
                                     pedidosDelDia: pedidosDelDiaCalculado,
+                                    section: product.section,
                                     fecha: fromDate, // Enviar formato YYYY-MM-DD desde URL
                                 };
 

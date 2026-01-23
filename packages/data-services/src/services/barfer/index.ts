@@ -176,3 +176,6 @@ export {
 // ===== PRODUCTOS PARA STOCK =====
 export { getProductsForStock } from './getProductsForStock';
 export type { ProductForStock } from './getProductsForStock';
+
+// ===== CALCULOS DE VENTA =====
+export { calculateSalesFromOrders } from './calculateSalesForStock';

@@ -14,10 +14,11 @@ export async function createStockMongo(
         const collection = await getCollection(COLLECTION_NAME);
 
         const now = new Date().toISOString();
-        const stockFinal = data.stockFinal ?? data.stockInicial - data.llevamos;
+        const stockFinal = data.stockFinal ?? (data.stockInicial + data.llevamos - (data.pedidosDelDia || 0));
 
         const newStock = {
             puntoEnvio: data.puntoEnvio,
+            section: data.section,
             producto: data.producto.trim(),
             peso: data.peso?.trim() || undefined,
             stockInicial: data.stockInicial,
@@ -36,6 +37,7 @@ export async function createStockMongo(
             stock: {
                 _id: result.insertedId.toString(),
                 puntoEnvio: newStock.puntoEnvio,
+                section: newStock.section,
                 producto: newStock.producto,
                 peso: newStock.peso,
                 stockInicial: newStock.stockInicial,
@@ -76,6 +78,7 @@ export async function getStockByPuntoEnvioMongo(
             stock: stockRecords.map((record) => ({
                 _id: record._id.toString(),
                 puntoEnvio: record.puntoEnvio,
+                section: record.section,
                 producto: record.producto,
                 peso: record.peso,
                 stockInicial: record.stockInicial,
@@ -120,6 +123,7 @@ export async function getStockByIdMongo(
             stock: {
                 _id: stock._id.toString(),
                 puntoEnvio: stock.puntoEnvio,
+                section: stock.section,
                 producto: stock.producto,
                 peso: stock.peso,
                 stockInicial: stock.stockInicial,
@@ -155,6 +159,7 @@ export async function updateStockMongo(
         };
 
         if (data.puntoEnvio !== undefined) updateData.puntoEnvio = data.puntoEnvio;
+        if (data.section !== undefined) updateData.section = data.section;
         if (data.producto !== undefined) updateData.producto = data.producto.trim();
         if (data.peso !== undefined) updateData.peso = data.peso.trim() || undefined;
         if (data.stockInicial !== undefined) updateData.stockInicial = data.stockInicial;
@@ -168,7 +173,8 @@ export async function updateStockMongo(
             if (currentStock) {
                 const newStockInicial = data.stockInicial ?? currentStock.stockInicial;
                 const newLlevamos = data.llevamos ?? currentStock.llevamos;
-                updateData.stockFinal = newStockInicial - newLlevamos;
+                const newPedidosDelDia = data.pedidosDelDia ?? currentStock.pedidosDelDia ?? 0;
+                updateData.stockFinal = newStockInicial + newLlevamos - newPedidosDelDia;
             }
         }
 
@@ -194,6 +200,7 @@ export async function updateStockMongo(
             stock: {
                 _id: result._id.toString(),
                 puntoEnvio: result.puntoEnvio,
+                section: result.section,
                 producto: result.producto,
                 peso: result.peso,
                 stockInicial: result.stockInicial,

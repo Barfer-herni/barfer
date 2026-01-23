@@ -481,6 +481,7 @@ export interface UpdateDetalleEnvioData {
 export interface Stock {
     _id: string | ObjectId;
     puntoEnvio: string; // Nombre del punto de envío (conecta con DeliveryArea.puntoEnvio y Order.puntoEnvio)
+    section?: string; // Sección del producto (PERRO, GATO, etc.)
     producto: string; // Nombre del producto
     peso?: string; // Peso del producto (ej: "5KG", "10KG")
     stockInicial: number; // Stock inicial del día
@@ -494,6 +495,7 @@ export interface Stock {
 
 export interface CreateStockData {
     puntoEnvio: string; // Nombre del punto de envío
+    section?: string;
     producto: string;
     peso?: string;
     stockInicial: number;
@@ -505,6 +507,7 @@ export interface CreateStockData {
 
 export interface UpdateStockData {
     puntoEnvio?: string;
+    section?: string;
     producto?: string;
     peso?: string;
     stockInicial?: number;
