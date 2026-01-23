@@ -31,6 +31,7 @@ export {
     updatePuntoEnvioMongo,
     deletePuntoEnvioMongo,
 } from './puntoEnvioMongoService';
+export * from './orderPriorityMongoService';
 // stockMongoService y detalleEnvioMongoService están duplicados en barfer/stockService y barfer/detalleEnvioService
 // Se exportan desde barfer/index.ts, no desde aquí para evitar conflictos
 // export * from './stockMongoService';

@@ -31,6 +31,8 @@ import {
     updateStockAction,
     createStockAction,
     duplicateExpressOrderAction,
+    getOrderPriorityAction,
+    saveOrderPriorityAction,
 } from '../actions';
 import type { Order, Stock, DetalleEnvio, PuntoEnvio, ProductForStock } from '@repo/data-services';
 import { OrdersDataTable } from '../../table/components/OrdersDataTable';
@@ -108,6 +110,8 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     const [detalle, setDetalle] = useState<DetalleEnvio[]>([]);
     const [productsForStock, setProductsForStock] = useState<ProductForStock[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    // Estado para el orden de prioridad desde la base de datos
+    const [orderPriorityFromDB, setOrderPriorityFromDB] = useState<string[]>([]);
     // Estado para forzar re-render cuando se actualiza el orden de prioridad
     const [orderPriorityVersion, setOrderPriorityVersion] = useState(0);
     // Estado local para los valores editados (sin necesidad de modo edición)
@@ -140,40 +144,27 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     const estadosEnvioFromUrl = searchParams.get('estadosEnvio');
     const sortFromUrl = searchParams.get('sort');
 
-    // Funciones helper para localStorage - Orden de prioridad de pedidos
-    const getLocalStorageKey = useCallback((fecha: string, puntoEnvio: string): string => {
-        return `orderPriority_${fecha}_${puntoEnvio}`;
+    // Función para cargar el orden de prioridad desde la base de datos
+    const loadOrderPriorityFromDB = useCallback(async (fecha: string, puntoEnvio: string) => {
+        try {
+            const result = await getOrderPriorityAction(fecha, puntoEnvio);
+            if (result.success && result.orderPriority) {
+                setOrderPriorityFromDB(result.orderPriority.orderIds);
+            } else {
+                setOrderPriorityFromDB([]);
+            }
+        } catch (error) {
+            console.error('Error loading order priority from DB:', error);
+            setOrderPriorityFromDB([]);
+        }
     }, []);
 
-    const getSavedOrder = useCallback((fecha: string, puntoEnvio: string): string[] => {
-        if (typeof window === 'undefined') return [];
-        try {
-            const key = getLocalStorageKey(fecha, puntoEnvio);
-            const saved = localStorage.getItem(key);
-            return saved ? JSON.parse(saved) : [];
-        } catch (error) {
-            console.error('Error loading order from localStorage:', error);
-            return [];
-        }
-    }, [getLocalStorageKey]);
-
-    const saveOrder = useCallback((fecha: string, puntoEnvio: string, orderIds: string[]) => {
-        if (typeof window === 'undefined') return;
-        try {
-            const key = getLocalStorageKey(fecha, puntoEnvio);
-            localStorage.setItem(key, JSON.stringify(orderIds));
-        } catch (error) {
-            console.error('Error saving order to localStorage:', error);
-        }
-    }, [getLocalStorageKey]);
-
     // Función para aplicar el orden guardado a los pedidos
-    const applySavedOrder = useCallback((orders: Order[], fecha: string, puntoEnvio: string): Order[] => {
-        const savedOrderIds = getSavedOrder(fecha, puntoEnvio);
-        if (savedOrderIds.length === 0) return orders;
+    const applySavedOrder = useCallback((orders: Order[]): Order[] => {
+        if (orderPriorityFromDB.length === 0) return orders;
 
         // Normalizar todos los IDs a strings
-        const normalizedSavedOrderIds = savedOrderIds.map(id => String(id));
+        const normalizedSavedOrderIds = orderPriorityFromDB.map(id => String(id));
 
         // Crear un mapa de pedidos por ID (normalizado a string)
         const orderMap = new Map(orders.map(order => [String(order._id), order]));
@@ -206,7 +197,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         }
 
         return ordered;
-    }, [getSavedOrder]);
+    }, [orderPriorityFromDB]);
 
     // Procesar órdenes: Filtrar -> Ordenar -> Paginar
     // 1. Filtrar y Ordenar
@@ -287,14 +278,12 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         }
 
         // D. Ordenar
-        // SIEMPRE aplicar el orden guardado en localStorage si hay punto seleccionado
+        // SIEMPRE aplicar el orden guardado en BD si hay punto seleccionado
         // El orden manual tiene prioridad sobre el ordenamiento de columnas
         if (selectedPuntoEnvio && selectedPuntoEnvio !== 'all') {
-            const dateKey = fromFromUrl || 'all-dates';
-            result = applySavedOrder(result, dateKey, selectedPuntoEnvio);
+            result = applySavedOrder(result);
             // Si no hay orden guardado, usar orden por defecto
-            const savedOrderIds = getSavedOrder(dateKey, selectedPuntoEnvio);
-            if (savedOrderIds.length === 0) {
+            if (orderPriorityFromDB.length === 0) {
                 result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
             }
         } else if (sortFromUrl) {
@@ -331,7 +320,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         }
 
         return result;
-    }, [orders, searchFromUrl, fromFromUrl, toFromUrl, estadosEnvioFromUrl, sortFromUrl, selectedPuntoEnvio, applySavedOrder, getSavedOrder, orderPriorityVersion]);
+    }, [orders, searchFromUrl, fromFromUrl, toFromUrl, estadosEnvioFromUrl, sortFromUrl, selectedPuntoEnvio, applySavedOrder, orderPriorityFromDB, orderPriorityVersion]);
 
     // 2. Paginar
     const paginatedOrders = useMemo(() => {
@@ -340,7 +329,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     }, [filteredAndSortedOrders, pageFromUrl, pageSizeFromUrl]);
 
     // Función para manejar el fin del drag and drop
-    const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const handleDragEnd = useCallback(async (event: DragEndEvent) => {
         const { active, over } = event;
 
         if (!over || active.id === over.id) {
@@ -355,8 +344,8 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         const activeId = String(active.id);
         const overId = String(over.id);
 
-        // Usar 'all-dates' como clave si no hay fecha específica
-        const dateKey = fromFromUrl || 'all-dates';
+        // Usar fecha actual si no hay filtro de fecha
+        const dateKey = fromFromUrl || format(new Date(), 'yyyy-MM-dd');
 
         // Obtener la lista actual de IDs desde filteredAndSortedOrders
         // Esta lista ya tiene todos los filtros aplicados (búsqueda, fechas, tipo de orden, punto de envío)
@@ -380,12 +369,35 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         // Usar arrayMove de @dnd-kit para reordenar
         const newOrderIds = arrayMove(currentOrderIds, oldIndex, newIndex);
 
-        // Guardar el nuevo orden
-        saveOrder(dateKey, selectedPuntoEnvio, newOrderIds);
-
-        // Forzar re-render incrementando el estado
+        // Optimistic update: actualizar el estado local inmediatamente
+        setOrderPriorityFromDB(newOrderIds);
         setOrderPriorityVersion(prev => prev + 1);
-    }, [fromFromUrl, selectedPuntoEnvio, filteredAndSortedOrders, saveOrder]);
+
+        // Guardar en la base de datos en segundo plano
+        try {
+            const result = await saveOrderPriorityAction(dateKey, selectedPuntoEnvio, newOrderIds);
+
+            if (!result.success) {
+                // Revertir en caso de error
+                toast({
+                    title: 'Error',
+                    description: 'No se pudo guardar el orden',
+                    variant: 'destructive',
+                });
+                // Recargar el orden desde BD
+                await loadOrderPriorityFromDB(dateKey, selectedPuntoEnvio);
+            }
+        } catch (error) {
+            console.error('Error saving order priority:', error);
+            toast({
+                title: 'Error',
+                description: 'No se pudo guardar el orden',
+                variant: 'destructive',
+            });
+            // Recargar el orden desde BD
+            await loadOrderPriorityFromDB(dateKey, selectedPuntoEnvio);
+        }
+    }, [fromFromUrl, selectedPuntoEnvio, filteredAndSortedOrders, loadOrderPriorityFromDB, toast]);
 
     // Función para actualizar una orden específica en el estado local
     const handleOrderUpdate = useCallback((updatedOrder: Order) => {
@@ -397,7 +409,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     }, []);
 
     // Función para mover un pedido arriba o abajo en el orden (mantener para compatibilidad con flechas)
-    const moveOrder = useCallback((orderId: string, direction: 'up' | 'down') => {
+    const moveOrder = useCallback(async (orderId: string, direction: 'up' | 'down') => {
         if (!selectedPuntoEnvio || selectedPuntoEnvio === 'all') {
             return;
         }
@@ -405,8 +417,8 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         // Normalizar el orderId a string
         const normalizedOrderId = String(orderId);
 
-        // Usar 'all-dates' como clave si no hay fecha específica
-        const dateKey = fromFromUrl || 'all-dates';
+        // Usar fecha actual si no hay filtro de fecha
+        const dateKey = fromFromUrl || format(new Date(), 'yyyy-MM-dd');
 
         // Obtener la lista actual de IDs desde filteredAndSortedOrders
         const currentOrderIds = filteredAndSortedOrders.map(order => String(order._id));
@@ -433,12 +445,35 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         [currentOrderIds[currentIndex], currentOrderIds[newIndex]] =
             [currentOrderIds[newIndex], currentOrderIds[currentIndex]];
 
-        // Guardar el nuevo orden
-        saveOrder(dateKey, selectedPuntoEnvio, currentOrderIds);
-
-        // Forzar re-render incrementando el estado (esto hará que filteredAndSortedOrders se recalcule)
+        // Optimistic update: actualizar el estado local inmediatamente
+        setOrderPriorityFromDB(currentOrderIds);
         setOrderPriorityVersion(prev => prev + 1);
-    }, [fromFromUrl, selectedPuntoEnvio, filteredAndSortedOrders, saveOrder]);
+
+        // Guardar en la base de datos en segundo plano
+        try {
+            const result = await saveOrderPriorityAction(dateKey, selectedPuntoEnvio, currentOrderIds);
+
+            if (!result.success) {
+                // Revertir en caso de error
+                toast({
+                    title: 'Error',
+                    description: 'No se pudo guardar el orden',
+                    variant: 'destructive',
+                });
+                // Recargar el orden desde BD
+                await loadOrderPriorityFromDB(dateKey, selectedPuntoEnvio);
+            }
+        } catch (error) {
+            console.error('Error saving order priority:', error);
+            toast({
+                title: 'Error',
+                description: 'No se pudo guardar el orden',
+                variant: 'destructive',
+            });
+            // Recargar el orden desde BD
+            await loadOrderPriorityFromDB(dateKey, selectedPuntoEnvio);
+        }
+    }, [fromFromUrl, selectedPuntoEnvio, filteredAndSortedOrders, loadOrderPriorityFromDB, toast]);
 
     // Cargar productos para stock al montar el componente
     useEffect(() => {
@@ -496,6 +531,16 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
             setDetalle([]);
         }
     }, [selectedPuntoEnvio, fromFromUrl, toFromUrl]);
+
+    // Cargar orden de prioridad cuando cambia la fecha o el punto de envío
+    useEffect(() => {
+        if (selectedPuntoEnvio && selectedPuntoEnvio !== 'all' && fromFromUrl) {
+            loadOrderPriorityFromDB(fromFromUrl, selectedPuntoEnvio);
+        } else {
+            // Limpiar el orden si no hay punto o fecha específica
+            setOrderPriorityFromDB([]);
+        }
+    }, [selectedPuntoEnvio, fromFromUrl, loadOrderPriorityFromDB]);
 
     const loadTablasData = async (puntoEnvio: string, options: { skipLocalUpdate?: boolean; silent?: boolean } = {}) => {
         const { skipLocalUpdate = false, silent = false } = options;

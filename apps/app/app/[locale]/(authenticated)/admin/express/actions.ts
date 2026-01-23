@@ -267,7 +267,7 @@ export async function duplicateExpressOrderAction(orderId: string, targetPuntoEn
         // Validar que el usuario tenga permiso para el punto de envío destino
         const userWithPermissions = await getCurrentUserWithPermissions();
         const isAdmin = userWithPermissions?.isAdmin || false;
-        
+
         console.log('👤 [SERVER] Usuario:', { isAdmin, puntoEnvio: userWithPermissions?.puntoEnvio });
 
         if (!isAdmin) {
@@ -362,16 +362,16 @@ export async function duplicateExpressOrderAction(orderId: string, targetPuntoEn
         // Crear la orden duplicada
         console.log('💾 [SERVER] Creando orden duplicada...');
         const result = await createOrder(duplicatedOrderData as any);
-        
+
         console.log('✅ [SERVER] Resultado de createOrder:', result);
-        
+
         if (!result.success) {
             console.error('❌ [SERVER] Error al crear orden:', result.error);
             return { success: false, error: result.error };
         }
 
         console.log('🎉 [SERVER] Orden duplicada exitosamente:', result.order?._id);
-        
+
         revalidatePath('/admin/express');
         return {
             success: true,
@@ -383,3 +383,79 @@ export async function duplicateExpressOrderAction(orderId: string, targetPuntoEn
         return { success: false, error: 'Error al duplicar la orden' };
     }
 }
+
+/**
+ * Obtener el ordenamiento guardado para una fecha y punto de envío
+ */
+export async function getOrderPriorityAction(fecha: string, puntoEnvio: string) {
+    try {
+        // Validar permisos del usuario
+        const userWithPermissions = await getCurrentUserWithPermissions();
+        const isAdmin = userWithPermissions?.isAdmin || false;
+
+        if (!isAdmin) {
+            const userPuntosEnvio = Array.isArray(userWithPermissions?.puntoEnvio)
+                ? userWithPermissions.puntoEnvio
+                : (userWithPermissions?.puntoEnvio ? [userWithPermissions.puntoEnvio] : []);
+
+            if (!userPuntosEnvio.includes(puntoEnvio)) {
+                return {
+                    success: false,
+                    error: 'No tienes permiso para ver este punto de envío',
+                };
+            }
+        }
+
+        const { getOrderPriority } = await import('@repo/data-services');
+        return await getOrderPriority(fecha, puntoEnvio);
+    } catch (error) {
+        console.error('Error getting order priority:', error);
+        return {
+            success: false,
+            error: 'Error al obtener el orden de prioridad',
+        };
+    }
+}
+
+/**
+ * Guardar el ordenamiento de pedidos
+ */
+export async function saveOrderPriorityAction(
+    fecha: string,
+    puntoEnvio: string,
+    orderIds: string[]
+) {
+    try {
+        // Validar permisos del usuario
+        const userWithPermissions = await getCurrentUserWithPermissions();
+        const isAdmin = userWithPermissions?.isAdmin || false;
+
+        if (!isAdmin) {
+            const userPuntosEnvio = Array.isArray(userWithPermissions?.puntoEnvio)
+                ? userWithPermissions.puntoEnvio
+                : (userWithPermissions?.puntoEnvio ? [userWithPermissions.puntoEnvio] : []);
+
+            if (!userPuntosEnvio.includes(puntoEnvio)) {
+                return {
+                    success: false,
+                    error: 'No tienes permiso para modificar este punto de envío',
+                };
+            }
+        }
+
+        const { saveOrderPriority } = await import('@repo/data-services');
+        const result = await saveOrderPriority({ fecha, puntoEnvio, orderIds });
+
+        // No revalidamos la ruta para evitar recargas lentas
+        // El componente usa optimistic updates para actualización instantánea
+
+        return result;
+    } catch (error) {
+        console.error('Error saving order priority:', error);
+        return {
+            success: false,
+            error: 'Error al guardar el orden de prioridad',
+        };
+    }
+}
+

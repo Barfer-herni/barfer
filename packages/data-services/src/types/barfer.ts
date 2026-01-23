@@ -528,4 +528,24 @@ export interface CreatePuntoEnvioData {
 
 export interface UpdatePuntoEnvioData {
     nombre?: string;
+}
+
+// ===== ORDEN DE PRIORIDAD DE PEDIDOS =====
+export interface OrderPriority {
+    _id: string | ObjectId;
+    fecha: string;              // Fecha del día (YYYY-MM-DD)
+    puntoEnvio: string;         // Nombre del punto de envío
+    orderIds: string[];         // Array ordenado de IDs de pedidos
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface CreateOrderPriorityData {
+    fecha: string;
+    puntoEnvio: string;
+    orderIds: string[];
+}
+
+export interface UpdateOrderPriorityData {
+    orderIds: string[];
 } 
