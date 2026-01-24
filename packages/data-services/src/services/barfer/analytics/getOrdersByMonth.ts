@@ -95,8 +95,6 @@ export async function debugOrdersByMonth(startDate?: Date, endDate?: Date): Prom
             if (endDate) baseFilter.createdAt.$lte = endDate;
         }
 
-        console.log('🔍 Debug: Filtro base:', JSON.stringify(baseFilter, null, 2));
-
         const allOrders = await collection.find(baseFilter, {
             projection: {
                 _id: 1,
@@ -107,8 +105,6 @@ export async function debugOrdersByMonth(startDate?: Date, endDate?: Date): Prom
             }
         }).toArray();
 
-        console.log(`📊 Debug: Total de órdenes encontradas: ${allOrders.length}`);
-
         // Contar por tipo de orden - asumir minorista si no tiene orderType
         const orderTypeCounts = allOrders.reduce((acc: any, order) => {
             const orderType = order.orderType || 'minorista'; // Asumir minorista por defecto
@@ -116,13 +112,8 @@ export async function debugOrdersByMonth(startDate?: Date, endDate?: Date): Prom
             return acc;
         }, {});
 
-        console.log('📈 Debug: Conteo por tipo de orden:', orderTypeCounts);
-
         // Mostrar órdenes que no tienen orderType configurado
         const ordersWithoutType = allOrders.filter(order => !order.orderType);
-        if (ordersWithoutType.length > 0) {
-            console.log(`⚠️ Debug: ${ordersWithoutType.length} órdenes sin orderType (asumiendo minorista)`);
-        }
 
         // Mostrar algunas órdenes de ejemplo
         const sampleOrders = allOrders.slice(0, 5);

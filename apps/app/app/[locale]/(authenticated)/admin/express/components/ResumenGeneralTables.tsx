@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@repo/design-system/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@repo/design-system/components/ui/select';
 import { Button } from '@repo/design-system/components/ui/button';
@@ -10,6 +11,7 @@ import type { Order, PuntoEnvio, ProductForStock } from '@repo/data-services';
 import { ResumenGeneralChart } from './ResumenGeneralChart';
 import { Calendar as CalendarIcon, Filter } from 'lucide-react';
 
+
 interface ResumenGeneralTablesProps {
     orders: Order[];
     puntosEnvio: PuntoEnvio[];
@@ -17,8 +19,21 @@ interface ResumenGeneralTablesProps {
 }
 
 export function ResumenGeneralTables({ orders, puntosEnvio, productsForStock }: ResumenGeneralTablesProps) {
-    // State for filtering
-    const [selectedMonth, setSelectedMonth] = useState<string>('all'); // 'all' or 'YYYY-MM'
+    const searchParams = useSearchParams();
+    const fromFromUrl = searchParams.get('from');
+    // Si hay un from en la URL, usar ese mes como default
+    const defaultMonth = fromFromUrl ? fromFromUrl.substring(0, 7) : 'all';
+    const [selectedMonth, setSelectedMonth] = useState<string>(defaultMonth);
+
+    // Sincronizar selectedMonth con el filtro de la URL
+    useEffect(() => {
+        if (fromFromUrl) {
+            const urlMonth = fromFromUrl.substring(0, 7);
+            setSelectedMonth(urlMonth);
+        } else {
+            setSelectedMonth('all');
+        }
+    }, [fromFromUrl]);
 
     // Derived state: Available months from orders
     const availableMonths = useMemo(() => {
@@ -35,7 +50,8 @@ export function ResumenGeneralTables({ orders, puntosEnvio, productsForStock }: 
             const monthKey = orderDate.toISOString().substring(0, 7); // YYYY-MM
             months.add(monthKey);
         });
-        return Array.from(months).sort().reverse(); // Newest first
+        const result = Array.from(months).sort().reverse(); // Newest first
+        return result;
     }, [orders]);
 
     // Set default month to most recent if available and currently 'all' (optional, maybe user wants 'all' by default)
@@ -45,8 +61,9 @@ export function ResumenGeneralTables({ orders, puntosEnvio, productsForStock }: 
 
     // Filter orders based on selection
     const filteredOrders = useMemo(() => {
+        console.log('📈 [ResumenGeneralTables] Filtrando por mes:', selectedMonth);
         if (selectedMonth === 'all') return orders;
-        return orders.filter(order => {
+        const filtered = orders.filter(order => {
             let orderDate: Date;
             if (order.deliveryDay) {
                 orderDate = new Date(order.deliveryDay);
@@ -56,6 +73,8 @@ export function ResumenGeneralTables({ orders, puntosEnvio, productsForStock }: 
             }
             return orderDate.toISOString().substring(0, 7) === selectedMonth;
         });
+        console.log('📈 [ResumenGeneralTables] Órdenes filtradas:', filtered.length);
+        return filtered;
     }, [orders, selectedMonth]);
 
     // Data processing for Summary Tables (Aggregated by Punto Envio)
@@ -87,11 +106,27 @@ export function ResumenGeneralTables({ orders, puntosEnvio, productsForStock }: 
                 };
             }
         });
+        // Agregar grupo especial para órdenes sin punto de venta
+        const SIN_PUNTO = 'Sin punto de venta';
+        dataByPunto[SIN_PUNTO] = {
+            name: SIN_PUNTO,
+            totalOrders: 0,
+            totalKilos: 0,
+            totalRevenue: 0,
+            totalShippingCost: 0,
+            flavors: {
+                'POLLO': 0, 'VACA': 0, 'CERDO': 0, 'CORDERO': 0,
+                'BIG DOG POLLO': 0, 'BIG DOG VACA': 0,
+                'GATO POLLO': 0, 'GATO VACA': 0, 'GATO CORDERO': 0,
+                'HUESOS CARNOSOS': 0
+            }
+        };
 
         filteredOrders.forEach(order => {
-            const puntoNombre = order.puntoEnvio || order.deliveryArea?.puntoEnvio;
-            if (!puntoNombre || !dataByPunto[puntoNombre]) return;
-
+            let puntoNombre = order.puntoEnvio || order.deliveryArea?.puntoEnvio;
+            if (!puntoNombre || !dataByPunto[puntoNombre]) {
+                puntoNombre = SIN_PUNTO;
+            }
             const puntoData = dataByPunto[puntoNombre];
             puntoData.totalOrders += 1;
             puntoData.totalRevenue += (order.total || 0);

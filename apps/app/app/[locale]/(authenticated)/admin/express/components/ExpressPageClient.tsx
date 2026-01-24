@@ -99,7 +99,6 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     };
 
 
-    // Debug: verificar datos recibidos
     useEffect(() => {
         // Si hay un puntoId en la URL pero no está seleccionado en el estado (casos borde), sincronizar
         if (initialPuntoIdFromUrl && selectedPuntoEnvio !== initialPuntoIdFromUrl) {
@@ -269,6 +268,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 const passesTo = !toFromUrl || orderDateStr <= toFromUrl;
                 return passesFrom && passesTo;
             });
+
         }
 
         // C. Filtrar por Estado de Envío
@@ -321,6 +321,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
             // Default sort: createdAt desc
             result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         }
+
 
         return result;
     }, [orders, searchFromUrl, fromFromUrl, toFromUrl, estadosEnvioFromUrl, sortFromUrl, selectedPuntoEnvio, applySavedOrder, orderPriorityFromDB, orderPriorityVersion]);
@@ -849,11 +850,6 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
 
         // DEBUG: Log para HUESOS CARNOSOS
         const isHuesosCarnosos = productName.includes('HUESOS CARNOSOS');
-        if (isHuesosCarnosos) {
-            console.log('🦴 [DEBUG HUESOS CARNOSOS] Calculando pedidos del día');
-            console.log('🦴 Product:', { section: sectionUpper, product: productName, weight: productWeight });
-            console.log('🦴 Órdenes del día filtradas:', ordersOfDay.length);
-        }
 
         ordersOfDay.forEach(order => {
             order.items.forEach((item: any) => {
@@ -861,12 +857,6 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
 
                 // DEBUG: Log para HUESOS CARNOSOS
                 if (isHuesosCarnosos) {
-                    console.log('🦴 [DEBUG] Item en orden:', {
-                        orderId: order._id,
-                        itemName: itemProduct,
-                        options: item.options,
-                        quantity: item.quantity
-                    });
                 }
 
                 // --- VALIDACIÓN DE SECCIÓN ---
@@ -952,20 +942,11 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                     const qty = item.quantity || item.options?.[0]?.quantity || 1;
                     totalQuantity += qty;
 
-                    // DEBUG: Log para HUESOS CARNOSOS
-                    if (isHuesosCarnosos) {
-                        console.log('🦴 [DEBUG] ✅ MATCH encontrado! Cantidad:', qty, 'Total acumulado:', totalQuantity);
-                    }
                 } else if (isHuesosCarnosos) {
                     console.log('🦴 [DEBUG] ❌ NO MATCH');
                 }
             });
         });
-
-        // DEBUG: Log final para HUESOS CARNOSOS
-        if (isHuesosCarnosos) {
-            console.log('🦴 [DEBUG] Total final de pedidos del día:', totalQuantity);
-        }
 
         return totalQuantity;
     }, [selectedPuntoEnvio, orders, searchParams]);    // Función para guardar automáticamente con debounce
@@ -1352,7 +1333,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 {/* Mostrar Resumen General si está seleccionado "all" */}
                 {selectedPuntoEnvio === 'all' && (
                     <ResumenGeneralTables
-                        orders={orders}
+                        orders={filteredAndSortedOrders}
                         puntosEnvio={puntosEnvio}
                         productsForStock={productsForStock}
                     />

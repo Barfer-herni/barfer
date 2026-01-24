@@ -82,7 +82,10 @@ export function MonthlyMetricsTable({ orders, puntoEnvioName }: MonthlyMetricsTa
         });
 
         // Convert to array and sort descending by date
-        return Object.values(dataByMonth).sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+        const result = Object.values(dataByMonth).sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+
+
+        return result;
     }, [orders, puntoEnvioName]);
 
     const formatCurrency = (val: number) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(val);
