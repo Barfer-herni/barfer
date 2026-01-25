@@ -10,6 +10,7 @@ import { es } from 'date-fns/locale';
 import type { Order, PuntoEnvio, ProductForStock } from '@repo/data-services';
 import { ResumenGeneralChart } from './ResumenGeneralChart';
 import { Calendar as CalendarIcon, Filter } from 'lucide-react';
+import { calculateItemWeight } from '../../../../../../../../packages/data-services/src/utils/weightUtils';
 
 
 interface ResumenGeneralTablesProps {
@@ -136,18 +137,7 @@ export function ResumenGeneralTables({ orders, puntosEnvio, productsForStock }: 
                 order.items.forEach((item: any) => {
                     const productName = (item.name || '').toUpperCase().trim();
                     const qty = item.quantity || item.options?.[0]?.quantity || 1;
-                    let weight = 0;
-
-                    const weightMatch = productName.match(/(\d+)\s*KG/i);
-                    if (weightMatch) {
-                        weight = parseFloat(weightMatch[1]);
-                    } else if (productName.includes('BOX')) {
-                        weight = 10;
-                    } else if (item.options && item.options.length > 0) {
-                        const optName = item.options[0].name || '';
-                        const optMatch = optName.match(/(\d+)\s*KG/i);
-                        if (optMatch) weight = parseFloat(optMatch[1]);
-                    }
+                    let weight = calculateItemWeight(productName, item.options?.[0]?.name || '');
 
                     const fullName = `${productName} ${item.options?.[0]?.name || ''}`.toUpperCase();
 
@@ -251,13 +241,7 @@ export function ResumenGeneralTables({ orders, puntosEnvio, productsForStock }: 
                 order.items.forEach((item: any) => {
                     const productName = (item.name || '').toUpperCase().trim();
                     const qty = item.quantity || item.options?.[0]?.quantity || 1;
-                    let weight = 0;
-                    const weightMatch = productName.match(/(\d+)\s*KG/i);
-                    if (weightMatch) weight = parseFloat(weightMatch[1]);
-                    else if (productName.includes('BOX')) weight = 10;
-                    else if (item.options?.[0]?.name?.match(/(\d+)\s*KG/i)) {
-                        weight = parseFloat(item.options[0].name.match(/(\d+)\s*KG/i)![1]);
-                    }
+                    const weight = calculateItemWeight(productName, item.options?.[0]?.name || '');
                     if (weight > 0) orderKilos += (weight * qty);
                 });
 

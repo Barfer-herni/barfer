@@ -1,6 +1,7 @@
 'use server';
 
 import { getCollection } from '@repo/database';
+import { calculateItemWeight } from '../../utils/weightUtils';
 
 export interface PuntoVentaStats {
     _id: string;
@@ -24,14 +25,6 @@ interface ProductoMayorista {
     section: string;
 }
 
-/**
- * Extrae los kilos de un string de peso
- */
-function extractKilosFromWeight(weight: string | null | undefined): number {
-    if (!weight || typeof weight !== 'string') return 0;
-    const match = weight.match(/(\d+)\s*KG/i);
-    return match ? parseInt(match[1], 10) : 0;
-}
 
 /**
  * Extrae el multiplicador de unidades de un string
@@ -186,7 +179,7 @@ function calculateItemKilos(item: any, productosMayoristas: ProductoMayorista[],
             const optionName = option.name || '';
 
             // Intentar extraer kilos de la opción (ej: "5KG", "10KG")
-            const kilosFromOption = extractKilosFromWeight(optionName);
+            const kilosFromOption = calculateItemWeight('', optionName);
 
             if (kilosFromOption > 0) {
                 // Si la opción tiene kilos, usar esos
@@ -265,7 +258,7 @@ export async function getPuntosVentaStats(from?: string, to?: string): Promise<{
         for (const doc of pricesDocs) {
             const weight = doc.weight || '';
             const fullName = weight ? `${doc.product} ${weight}`.trim() : doc.product;
-            const kilos = extractKilosFromWeight(doc.weight);
+            const kilos = calculateItemWeight('', doc.weight);
             const kilosFinales = kilos > 0 ? kilos : 1;
             const section = doc.section || 'OTROS';
 

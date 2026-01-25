@@ -1,28 +1,6 @@
 import 'server-only';
 import { getCollection } from '@repo/database';
-
-/**
- * Extracts weight in kilograms from a product's option name.
- * Returns null if no weight is found or if the product is a complement.
- * @param productName - The name of the product.
- * @param optionName - The option name, e.g., "5KG".
- * @returns The weight in KG, or null.
- */
-const getWeightInKg = (productName: string, optionName: string): number | null => {
-    const lowerProductName = productName.toLowerCase();
-
-    if (lowerProductName.includes('big dog')) {
-        return 15;
-    }
-    if (lowerProductName.includes('complemento')) {
-        return null;
-    }
-    const match = optionName.match(/(\d+(\.\d+)?)\s*k?g/i);
-    if (match && match[1]) {
-        return parseFloat(match[1]);
-    }
-    return null;
-};
+import { calculateItemWeight } from '../../../utils/weightUtils';
 
 interface DeliveryTypeStats {
     month: string;
@@ -85,8 +63,8 @@ async function calculateRealWeightsForMonth(
                 order.items.forEach((item: any) => {
                     if (item.options && Array.isArray(item.options)) {
                         item.options.forEach((option: any) => {
-                            const weight = getWeightInKg(item.name, option.name);
-                            if (weight !== null) {
+                            const weight = calculateItemWeight(item.name, option.name);
+                            if (weight > 0) {
                                 const totalWeight = weight * (option.quantity || 1);
                                 if (isWholesale) {
                                     wholesaleWeight += totalWeight;

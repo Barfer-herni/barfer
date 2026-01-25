@@ -28,33 +28,7 @@ interface QuantityStatsByType {
     mayorista: ProductQuantity[];
 }
 
-/**
- * Extrae el peso en kilogramos de un producto basado en su nombre
- */
-const getProductWeight = (productName: string, optionName: string): number => {
-    const lowerProductName = productName.toLowerCase();
-    const lowerOptionName = optionName.toLowerCase();
-    let weight = 0;
-
-    // 1. Buscar peso en el nombre del producto (Prioridad 1 en Express)
-    const productWeightMatch = lowerProductName.match(/(\d+(?:\.\d+)?)\s*k?g?/i);
-    if (productWeightMatch) {
-        weight = parseFloat(productWeightMatch[1]);
-    }
-    // 2. Si es BOX y no teniamos peso en nombre -> 10kg (Prioridad 2 en Express)
-    else if (lowerProductName.includes('box')) {
-        weight = 10;
-    }
-    // 3. Buscar peso en opción (Prioridad 3 en Express)
-    else {
-        const weightMatch = lowerOptionName.match(/(\d+(?:\.\d+)?)\s*k?g?/i);
-        if (weightMatch) {
-            weight = parseFloat(weightMatch[1]);
-        }
-    }
-
-    return weight;
-};
+import { calculateItemWeight } from '../../../utils/weightUtils';
 
 /**
  * Categoriza un producto basado en su nombre y opción
@@ -66,7 +40,7 @@ const categorizeProduct = (productName: string, optionName: string): {
     const lowerName = productName.toLowerCase();
     const lowerOptionName = optionName.toLowerCase();
 
-    // Construir full name para búsquedas robustas (como hicimos en Express)
+    // Construir full name para búsquedas robustas
     const fullName = `${lowerName} ${lowerOptionName}`;
 
     // Big Dog productos (perro)
@@ -90,7 +64,7 @@ const categorizeProduct = (productName: string, optionName: string): {
     if (fullName.includes('cerdo')) return { category: 'perro', subcategory: 'cerdo' };
     if (fullName.includes('cordero')) return { category: 'perro', subcategory: 'cordero' };
 
-    // Otros productos - Lógica estricta de Express para Huesos
+    // Otros productos - Lógica estricta para Huesos Carnosos
     if ((lowerName.includes('huesos carnosos') || lowerName.includes('hueso carnoso')) &&
         !lowerName.includes('recreativo') &&
         !lowerName.includes('caldo')) {
@@ -206,9 +180,10 @@ export async function getQuantityStatsByMonth(startDate?: Date, endDate?: Date):
 
         const result = await collection.aggregate(pipeline).toArray();
 
-
-
-        // Procesar resultados y calcular cantidades
+        // LOG DIAGNÓSTICO: Ver una muestra de lo que sale del pipeline de agregación
+        console.log('--- MUESTRA DE DATOS AGREGADOS (TOP 3) ---');
+        console.log(JSON.stringify(result.slice(0, 3), null, 2));
+        console.log('------------------------------------------');
         const processedData: QuantityStatsByType = {
             minorista: [],
             sameDay: [],
@@ -226,8 +201,15 @@ export async function getQuantityStatsByMonth(startDate?: Date, endDate?: Date):
             const quantity = item.totalQuantity;
 
             // Calcular peso real
-            const weight = getProductWeight(productName, optionName);
+            const weight = calculateItemWeight(productName, optionName);
+
+            // Calculamos peso total multiplicando por cantidad (según aclaración del usuario)
             const totalWeight = weight * quantity;
+
+            // LOG DETALLADO PARA ITEMS CON PESO (BOX, BIG DOG, etc)
+            if (weight > 0 && (productName.includes('BOX') || productName.includes('BIG DOG') || productName.includes('POLLO') || productName.includes('VACA'))) {
+                console.log(`[ANALYSIS] Producto: "${productName}" | Opción: "${optionName}" | Peso Unit: ${weight} | Cantidad: ${quantity} | Subtotal: ${totalWeight} KG`);
+            }
 
             // Inicializar mes si no existe
             if (!groupedByMonth[month]) {
