@@ -114,9 +114,11 @@ export async function initializeStockForDate(puntoEnvio: string, date: Date | st
                 weight: prev.peso
             }, ordersForLastDate);
 
-            // Calculate TRUE Stock Final of the previous day
-            const realStockFinal = (prev.stockInicial || 0) + (prev.llevamos || 0) - actualSales;
-            const stockInicialValue = realStockFinal;
+            // NEW: Use the SAVED stockFinal from the previous record if available.
+            // This is more robust than recalculating as it respects manual edits and frontend values.
+            const stockInicialValue = prev.stockFinal !== undefined && prev.stockFinal !== null
+                ? prev.stockFinal
+                : (prev.stockInicial || 0) + (prev.llevamos || 0) - actualSales;
 
             // Check if record exists for this product to update or create
             const existingMatch = existingStock.find(s =>

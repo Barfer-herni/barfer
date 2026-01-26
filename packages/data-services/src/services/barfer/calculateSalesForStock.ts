@@ -78,8 +78,8 @@ export function calculateSalesFromOrders(product: { product: string; section: st
 
             if (isMatch) {
                 // Sumar cantidad del item. Si tiene opciones y cantidad en la opción, usar esa.
-                // Generalmente Express usa item.quantity
-                const quantity = item.quantity || 1;
+                // Ajuste: coincide con la lógica del frontend (ExpressPageClient.tsx)
+                const quantity = item.quantity || item.options?.[0]?.quantity || 1;
                 totalQuantity += quantity;
             }
         });

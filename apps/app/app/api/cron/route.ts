@@ -89,6 +89,15 @@ export async function GET() {
 
         // TODO: Implement WhatsApp campaigns logic here following the same pattern.
 
+        // Ejecutar rollover de stock (verificación de horario de corte)
+        try {
+            const { checkAndPerformStockRollover } = await import('@repo/data-services/src/services/barfer/stockRolloverService');
+            await checkAndPerformStockRollover();
+            console.log('✅ [Stock Cron] Stock rollover check completed');
+        } catch (error) {
+            console.error('❌ [Stock Cron] Stock rollover failed', error);
+        }
+
         console.log('✅ [Campaign Cron] Job finished successfully.');
         return NextResponse.json({ message: 'Cron job executed successfully.' });
 
