@@ -14,6 +14,8 @@ export interface DataTableProps<TData extends { _id: string }, TValue> {
     fontSize?: 'text-xs' | 'text-sm';
     isDragEnabled?: boolean;
     hideOrderTypeFilter?: boolean;
+    /** Oculta el filtro de rango de fechas (ej. cuando ya se muestra uno compartido arriba, como en express) */
+    hideDateRangeFilter?: boolean;
 }
 
 export interface EditValues {

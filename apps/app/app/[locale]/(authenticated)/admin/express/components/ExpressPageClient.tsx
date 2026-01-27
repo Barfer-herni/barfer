@@ -12,7 +12,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@repo/design-system/components/ui/select';
-import { Plus, Package, ShoppingCart, BarChart3, Edit2, Save, X, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
+import { Plus, Package, ShoppingCart, BarChart3, Edit2, Save, X, ChevronUp, ChevronDown, GripVertical, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Input } from '@repo/design-system/components/ui/input';
@@ -21,6 +21,7 @@ import { AddStockModal } from './AddStockModal';
 import { DetalleTable } from './DetalleTable';
 import { CreatePuntoEnvioModal } from './CreatePuntoEnvioModal';
 import { UpdatePuntoEnvioModal } from './UpdatePuntoEnvioModal';
+import { DeletePuntoEnvioDialog } from './DeletePuntoEnvioDialog';
 import { DuplicateOrderModal } from './DuplicateOrderModal';
 import { EstadoEnvioFilter } from './EstadoEnvioFilter';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@repo/design-system/components/ui/tabs';
@@ -66,6 +67,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
     const [showAddStockModal, setShowAddStockModal] = useState(false);
     const [showCreatePuntoEnvioModal, setShowCreatePuntoEnvioModal] = useState(false);
     const [showUpdatePuntoEnvioModal, setShowUpdatePuntoEnvioModal] = useState(false);
+    const [showDeletePuntoEnvioModal, setShowDeletePuntoEnvioModal] = useState(false);
     const [showDuplicateModal, setShowDuplicateModal] = useState(false);
     const [orderToDuplicate, setOrderToDuplicate] = useState<string | null>(null);
 
@@ -514,14 +516,15 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         loadProductsForStock();
     }, []);
 
-    const handlePuntosEnvioRefresh = async () => {
+    const handlePuntosEnvioRefresh = async (): Promise<PuntoEnvio[]> => {
         router.refresh();
-        // Recargar la lista de puntos de envío
         const { getAllPuntosEnvioAction } = await import('../actions');
         const result = await getAllPuntosEnvioAction();
         if (result.success && result.puntosEnvio) {
             setPuntosEnvio(result.puntosEnvio);
+            return result.puntosEnvio;
         }
+        return [];
     };
 
     // NO establecer fecha por defecto - permitir ver todas las órdenes sin filtro de fecha
@@ -1311,20 +1314,35 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                 </SelectContent>
                             </Select>
                         </div>
-                        {isAdmin && (
+                        {(isAdmin || canDelete) && (
                             <div className="flex gap-2 mt-6">
-                                <Button onClick={() => setShowCreatePuntoEnvioModal(true)} variant="outline">
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Nuevo Punto
-                                </Button>
-                                <Button
-                                    onClick={() => setShowUpdatePuntoEnvioModal(true)}
-                                    variant="outline"
-                                    disabled={!selectedPuntoEnvio || selectedPuntoEnvio === 'all'}
-                                >
-                                    <Edit2 className="mr-2 h-4 w-4" />
-                                    Editar
-                                </Button>
+                                {isAdmin && (
+                                    <>
+                                        <Button onClick={() => setShowCreatePuntoEnvioModal(true)} variant="outline">
+                                            <Plus className="mr-2 h-4 w-4" />
+                                            Nuevo Punto
+                                        </Button>
+                                        <Button
+                                            onClick={() => setShowUpdatePuntoEnvioModal(true)}
+                                            variant="outline"
+                                            disabled={!selectedPuntoEnvio || selectedPuntoEnvio === 'all'}
+                                        >
+                                            <Edit2 className="mr-2 h-4 w-4" />
+                                            Editar
+                                        </Button>
+                                    </>
+                                )}
+                                {canDelete && (
+                                    <Button
+                                        onClick={() => setShowDeletePuntoEnvioModal(true)}
+                                        variant="outline"
+                                        disabled={!selectedPuntoEnvio || selectedPuntoEnvio === 'all'}
+                                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    >
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Eliminar
+                                    </Button>
+                                )}
                             </div>
                         )}
                     </div>
@@ -1363,6 +1381,12 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                     </TabsTrigger>
                                 )}
                             </TabsList>
+
+                            {/* Filtro de rango de fechas (compartido por Órdenes y Stock) */}
+                            <div className="mt-4 flex flex-col sm:flex-row gap-4">
+                                <DateRangeFilter />
+                                {activeTab === 'orders' && <EstadoEnvioFilter />}
+                            </div>
 
                             <TabsContent value="metrics" className="mt-6">
                                 <MonthlyMetricsTable orders={orders} puntoEnvioName={selectedPuntoEnvio} />
@@ -1416,11 +1440,6 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
 
                                     const tableComponent = (
                                         <>
-                                            {/* Filtros */}
-                                            <div className="mb-4 flex flex-col sm:flex-row gap-4">
-                                                <DateRangeFilter />
-                                                <EstadoEnvioFilter />
-                                            </div>
                                             <OrdersDataTable
                                                 fontSize="text-sm"
                                                 columns={createExpressColumns(
@@ -1451,6 +1470,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                 onDuplicate={handleDuplicate}
                                                 isDragEnabled={isDragEnabled}
                                                 hideOrderTypeFilter={true}
+                                                hideDateRangeFilter={true}
                                             />
                                         </>
                                     );
@@ -1482,15 +1502,10 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                                         Gestión de stock día a día para este punto de envío
                                                     </CardDescription>
                                                 </div>
-                                                <div className="flex items-center gap-4">
-                                                    <Button onClick={() => setShowAddStockModal(true)} disabled={!selectedPuntoEnvio}>
-                                                        <Plus className="h-4 w-4 mr-2" />
-                                                        Agregar producto
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-4">
-                                                <DateRangeFilter />
+                                                <Button onClick={() => setShowAddStockModal(true)} disabled={!selectedPuntoEnvio}>
+                                                    <Plus className="h-4 w-4 mr-2" />
+                                                    Agregar producto
+                                                </Button>
                                             </div>
                                         </div>
                                     </CardHeader>
@@ -1868,6 +1883,22 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 puntoEnvio={puntosEnvio.find(p => p.nombre === selectedPuntoEnvio) || null}
                 onPuntoEnvioUpdated={() => {
                     handlePuntosEnvioRefresh();
+                }}
+            />
+
+            <DeletePuntoEnvioDialog
+                open={showDeletePuntoEnvioModal}
+                onOpenChange={setShowDeletePuntoEnvioModal}
+                puntoEnvio={puntosEnvio.find(p => p.nombre === selectedPuntoEnvio) || null}
+                onDeleted={async (deletedNombre) => {
+                    const list = await handlePuntosEnvioRefresh();
+                    if (selectedPuntoEnvio === deletedNombre) {
+                        const next = list.length > 0
+                            ? (isAdmin ? 'all' : list[0]?.nombre ?? '')
+                            : '';
+                        setSelectedPuntoEnvio(next);
+                        updateUrlParams('puntoId', next);
+                    }
                 }}
             />
 

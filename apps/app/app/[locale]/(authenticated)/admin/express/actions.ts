@@ -9,6 +9,7 @@ import {
     getExpressOrders,
     createPuntoEnvioMongo,
     getAllPuntosEnvioMongo,
+    deletePuntoEnvioMongo,
     updateEstadoEnvio,
     getProductsForStock,
     updateStockMongo,
@@ -199,6 +200,35 @@ export async function getAllPuntosEnvioAction() {
         return {
             success: false,
             puntosEnvio: [],
+        };
+    }
+}
+
+export async function deletePuntoEnvioAction(id: string) {
+    try {
+        const userWithPermissions = await getCurrentUserWithPermissions();
+        const isAdmin = userWithPermissions?.isAdmin || false;
+        const canDelete = userWithPermissions?.permissions?.includes('express:delete') || false;
+
+        if (!isAdmin && !canDelete) {
+            return {
+                success: false,
+                message: 'No tienes permiso para eliminar puntos de envío',
+            };
+        }
+
+        const result = await deletePuntoEnvioMongo(id);
+
+        if (result.success) {
+            revalidatePath('/admin/express');
+        }
+
+        return result;
+    } catch (error) {
+        console.error('Error deleting punto de envío:', error);
+        return {
+            success: false,
+            message: 'Error al eliminar el punto de envío',
         };
     }
 }

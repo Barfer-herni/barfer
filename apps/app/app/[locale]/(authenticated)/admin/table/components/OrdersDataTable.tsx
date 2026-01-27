@@ -56,6 +56,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     fontSize = 'text-xs',
     isDragEnabled = false,
     hideOrderTypeFilter = false,
+    hideDateRangeFilter = false,
 }: DataTableProps<TData, TValue>) {
     const router = useRouter();
     const pathname = usePathname();
@@ -1144,10 +1145,12 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                             <Search className="h-4 w-4" />
                         </Button>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                        <DateRangeFilter />
-                        {!hideOrderTypeFilter && <OrderTypeFilter />}
-                    </div>
+                    {(!hideDateRangeFilter || !hideOrderTypeFilter) && (
+                        <div className="flex flex-col sm:flex-row gap-2">
+                            {!hideDateRangeFilter && <DateRangeFilter />}
+                            {!hideOrderTypeFilter && <OrderTypeFilter />}
+                        </div>
+                    )}
                 </div>
 
                 {/* Botones de acción - una fila en desktop, múltiples filas en móvil */}
