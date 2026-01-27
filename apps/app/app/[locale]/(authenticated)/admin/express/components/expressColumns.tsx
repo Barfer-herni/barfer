@@ -10,6 +10,7 @@ import { createLocalDate, formatPhoneNumber } from '../../table/helpers';
 import { EstadoEnvioCell } from './EstadoEnvioCell';
 import { ShippingPriceCell } from './ShippingPriceCell';
 import { NotesOwnCell } from './NotesOwnCell';
+import { CopyableCell } from './CopyableCell';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 
 export const createExpressColumns = (
@@ -194,8 +195,14 @@ export const createExpressColumns = (
         accessorKey: 'user.name',
         header: 'Cliente',
         cell: ({ row }: CellContext<Order, unknown>) => {
-            const user = row.original.user || '';
-            return <div className="min-w-[120px] text-sm whitespace-normal break-words">{user.name} {user.lastName}</div>;
+            const user = row.original.user;
+            const display = [user?.name, user?.lastName].filter(Boolean).join(' ').trim();
+            const textToCopy = display;
+            return (
+                <CopyableCell textToCopy={textToCopy} copyable={!!textToCopy} className="min-w-[120px] text-sm whitespace-normal break-words">
+                    {display || '—'}
+                </CopyableCell>
+            );
         },
     },
     {
@@ -203,7 +210,14 @@ export const createExpressColumns = (
         header: 'Dirección',
         cell: ({ row }: CellContext<Order, unknown>) => {
             const address = row.original.address as Order['address'];
-            return <div className="min-w-[180px] text-sm whitespace-normal break-words">{address ? `${address.address}, ${address.city}` : 'N/A'}</div>;
+            const parts = address ? [address.address, address.city].filter(Boolean) : [];
+            const textToCopy = parts.join(', ');
+            const display = textToCopy || 'N/A';
+            return (
+                <CopyableCell textToCopy={textToCopy} copyable={!!textToCopy} className="min-w-[180px] text-sm whitespace-normal break-words">
+                    {display}
+                </CopyableCell>
+            );
         }
     },
     {
@@ -211,8 +225,14 @@ export const createExpressColumns = (
         header: 'Teléfono',
         cell: ({ row }: CellContext<Order, unknown>) => {
             const address = row.original.address as Order['address'];
-            const formattedPhone = formatPhoneNumber(address?.phone || '');
-            return <div className="min-w-[10px] text-sm">{formattedPhone}</div>;
+            const rawPhone = address?.phone || '';
+            const formattedPhone = formatPhoneNumber(rawPhone);
+            const display = formattedPhone !== 'N/A' ? formattedPhone : '—';
+            return (
+                <CopyableCell textToCopy={rawPhone} copyable={!!rawPhone} className="min-w-[100px] text-sm">
+                    {display}
+                </CopyableCell>
+            );
         }
     },
     {
