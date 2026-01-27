@@ -12,7 +12,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@repo/design-system/components/ui/select';
-import { Plus, Package, ShoppingCart, BarChart3, Edit2, Save, X, ChevronUp, ChevronDown, GripVertical, Trash2 } from 'lucide-react';
+import { Plus, Package, ShoppingCart, BarChart3, Edit2, Save, X, ChevronUp, ChevronDown, GripVertical, Trash2, CalendarDays } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Input } from '@repo/design-system/components/ui/input';
@@ -85,6 +85,16 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         } else {
             params.delete(param);
         }
+        router.replace(`${pathname}?${params.toString()}`);
+    }, [searchParams, pathname, router]);
+
+    // Volver a «hoy» en el rango de fechas (preserva punto, tab, etc.)
+    const setDateRangeToToday = useCallback(() => {
+        const today = format(new Date(), 'yyyy-MM-dd');
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('from', today);
+        params.set('to', today);
+        params.set('page', '1');
         router.replace(`${pathname}?${params.toString()}`);
     }, [searchParams, pathname, router]);
 
@@ -1382,8 +1392,8 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                 )}
                             </TabsList>
 
-                            {/* Filtro de rango de fechas (compartido por Órdenes y Stock) */}
-                            <div className="mt-4 flex flex-col sm:flex-row gap-4">
+                            {/* Filtro de rango de fechas (compartido por Órdenes y Stock). Sticky para no perderse al hacer scroll */}
+                            <div className="sticky top-0 z-10 mt-4 flex flex-col sm:flex-row gap-4 py-3 bg-background border-b border-border/50">
                                 <DateRangeFilter />
                                 {activeTab === 'orders' && <EstadoEnvioFilter />}
                             </div>
@@ -1425,8 +1435,19 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                             </CardDescription>
                                         </CardHeader>
                                         <CardContent>
-                                            <div className="text-center py-8 text-muted-foreground">
-                                                <p>No hay órdenes express para este punto de envío</p>
+                                            <div className="text-center py-8 text-muted-foreground space-y-4">
+                                                <p>No hay órdenes express para este punto de envío en la fecha seleccionada.</p>
+                                                <p className="text-sm">
+                                                    Usá el selector de fechas de arriba para cambiar el rango, o volvé a hoy:
+                                                </p>
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={setDateRangeToToday}
+                                                    className="gap-2"
+                                                >
+                                                    <CalendarDays className="h-4 w-4" />
+                                                    Ver hoy
+                                                </Button>
                                             </div>
                                         </CardContent>
                                     </Card>
