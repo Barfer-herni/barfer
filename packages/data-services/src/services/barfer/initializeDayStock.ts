@@ -28,7 +28,7 @@ export async function initializeStockForDate(puntoEnvio: string, date: Date | st
 
         console.log(`🔄 Check/Init Stock for ${puntoEnvio} on ${targetDateStr}`);
 
-        // 1. Check if stock exists and if it has any activity (llevamos > 0)
+        // 1. Check if stock exists
         const existingStock = await stockCollection.find({
             puntoEnvio: puntoEnvio,
             fecha: targetDateStr
@@ -36,24 +36,18 @@ export async function initializeStockForDate(puntoEnvio: string, date: Date | st
 
         // Get today's date in YYYY-MM-DD format (Argentina time -3h)
         const nowArg = new Date(new Date().getTime() - (3 * 60 * 60 * 1000));
-        const todayStr = nowArg.toISOString().substring(0, 10);
-        const isFutureDate = targetDateStr > todayStr;
+        const todayStr = (nowArg).toISOString().substring(0, 10);
 
-        const hasActivity = existingStock.some(s => (s.llevamos || 0) > 0);
-
-        // ONLY allow re-syncing if it's a future date and has no activity.
-        // For today or past dates, if records exist, we NEVER overwrite them to avoid destroying manual edits.
-        if (existingStock.length > 0) {
-            if (!isFutureDate || hasActivity) {
-                console.log(`✅ Stock already exists for ${targetDateStr}. Skipping re-sync to protect data.`);
-                return {
-                    success: true,
-                    initialized: false,
-                    count: existingStock.length,
-                    message: 'Stock already exists'
-                };
-            }
-            console.log(`🔄 Future date ${targetDateStr} with no activity detected. Proceeding to sync...`);
+        // We only proceed if it's today or a future date.
+        // Past dates are strictly protected to avoid destroying history.
+        if (targetDateStr < todayStr && existingStock.length > 0) {
+            console.log(`✅ Past date ${targetDateStr}. Skipping re-sync to protect historical data.`);
+            return {
+                success: true,
+                initialized: false,
+                count: existingStock.length,
+                message: 'Historical stock protected'
+            };
         }
 
         // 2. Find the most recent date with stock for this puntoEnvio
@@ -114,33 +108,34 @@ export async function initializeStockForDate(puntoEnvio: string, date: Date | st
                 weight: prev.peso
             }, ordersForLastDate);
 
-            // NEW: Use the SAVED stockFinal from the previous record if available.
-            // This is more robust than recalculating as it respects manual edits and frontend values.
-            const stockInicialValue = prev.stockFinal !== undefined && prev.stockFinal !== null
-                ? prev.stockFinal
-                : (prev.stockInicial || 0) + (prev.llevamos || 0) - actualSales;
+            // CALCULATE Carry-over:
+            // We ALWAYS recalculate based on (Inicial + Llevamos - Sales) to ensure 
+            // any updates to the previous day's orders are reflected.
+            const stockInicialValue = (prev.stockInicial || 0) + (prev.llevamos || 0) - actualSales;
 
-            // Check if record exists for this product to update or create
+            // Check if record exists for this product 
             const existingMatch = existingStock.find(s =>
                 s.producto === prev.producto &&
                 s.peso === prev.peso
             );
 
             if (existingMatch) {
-                // Update existing record (since it has no activity)
-                await stockCollection.updateOne(
-                    { _id: existingMatch._id },
-                    {
-                        $set: {
-                            stockInicial: stockInicialValue,
-                            stockFinal: stockInicialValue, // Reset final to match initial
-                            llevamos: 0,
-                            pedidosDelDia: 0,
-                            section: section,
-                            updatedAt: new Date()
+                // IMPORTANT: ONLY update if there is no manual activity (llevamos: 0)
+                // This protects manual edits made today while allowing correction of starting values.
+                if ((existingMatch.llevamos || 0) === 0) {
+                    await stockCollection.updateOne(
+                        { _id: existingMatch._id },
+                        {
+                            $set: {
+                                stockInicial: stockInicialValue,
+                                stockFinal: stockInicialValue - (existingMatch.pedidosDelDia || 0),
+                                section: section,
+                                updatedAt: new Date()
+                            }
                         }
-                    }
-                );
+                    );
+                    updatedCount++;
+                }
             } else {
                 // Create new record
                 await stockCollection.insertOne({
@@ -156,8 +151,8 @@ export async function initializeStockForDate(puntoEnvio: string, date: Date | st
                     createdAt: new Date(),
                     updatedAt: new Date()
                 });
+                updatedCount++;
             }
-            updatedCount++;
         }
 
         return {

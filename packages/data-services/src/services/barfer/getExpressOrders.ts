@@ -31,65 +31,62 @@ export async function getExpressOrders(puntoEnvio?: string, from?: string, to?: 
         if (from && from.trim() !== '' || to && to.trim() !== '') {
             const dateConditions: any[] = [];
 
-            // 1. Fechas para createdAt (Local Time -> UTC conversion implicita del server o explícita)
-            // Asumimos que 'from' y 'to' vienen como 'YYYY-MM-DD'.
-            // Al hacer new Date(Y, M, D) en el servidor, usa el timezone del servidor.
-            // Si el servidor está en UTC, new Date(2026, 0, 23) es 2026-01-23T00:00:00Z.
-            // Si el servidor está en -03:00, es 2026-01-23T03:00:00Z.
-            // Para createdAt queremos respetar el día local.
-
-            let fromDateLocal: Date | undefined;
-            let toDateLocal: Date | undefined;
-
-            if (from && from.trim() !== '') {
-                const [year, month, day] = from.split('-').map(Number);
-                fromDateLocal = new Date(year, month - 1, day, 0, 0, 0, 0);
-            }
-            if (to && to.trim() !== '') {
-                const [year, month, day] = to.split('-').map(Number);
-                toDateLocal = new Date(year, month - 1, day, 23, 59, 59, 999);
-            }
-
-            // 2. Fechas para deliveryDay (UTC Strict)
-            // deliveryDay se guarda como UTC Midnight (T00:00:00.000Z).
-            // Para encontrar deliveryDay de un día específico, buscamos en el rango UTC de ese día.
             let fromDateUTC: Date | undefined;
             let toDateUTC: Date | undefined;
 
             if (from && from.trim() !== '') {
                 const [year, month, day] = from.split('-').map(Number);
-                fromDateUTC = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+                // 00:00:00 Arg Time = 03:00:00 UTC
+                fromDateUTC = new Date(Date.UTC(year, month - 1, day, 3, 0, 0, 0));
             }
             if (to && to.trim() !== '') {
                 const [year, month, day] = to.split('-').map(Number);
-                toDateUTC = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+                // 23:59:59 Arg Time = 02:59:59 UTC of NEXT day
+                toDateUTC = new Date(Date.UTC(year, month - 1, day + 1, 2, 59, 59, 999));
             }
 
-
-            // Condición 1: Filtrar por deliveryDay (Usando rango UTC)
-            const deliveryDayMatch: any = {};
-            if (fromDateUTC) deliveryDayMatch.$gte = fromDateUTC;
-            if (toDateUTC) deliveryDayMatch.$lte = toDateUTC;
-
-            // Condición 2: Filtrar por createdAt (Usando rango Local)
-            const createdAtMatch: any = {};
-            if (fromDateLocal) createdAtMatch.$gte = fromDateLocal;
-            if (toDateLocal) createdAtMatch.$lte = toDateLocal;
+            // Para deliveryDay, buscamos coincidencia exacta en el día (T00:00:00.000Z)
+            // así que usamos el rango UTC del día calendario simplificado (0 a 23:59)
+            let fromDeliveryUTC: Date | undefined;
+            let toDeliveryUTC: Date | undefined;
+            if (from && from.trim() !== '') {
+                const [year, month, day] = from.split('-').map(Number);
+                fromDeliveryUTC = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+            }
+            if (to && to.trim() !== '') {
+                const [year, month, day] = to.split('-').map(Number);
+                toDeliveryUTC = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+            }
 
             filter.$and = [
                 {
                     $or: [
-                        { deliveryDay: deliveryDayMatch },
+                        {
+                            deliveryDay: {
+                                ...(fromDeliveryUTC && { $gte: fromDeliveryUTC }),
+                                ...(toDeliveryUTC && { $lte: toDeliveryUTC })
+                            }
+                        },
                         {
                             $and: [
                                 { deliveryDay: { $exists: false } },
-                                { createdAt: createdAtMatch }
+                                {
+                                    createdAt: {
+                                        ...(fromDateUTC && { $gte: fromDateUTC }),
+                                        ...(toDateUTC && { $lte: toDateUTC })
+                                    }
+                                }
                             ]
                         },
                         {
                             $and: [
                                 { deliveryDay: null },
-                                { createdAt: createdAtMatch }
+                                {
+                                    createdAt: {
+                                        ...(fromDateUTC && { $gte: fromDateUTC }),
+                                        ...(toDateUTC && { $lte: toDateUTC })
+                                    }
+                                }
                             ]
                         }
                     ]

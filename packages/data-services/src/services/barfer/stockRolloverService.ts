@@ -99,11 +99,9 @@ export async function checkAndPerformStockRollover() {
                     }, ordersHoy);
 
                     // Stock Inicial Mañana = Stock Final Hoy
-                    // Priorizar el stockFinal guardado (que viene del frontend/ajustes manuales)
-                    // Fallback a fórmula: stockInicial + llevamos - actualSales
-                    let stockInicialManana = item.stockFinal !== undefined && item.stockFinal !== null
-                        ? item.stockFinal
-                        : (item.stockInicial || 0) + (item.llevamos || 0) - actualSales;
+                    // We ALWAYS recalculate based on (Inicial + Llevamos - Sales) to ensure 
+                    // any updates to the previous day's orders are reflected.
+                    let stockInicialManana = (item.stockInicial || 0) + (item.llevamos || 0) - actualSales;
 
                     if (stockInicialManana < 0) stockInicialManana = 0;
 
