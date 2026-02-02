@@ -57,6 +57,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     isDragEnabled = false,
     hideOrderTypeFilter = false,
     hideDateRangeFilter = false,
+    isExpressContext = false,
 }: DataTableProps<TData, TValue>) {
     const router = useRouter();
     const pathname = usePathname();
@@ -93,7 +94,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
         subtotal: number;
     }>>([]);
     const [puntosEnvio, setPuntosEnvio] = useState<Array<{ _id: string; nombre: string }>>([]);
-    
+
     // Ref para el timeout del debounce
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -201,7 +202,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
     // Función para manejar cambios en el filtro de búsqueda
     const handleSearchChange = useCallback((value: string) => {
         setSearchInput(value);
-        
+
         // Si el campo está vacío, ejecutar la búsqueda inmediatamente para mostrar todos los resultados
         if (value.trim() === '') {
             navigateToSearch('');
@@ -488,6 +489,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 total: Number(editValues.total),
                 subTotal: Number(editValues.subTotal),
                 shippingPrice: Number(editValues.shippingPrice),
+                puntoEnvio: editValues.puntoEnvio || row.original.puntoEnvio,
                 address: {
                     ...row.original.address,
                     address: editValues.address.address,
@@ -507,6 +509,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 deliveryArea: {
                     ...row.original.deliveryArea,
                     schedule: normalizeScheduleTime(editValues.deliveryAreaSchedule),
+                    sameDayDelivery: !!(editValues.puntoEnvio || row.original.puntoEnvio)
                 },
                 items: processedItems,
                 deliveryDay: editValues.deliveryDay,
@@ -653,17 +656,7 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 return;
             }
 
-            // Validar que si hay punto de envío, el método de pago sea bank-transfer
-            if (createFormData.puntoEnvio && createFormData.paymentMethod !== 'bank-transfer') {
-                alert('Las órdenes express (con punto de envío) deben tener el método de pago "bank-transfer".');
-                setLoading(false);
-                return;
-            }
-
-            // Si hay punto de envío, asegurar que el método de pago sea bank-transfer
-            if (createFormData.puntoEnvio) {
-                createFormData.paymentMethod = 'bank-transfer';
-            }
+            // Si hay punto de envío, incluir código para puntoEnvio en orderData later
 
             // Filtrar items: eliminar los que no tienen nombre o tienen cantidad 0
             const filteredItems = filterValidItems(createFormData.items);
@@ -699,7 +692,8 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 items: processedItems,
                 deliveryArea: {
                     ...createFormData.deliveryArea,
-                    schedule: normalizeScheduleTime(createFormData.deliveryArea.schedule)
+                    schedule: normalizeScheduleTime(createFormData.deliveryArea.schedule),
+                    sameDayDelivery: !!createFormData.puntoEnvio // Forzar true si es express
                 }
             };
 
@@ -709,8 +703,8 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                 orderDataWithFilteredItems.punto_de_venta = puntoVentaId;
             }
 
-            // Incluir el puntoEnvio si el método de pago es bank-transfer
-            if (createFormData.paymentMethod === 'bank-transfer' && createFormData.puntoEnvio) {
+            // Incluir el puntoEnvio si está presente
+            if (createFormData.puntoEnvio) {
                 orderDataWithFilteredItems.puntoEnvio = createFormData.puntoEnvio;
             }
 
@@ -1319,9 +1313,9 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                             onChange={(e) => {
                                                 const selectedPuntoEnvio = e.target.value;
                                                 handleCreateFormChange('puntoEnvio', selectedPuntoEnvio);
-                                                // Si se selecciona un punto de envío, establecer automáticamente bank-transfer
+                                                // Si se selecciona un punto de envío, establecer automáticamente mercado-pago
                                                 if (selectedPuntoEnvio) {
-                                                    handleCreateFormChange('paymentMethod', 'bank-transfer');
+                                                    handleCreateFormChange('paymentMethod', 'mercado-pago');
                                                 }
                                             }}
                                             className="w-full p-2 border border-gray-300 rounded-md"
@@ -1338,27 +1332,31 @@ export function OrdersDataTable<TData extends { _id: string }, TValue>({
                                     <div className="space-y-2">
                                         <Label>Medio de Pago</Label>
                                         <select
-                                            value={createFormData.paymentMethod || 'bank-transfer'}
+                                            value={createFormData.paymentMethod || ''}
                                             onChange={(e) => {
                                                 const selectedPaymentMethod = e.target.value;
                                                 handleCreateFormChange('paymentMethod', selectedPaymentMethod);
-                                                // Si se cambia el método de pago y no es bank-transfer, limpiar punto de envío
-                                                if (selectedPaymentMethod !== 'bank-transfer') {
+                                                // Si se cambia el método de pago y no es mercado-pago o bank-transfer, limpiar punto de envío (aunque ahora preferimos MP)
+                                                if (selectedPaymentMethod !== 'mercado-pago' && selectedPaymentMethod !== 'bank-transfer') {
                                                     handleCreateFormChange('puntoEnvio', '');
                                                 }
                                             }}
                                             className="w-full p-2 border border-gray-300 rounded-md"
                                             disabled={!!createFormData.puntoEnvio}
                                         >
-                                            {PAYMENT_METHOD_OPTIONS.map(option => (
-                                                <option key={option.value} value={option.value}>
-                                                    {option.label}
-                                                </option>
-                                            ))}
+                                            {isExpressContext || createFormData.puntoEnvio ? (
+                                                <option value="mercado-pago">Mercado Pago</option>
+                                            ) : (
+                                                PAYMENT_METHOD_OPTIONS.map(option => (
+                                                    <option key={option.value} value={option.value}>
+                                                        {option.label}
+                                                    </option>
+                                                ))
+                                            )}
                                         </select>
-                                        {createFormData.puntoEnvio && (
+                                        {(isExpressContext || createFormData.puntoEnvio) && (
                                             <p className="text-xs text-gray-500">
-                                                El método de pago está fijado en "bank-transfer" para órdenes express
+                                                El método de pago está fijado en "Mercado Pago" para órdenes express
                                             </p>
                                         )}
                                     </div>

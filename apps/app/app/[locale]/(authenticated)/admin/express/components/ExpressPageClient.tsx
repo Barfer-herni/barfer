@@ -1431,7 +1431,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                         <CardHeader>
                                             <CardTitle>Órdenes Express</CardTitle>
                                             <CardDescription>
-                                                Órdenes con paymentMethod: "bank-transfer" asociadas a este punto de envío
+                                                Órdenes express asociadas a este punto de envío
                                             </CardDescription>
                                         </CardHeader>
                                         <CardContent>
@@ -1462,6 +1462,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                                     const tableComponent = (
                                         <>
                                             <OrdersDataTable
+                                                isExpressContext={true}
                                                 fontSize="text-sm"
                                                 columns={createExpressColumns(
                                                     undefined, // No recargar datos al actualizar

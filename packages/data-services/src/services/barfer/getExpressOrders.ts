@@ -18,7 +18,9 @@ export async function getExpressOrders(puntoEnvio?: string, from?: string, to?: 
                 // Pedidos viejos: método de pago bank-transfer
                 { paymentMethod: 'bank-transfer' },
                 // Pedidos nuevos: sameDayDelivery activado
-                { 'deliveryArea.sameDayDelivery': true }
+                { 'deliveryArea.sameDayDelivery': true },
+                // Pedidos con punto de envío asignado (independiente del método de pago)
+                { puntoEnvio: { $exists: true, $nin: [null, ''] } }
             ]
         };
 

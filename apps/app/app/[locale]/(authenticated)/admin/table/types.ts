@@ -16,6 +16,8 @@ export interface DataTableProps<TData extends { _id: string }, TValue> {
     hideOrderTypeFilter?: boolean;
     /** Oculta el filtro de rango de fechas (ej. cuando ya se muestra uno compartido arriba, como en express) */
     hideDateRangeFilter?: boolean;
+    /** Indica si la tabla se está mostrando en el contexto de la página de Express */
+    isExpressContext?: boolean;
 }
 
 export interface EditValues {

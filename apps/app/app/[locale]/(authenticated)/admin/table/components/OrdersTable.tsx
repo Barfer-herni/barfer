@@ -74,6 +74,7 @@ interface OrdersTableProps<TData extends { _id: string }, TValue> extends DataTa
     onForceRecalculatePrice?: () => void;
     fontSize?: 'text-xs' | 'text-sm';
     isDragEnabled?: boolean; // Nuevo prop para habilitar drag and drop
+    isExpressContext?: boolean;
 }
 
 // Componente interno para filas draggables
@@ -186,6 +187,7 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
     onForceRecalculatePrice,
     fontSize = 'text-xs',
     isDragEnabled = false,
+    isExpressContext = false,
 }: OrdersTableProps<TData, TValue>) {
     const table = useReactTable({
         data,
@@ -330,7 +332,7 @@ export function OrdersTable<TData extends { _id: string }, TValue>({
                                 {row.getVisibleCells().map((cell, index) => {
                                     // Edición inline para campos editables
                                     if (editingRowId === row.id) {
-                                        return renderEditableCell(cell, index, editValues, onEditValueChange, productSearchFilter, onProductSearchChange, availableProducts, productsLoading, isCalculatingPrice, onForceRecalculatePrice, fontSize);
+                                        return renderEditableCell(cell, index, editValues, onEditValueChange, productSearchFilter, onProductSearchChange, availableProducts, productsLoading, isCalculatingPrice, onForceRecalculatePrice, fontSize, isExpressContext);
                                     }
 
                                     // Aplicar color de fondo para celdas específicas
@@ -683,7 +685,7 @@ function findMatchingProduct(itemName: string, availableProducts: string[], item
     return itemName;
 }
 
-function renderEditableCell(cell: any, index: number, editValues: any, onEditValueChange: (field: string, value: any) => void, productSearchFilter: string, onProductSearchChange: (value: string) => void, availableProducts: string[], productsLoading: boolean, isCalculatingPrice?: boolean, onForceRecalculatePrice?: () => void, fontSize: 'text-xs' | 'text-sm' = 'text-xs') {
+function renderEditableCell(cell: any, index: number, editValues: any, onEditValueChange: (field: string, value: any) => void, productSearchFilter: string, onProductSearchChange: (value: string) => void, availableProducts: string[], productsLoading: boolean, isCalculatingPrice?: boolean, onForceRecalculatePrice?: () => void, fontSize: 'text-xs' | 'text-sm' = 'text-xs', isExpressContext: boolean = false) {
     if (cell.column.id === 'notesOwn') {
         return (
             <TableCell key={cell.id} className="px-0 py-1 border-r border-border">
@@ -801,12 +803,17 @@ function renderEditableCell(cell: any, index: number, editValues: any, onEditVal
                     value={editValues.paymentMethod}
                     onChange={e => onEditValueChange('paymentMethod', e.target.value)}
                     className={`w-full p-1 ${fontSize} border border-gray-300 rounded-md text-center`}
+                    disabled={!!(isExpressContext || editValues.puntoEnvio || (cell.row.original as any).puntoEnvio)}
                 >
-                    {PAYMENT_METHOD_OPTIONS.map(option => (
-                        <option key={option.value} value={option.value}>
-                            {option.label}
-                        </option>
-                    ))}
+                    {(isExpressContext || editValues.puntoEnvio || (cell.row.original as any).puntoEnvio) ? (
+                        <option value="mercado-pago">Mercado Pago</option>
+                    ) : (
+                        PAYMENT_METHOD_OPTIONS.map(option => (
+                            <option key={option.value} value={option.value}>
+                                {option.label}
+                            </option>
+                        ))
+                    )}
                 </select>
             </TableCell>
         );
