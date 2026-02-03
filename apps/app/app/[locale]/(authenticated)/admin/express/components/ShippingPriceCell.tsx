@@ -34,10 +34,10 @@ export function ShippingPriceCell({ orderId, currentPrice, onUpdate, onOrderUpda
 
     const handleBlur = async () => {
         if (isSaving) return;
-        
+
         const numValue = Number(value);
         const currentNumValue = optimisticPrice;
-        
+
         // Si el valor no cambió, solo salir del modo edición
         if (numValue === currentNumValue) {
             setIsEditing(false);
@@ -56,7 +56,7 @@ export function ShippingPriceCell({ orderId, currentPrice, onUpdate, onOrderUpda
         setHasPendingChange(true);
         setIsSaving(true);
         setIsEditing(false);
-        
+
         try {
             const result = await updateOrderAction(orderId, {
                 shippingPrice: numValue
@@ -127,7 +127,7 @@ export function ShippingPriceCell({ orderId, currentPrice, onUpdate, onOrderUpda
     }).format(rounded);
 
     return (
-        <div 
+        <div
             className={`font-medium text-center min-w-[100px] text-sm cursor-pointer hover:bg-gray-100 px-2 py-1 rounded transition-colors ${isSaving ? 'opacity-60' : ''}`}
             onClick={handleFocus}
             title={isSaving ? "Guardando..." : "Click para editar"}

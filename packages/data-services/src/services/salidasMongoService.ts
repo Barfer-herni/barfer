@@ -339,26 +339,36 @@ export async function getSalidasPaginatedMongo({
 
         // Manejar filtros de fecha (prioridad: fechaDesde/fechaHasta > fecha)
         if (filters.fechaDesde || filters.fechaHasta) {
-            matchConditions['fechaFactura'] = {};
-            if (filters.fechaDesde) {
-                matchConditions['fechaFactura'].$gte = filters.fechaDesde;
-                console.log(`🔍 Filtro fecha desde: ${filters.fechaDesde.toISOString()}`);
-            }
-            if (filters.fechaHasta) {
-                matchConditions['fechaFactura'].$lte = filters.fechaHasta;
-                console.log(`🔍 Filtro fecha hasta: ${filters.fechaHasta.toISOString()}`);
-            }
+            const dateConditions: any[] = [];
+
+            // Condición para fechaFactura
+            const facturaCondition: any = {};
+            if (filters.fechaDesde) facturaCondition.$gte = filters.fechaDesde;
+            if (filters.fechaHasta) facturaCondition.$lte = filters.fechaHasta;
+            dateConditions.push({ fechaFactura: facturaCondition });
+
+            // Condición para fechaPago
+            const pagoCondition: any = {};
+            if (filters.fechaDesde) pagoCondition.$gte = filters.fechaDesde;
+            if (filters.fechaHasta) pagoCondition.$lte = filters.fechaHasta;
+            dateConditions.push({ fechaPago: pagoCondition });
+
+            matchConditions.$or = dateConditions;
+
+            if (filters.fechaDesde) console.log(`🔍 Filtro fecha desde: ${filters.fechaDesde.toISOString()}`);
+            if (filters.fechaHasta) console.log(`🔍 Filtro fecha hasta: ${filters.fechaHasta.toISOString()}`);
+            console.log(`📅 Filtrando por fechaFactura O fechaPago`);
         } else if (filters.fecha) {
             // Parsear fecha y crear rango para el día completo (legacy)
             const dateObj = new Date(filters.fecha);
             const startOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 0, 0, 0);
             const endOfDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 23, 59, 59, 999);
 
-            matchConditions['fechaFactura'] = {
-                $gte: startOfDay,
-                $lte: endOfDay
-            };
-            console.log(`🔍 Filtro fecha: ${filters.fecha}`);
+            matchConditions.$or = [
+                { fechaFactura: { $gte: startOfDay, $lte: endOfDay } },
+                { fechaPago: { $gte: startOfDay, $lte: endOfDay } }
+            ];
+            console.log(`🔍 Filtro fecha (legacy): ${filters.fecha}`);
         }
 
         // Agregar $match si hay condiciones

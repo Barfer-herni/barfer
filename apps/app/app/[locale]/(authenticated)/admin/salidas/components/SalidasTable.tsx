@@ -134,7 +134,7 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
             if (selectedMetodoPago) params.set('metodoPagoId', selectedMetodoPago);
             if (selectedTipo) params.set('tipo', selectedTipo);
             if (selectedTipoRegistro) params.set('tipoRegistro', selectedTipoRegistro);
-            
+
             // Mantener los parámetros de fecha (from/to) que vienen del AnalyticsDateFilter
             const currentParams = new URLSearchParams(window.location.search);
             if (currentParams.get('from')) params.set('from', currentParams.get('from')!);
@@ -669,8 +669,8 @@ export function SalidasTable({ salidas = [], onRefreshSalidas, userPermissions =
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="w-[100px] text-sm">
-                                            <div className="truncate" title="BARFER">
-                                                BARFER
+                                            <div className="truncate" title={salida.marca || 'BARFER'}>
+                                                {salida.marca || 'BARFER'}
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right font-mono w-[120px] text-sm font-semibold">
