@@ -861,92 +861,132 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
         const productName = (product.product || '').toUpperCase().trim();
         const productWeight = product.weight ? (product.weight || '').toUpperCase().trim().replace(/\s+/g, '') : null;
 
-        // DEBUG: Log para HUESOS CARNOSOS
-        const isHuesosCarnosos = productName.includes('HUESOS CARNOSOS');
-
         ordersOfDay.forEach(order => {
             order.items.forEach((item: any) => {
-                const itemProduct = (item.name || '').toUpperCase().trim();
-
-                // DEBUG: Log para HUESOS CARNOSOS
-                if (isHuesosCarnosos) {
-                }
+                const itemProductBase = (item.name || '').toUpperCase().trim();
+                const isBigDogItem = itemProductBase.includes('BIG DOG');
+                const isBigDogStock = productName.includes('BIG DOG');
 
                 // --- VALIDACIÓN DE SECCIÓN ---
-                // Evitar mezclar PERRO con GATO
-                // IMPORTANTE: No aplicar esta validación a productos de la sección OTROS
+                // Evitar mezclar PERRO con GATO y BIG DOG con PERRO REGULAR
                 if (!sectionUpper.includes('OTROS')) {
                     if (sectionUpper.includes('GATO')) {
-                        if (!itemProduct.includes('GATO')) return; // Item no es de gato
+                        if (!itemProductBase.includes('GATO')) return;
                     } else if (sectionUpper.includes('PERRO')) {
-                        // Si la sección es perro, el item debe ser perro o big dog
-                        // O al menos NO debe ser de Gato (por si hay nombres genéricos, aunque Express usa BOX PERRO/GATO)
-                        if (itemProduct.includes('GATO')) return;
-                        // Opcional: Requerir PERRO o BIG DOG explícitamente si los nombres son consistentes
-                        if (!itemProduct.includes('PERRO') && !itemProduct.includes('BIG DOG')) return;
+                        if (itemProductBase.includes('GATO')) return;
+
+                        // Regla: Si el ítem es BIG DOG, el stock debe ser BIG DOG.
+                        // Si el ítem NO es BIG DOG, el stock NO debe ser BIG DOG.
+                        if (isBigDogStock && !isBigDogItem) return;
+                        if (!isBigDogStock && isBigDogItem) return;
                     }
                 }
 
                 let isMatch = false;
 
-                // CASO ESPECIAL: Productos con peso en el nombre (ej: "HUESOS CARNOSOS 5KG")
-                // El productName incluye el peso (ej: "HUESOS CARNOSOS 5KG") pero el item puede venir sin él
-                if (!productWeight && productName.match(/\d+KG/i)) {
-                    // Extraer el nombre base sin el peso del productName
-                    const productNameWithoutWeight = productName.replace(/\s*\d+KG.*$/i, '').trim();
+                // CASO ESPECIAL: BIG DOG
+                if (isBigDogItem && isBigDogStock) {
+                    const flavors = ['POLLO', 'VACA', 'CORDERO', 'CERDO', 'CONEJO', 'PAVO', 'MIX'];
+                    const stockFullIdent = `${productName} ${productWeight || ''}`.toUpperCase();
 
-                    // Verificar si el item coincide con el nombre base
-                    if (itemProduct.includes(productNameWithoutWeight)) {
-                        // Verificar el peso en las opciones del item
-                        if (item.options && item.options.length > 0) {
-                            const itemOptionName = (item.options[0]?.name || '').toUpperCase().trim();
-                            // Extraer el peso del productName
-                            const productWeightMatch = productName.match(/(\d+KG)/i);
-                            if (productWeightMatch && itemOptionName.includes(productWeightMatch[1])) {
-                                isMatch = true;
+                    // Prioridad: Matchear sabor desde las opciones
+                    if (item.options && item.options.length > 0) {
+                        // Buscamos si alguna opción es un sabor conocido
+                        const flavorOption = item.options.find((opt: any) =>
+                            flavors.some(f => (opt.name || '').toUpperCase().includes(f))
+                        );
+
+                        if (flavorOption) {
+                            const optValue = flavorOption.name.toUpperCase().trim();
+                            // Si hay una opción de sabor, DEBE coincidir con el stock
+                            isMatch = stockFullIdent.includes(optValue);
+                        }
+                    }
+
+                    // Fallback: Si no hay match por opciones de sabor, intentar por el nombre del ítem
+                    if (!isMatch) {
+                        const itemFullIdent = itemProductBase.toUpperCase();
+                        const itemFlavor = flavors.find(f => itemFullIdent.includes(f));
+                        const stockFlavor = flavors.find(f => stockFullIdent.includes(f));
+
+                        const cleanItem = itemProductBase.replace(/\s*\(?\d+KG\)?/gi, '').trim();
+                        const cleanStock = productName.replace(/\s*\(?\d+KG\)?/gi, '').trim();
+
+                        if (cleanItem === cleanStock || (cleanItem.includes(cleanStock) && cleanStock.length > 5)) {
+                            if (stockFlavor) {
+                                // Si el stock tiene un sabor específico, el ítem debe tenerlo en su nombre
+                                isMatch = itemFullIdent.includes(stockFlavor);
+                            } else {
+                                // Si el stock no tiene sabor especificado en el nombre/peso,
+                                // solo matcheamos si el ítem tampoco tiene sabor en el nombre
+                                isMatch = !itemFlavor;
                             }
                         }
                     }
-                }
+                } else {
+                    // CASO REGULAR: BOX PERRO, BOX GATO, etc.
+                    const itemOptions = (item.options || []).map((opt: any) => (opt.name || '').toUpperCase().trim());
+                    const itemMainOption = itemOptions[0] || '';
+                    
+                    // Detectar pesos en el ítem (en nombre u opciones)
+                    const itemFullIdent = `${itemProductBase} ${itemOptions.join(' ')}`.toUpperCase();
+                    const weightRegex = /(\d+\s*KG)/gi;
+                    const itemWeightsMatch = itemFullIdent.match(weightRegex);
+                    const stockWeightsMatch = `${productName} ${productWeight || ''}`.toUpperCase().match(weightRegex);
 
-                // 1. Comparación directa
-                if (!isMatch && itemProduct === productName) isMatch = true;
+                    const normalizedItemWeight = itemWeightsMatch ? itemWeightsMatch[0].replace(/\s+/g, '') : null;
+                    const normalizedStockWeight = stockWeightsMatch ? stockWeightsMatch[0].replace(/\s+/g, '') : (productWeight ? productWeight.replace(/\s+/g, '') : null);
 
-                // 2. Comparación si el nombre del item incluye el nombre del producto
-                if (!isMatch && itemProduct.includes(productName)) {
-                    // Verificar si hay peso
-                    if (productWeight) {
-                        let weightMatch = false;
-                        if (item.options && item.options.length > 0) {
-                            const itemWeight = (item.options[0]?.name || '').toUpperCase().trim().replace(/\s+/g, '');
-                            if (itemWeight === productWeight) weightMatch = true;
-                        } else if (itemProduct.replace(/\s+/g, '').includes(productWeight)) {
-                            weightMatch = true;
-                        }
-                        if (weightMatch) isMatch = true;
-                    } else {
-                        isMatch = true;
-                    }
-                }
-                // 3. Comparación removiendo prefijos comunes
-                if (!isMatch) {
-                    let extractedProductName = itemProduct;
-                    extractedProductName = extractedProductName.replace(/^BOX\s+PERRO\s+/i, '');
-                    extractedProductName = extractedProductName.replace(/^BOX\s+GATO\s+/i, '');
-                    extractedProductName = extractedProductName.replace(/^BIG\s+DOG\s+/i, '');
-                    extractedProductName = extractedProductName.replace(/\s+\d+KG.*$/i, '');
-                    extractedProductName = extractedProductName.trim();
+                    // Construir el nombre del item incluyendo la opción pero SIN el peso
+                    const itemProduct = `${itemProductBase} ${itemMainOption}`.trim();
+                    const cleanItemProduct = itemProduct.replace(/\s*\(?\d+\s*KG\)?/gi, '').trim();
+                    const cleanProductName = productName.replace(/\s*\(?\d+\s*KG\)?/gi, '').trim();
 
-                    if (extractedProductName === productName) {
-                        if (productWeight) {
-                            if (item.options && item.options.length > 0) {
-                                const itemWeight = (item.options[0]?.name || '').toUpperCase().trim().replace(/\s+/g, '');
-                                if (itemWeight === productWeight) isMatch = true;
-                            } else if (itemProduct.replace(/\s+/g, '').includes(productWeight)) {
+                    // Extraer el sabor/tipo del producto del item (POLLO, VACA, CERDO, CORDERO, etc.)
+                    let extractedFlavor = '';
+                    let extracted = itemProductBase;
+                    extracted = extracted.replace(/^BOX\s+PERRO\s+/i, '');
+                    extracted = extracted.replace(/^BOX\s+GATO\s+/i, '');
+                    extracted = extracted.replace(/\s*\(?\d+\s*KG\)?/gi, '');
+                    extractedFlavor = extracted.trim();
+
+                    // 1. Comparación básica de nombre
+                    // Para productos como "BOX PERRO POLLO", el extractedFlavor sería "POLLO"
+                    // y debería coincidir con el stock que tiene product: "POLLO"
+                    const nameMatch = cleanItemProduct === cleanProductName ||
+                        cleanItemProduct.includes(cleanProductName) ||
+                        cleanProductName.includes(cleanItemProduct) ||
+                        itemProductBase.includes(cleanProductName) ||
+                        extractedFlavor === cleanProductName ||
+                        cleanProductName === extractedFlavor;
+
+                    if (nameMatch) {
+                        // Si el nombre coincide, verificar el peso
+                        // IMPORTANTE: Si alguno tiene peso especificado, AMBOS deben coincidir
+                        if (normalizedStockWeight || normalizedItemWeight) {
+                            if (normalizedStockWeight === normalizedItemWeight) {
                                 isMatch = true;
+                            } else {
+                                // Mismatch de peso - NO es un match
+                                isMatch = false;
                             }
                         } else {
+                            // Ninguno tiene peso especificado, es un match genérico
                             isMatch = true;
+                        }
+                    }
+
+                    // Fallback: Si no hay match, intentar comparación directa con el sabor extraído
+                    if (!isMatch && extractedFlavor) {
+                        const flavorMatch = extractedFlavor === cleanProductName;
+                        
+                        if (flavorMatch) {
+                            // Verificar peso
+                            if (normalizedStockWeight || normalizedItemWeight) {
+                                isMatch = normalizedStockWeight === normalizedItemWeight;
+                            } else {
+                                isMatch = true;
+                            }
                         }
                     }
                 }
@@ -954,15 +994,14 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 if (isMatch) {
                     const qty = item.quantity || item.options?.[0]?.quantity || 1;
                     totalQuantity += qty;
-
-                } else if (isHuesosCarnosos) {
-                    console.log('🦴 [DEBUG] ❌ NO MATCH');
                 }
             });
         });
 
         return totalQuantity;
-    }, [selectedPuntoEnvio, orders, searchParams]);    // Función para guardar automáticamente con debounce
+    }, [selectedPuntoEnvio, orders, searchParams]);
+
+    // Función para guardar automáticamente con debounce
     const saveStockValue = useCallback((stockId: string, field: 'stockInicial' | 'llevamos', value: number, product?: ProductForStock) => {
         // Limpiar timeout anterior si existe (usar solo stockId como clave)
         if (saveTimeouts.current[stockId]) {
@@ -1011,16 +1050,14 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 const currentValues = localStockValuesRef.current[stockId] || {};
                 const currentStockInicial = currentValues.stockInicial ?? 0;
                 const currentLlevamos = currentValues.llevamos ?? 0;
+
                 // Marcar como guardando
                 savingFlags.current[stockId] = true;
 
                 // Recalcular pedidos del día actualizado para guardar
-                // Nota: si no pasamos product para actualizaciones, podríamos perder precisión,
-                // pero normalmente product viene del contexto de render o se puede buscar.
-                // En este caso, saveStockValue recibe product como argumento opcional, asegurarnos de pasarlo en el JSX.
                 let currentPedidosDelDia = 0;
 
-                // Buscar producto si no está presente (caso de update existente donde product puede venir undefined)
+                // Buscar producto si no está presente
                 let targetProduct = product;
                 if (!targetProduct && !stockId.startsWith('new-')) {
                     // Intentar encontrar el producto en productsForStock basado en el stock actual
@@ -1041,73 +1078,41 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                 // Fórmula: stockInicial + llevamos - pedidosDelDia = stockFinal
                 const stockFinal = currentStockInicial + currentLlevamos - currentPedidosDelDia;
 
-
                 // Guardar en servidor
                 try {
                     if (stockId.startsWith('new-')) {
-                        // Verificar si ya existe un registro para este producto antes de crear
-                        const stockForDate = getStockForDate();
-                        if (product) {
-                            // Buscar stock existente usando comparación normalizada
-                            const existingStock = stockForDate.find(s => isSameProduct(s, product));
+                        // Crear nuevo registro solo si no existe
+                        if (!selectedPuntoEnvio || !targetProduct) return;
 
-                            if (existingStock) {
-                                // Si ya existe, actualizar en lugar de crear
-                                const updateData: any = {
-                                    stockInicial: currentStockInicial,
-                                    llevamos: currentLlevamos,
-                                    stockFinal,
-                                    pedidosDelDia: calculatePedidosDelDia(product),
-                                    section: product?.section,
-                                };
-                                const result = await updateStockAction(String(existingStock._id), updateData);
-                                if (result.success && result.stock) {
-                                    const newId = String(result.stock._id);
-                                    setLocalStockValues(prevLocal => {
-                                        const { [stockId]: _, ...rest } = prevLocal;
-                                        const updated = { ...rest, [newId]: { stockInicial: result.stock!.stockInicial, llevamos: result.stock!.llevamos } };
-                                        localStockValuesRef.current = updated;
-                                        return updated;
-                                    });
-                                    setStock(prev => prev.map(s =>
-                                        String(s._id) === String(existingStock._id) ? result.stock! : s
-                                    ));
-                                }
-                            } else {
-                                // Crear nuevo registro solo si no existe
-                                if (!selectedPuntoEnvio || !product) return;
+                        const fromDate = searchParams.get('from');
+                        if (!fromDate) return; // Necesitamos una fecha para crear stock
 
-                                const fromDate = searchParams.get('from');
-                                if (!fromDate) return; // Necesitamos una fecha para crear stock
+                        const pedidosDelDiaCalculado = calculatePedidosDelDia(targetProduct);
+                        // Guardar el producto con la sección para distinguir PERRO de GATO
+                        const productoConSeccion = `${targetProduct.section} ${targetProduct.product}`.trim();
+                        const stockData: any = {
+                            puntoEnvio: selectedPuntoEnvio,
+                            producto: productoConSeccion,
+                            peso: targetProduct.weight || undefined,
+                            stockInicial: currentStockInicial,
+                            llevamos: currentLlevamos,
+                            stockFinal,
+                            pedidosDelDia: pedidosDelDiaCalculado,
+                            section: targetProduct.section,
+                            fecha: fromDate, // Enviar formato YYYY-MM-DD desde URL
+                        };
 
-                                const pedidosDelDiaCalculado = calculatePedidosDelDia(product);
-                                // Guardar el producto con la sección para distinguir PERRO de GATO
-                                const productoConSeccion = `${product.section} ${product.product}`.trim();
-                                const stockData: any = {
-                                    puntoEnvio: selectedPuntoEnvio,
-                                    producto: productoConSeccion,
-                                    peso: product.weight || undefined,
-                                    stockInicial: currentStockInicial,
-                                    llevamos: currentLlevamos,
-                                    stockFinal,
-                                    pedidosDelDia: pedidosDelDiaCalculado,
-                                    section: product.section,
-                                    fecha: fromDate, // Enviar formato YYYY-MM-DD desde URL
-                                };
-
-                                const result = await createStockAction(stockData);
-                                if (result.success && result.stock) {
-                                    // Actualizar estado local con el nuevo ID
-                                    const newId = String(result.stock._id);
-                                    setLocalStockValues(prevLocal => {
-                                        const { [stockId]: _, ...rest } = prevLocal;
-                                        const updated = { ...rest, [newId]: { stockInicial: result.stock!.stockInicial, llevamos: result.stock!.llevamos } };
-                                        localStockValuesRef.current = updated;
-                                        return updated;
-                                    });
-                                    setStock(prev => [...prev, result.stock!]);
-                                }
-                            }
+                        const result = await createStockAction(stockData);
+                        if (result.success && result.stock) {
+                            // Actualizar estado local con el nuevo ID
+                            const newId = String(result.stock._id);
+                            setLocalStockValues(prevLocal => {
+                                const { [stockId]: _, ...rest } = prevLocal;
+                                const updated = { ...rest, [newId]: { stockInicial: result.stock!.stockInicial, llevamos: result.stock!.llevamos } };
+                                localStockValuesRef.current = updated;
+                                return updated;
+                            });
+                            setStock(prev => [...prev, result.stock!]);
                         }
                     } else {
                         // Actualizar registro existente
@@ -1118,8 +1123,8 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
                         };
 
                         // Si tenemos el producto, actualizar también pedidosDelDia
-                        if (product) {
-                            updateData.pedidosDelDia = calculatePedidosDelDia(product);
+                        if (targetProduct) {
+                            updateData.pedidosDelDia = calculatePedidosDelDia(targetProduct);
 
                             // IMPORTANTE: Actualizar el nombre del producto para incluir la sección
                             // Esto corrige registros viejos que solo tienen "POLLO" sin "PERRO" o "GATO"
@@ -1132,7 +1137,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
 
                                 // Si el registro viejo no tiene sección, agregársela
                                 if (!hasSection) {
-                                    const productoConSeccion = `${product.section} ${product.product}`.trim();
+                                    const productoConSeccion = `${targetProduct.section} ${targetProduct.product}`.trim();
                                     updateData.producto = productoConSeccion;
                                 }
                             }
@@ -1177,7 +1182,7 @@ export function ExpressPageClient({ dictionary, initialPuntosEnvio, canEdit, can
             }
             delete saveTimeouts.current[stockId];
         }, 1000);
-    }, [selectedPuntoEnvio, stock, getStockForDate, calculatePedidosDelDia, isSameProduct, normalizeProductName, normalizeWeight, searchParams]);
+    }, [selectedPuntoEnvio, stock, getStockForDate, calculatePedidosDelDia, isSameProduct, productsForStock, searchParams]);
 
     // Función para determinar el orden de los productos
     const getProductOrder = (product: string, section: string): number => {

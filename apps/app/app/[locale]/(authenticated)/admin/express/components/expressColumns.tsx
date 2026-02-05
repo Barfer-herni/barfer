@@ -255,13 +255,15 @@ export const createExpressColumns = (
                             }
 
                             const itemName = item.name || '';
-                            const hasWeightInName = /\d+KG|\d+GRS|\d+G/.test(itemName);
+                            const itemNameUpper = itemName.toUpperCase();
+                            const displayOptionUpper = displayOption.toUpperCase();
+                            const isOptionInName = displayOption && itemNameUpper.includes(displayOptionUpper);
                             const hasQuantityInName = /\s+-\s+x\d+$/i.test(itemName);
 
                             return (
                                 <div key={`${item.id}-${index}`}>
                                     {itemName}
-                                    {!hasWeightInName && displayOption ? ` - ${displayOption}` : ''}
+                                    {displayOption && !isOptionInName ? ` - ${displayOption}` : ''}
                                     {!hasQuantityInName ? ` - x${quantity}` : ''}
                                 </div>
                             );
