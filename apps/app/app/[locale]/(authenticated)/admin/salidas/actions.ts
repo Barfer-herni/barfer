@@ -37,7 +37,7 @@ import {
     getSalidasMonthlyAnalyticsMongo,
     getSalidasOverviewAnalyticsMongo,
     // Servicios adicionales
-    getSalidasByCategory,
+    getSalidasByCategoryMongo,
     // Tipos MongoDB
     type CreateSalidaMongoInput,
     type UpdateSalidaMongoInput,
@@ -145,7 +145,7 @@ export async function getSalidasByDateRangeAction(startDate: Date, endDate: Date
 
 // Obtener salidas por categoría
 export async function getSalidasByCategoryAction(categoria: string) {
-    return await getSalidasByCategory(categoria);
+    return await getSalidasByCategoryMongo(categoria);
 }
 
 // Nuevas acciones para categorías y métodos de pago

@@ -1,7 +1,5 @@
-import { database } from '@repo/database';
-
 export const GET = async () => {
-
+  // Keep-alive endpoint - can add DB health check with getCollection if needed
   // const newPage = await database.page.create({
   //   data: {
   //     name: 'cron-temp',

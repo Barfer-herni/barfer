@@ -4,5 +4,12 @@
     "baseUrl": "."
   },
   "include": ["**/*.ts", "**/*.tsx"],
-  "exclude": ["node_modules"]
-} 
+  "exclude": [
+    "node_modules",
+    "src/services/salidasService.ts",
+    "src/services/categoriasService.ts",
+    "src/services/metodosPagoService.ts",
+    "src/services/pricesService.ts",
+    "src/services/salidasAnalyticsService.ts"
+  ]
+}

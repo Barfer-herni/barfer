@@ -1,5 +1,5 @@
 // ==========================================
-// SERVICIOS DEL SISTEMA (PostgreSQL/Prisma)
+// SERVICIOS DEL SISTEMA (MongoDB)
 // ==========================================
 export * from './authService';
 export * from './dataService';
@@ -7,13 +7,7 @@ export * from './imageService';
 export * from './uploadR2Image';
 export * from './userService';
 export * from './templateService';
-// export * from './pricesService'; // DEPRECATED: Migrado a MongoDB en barfer/pricesCalculationService.ts
-export * from './salidasService';
-// export * from './salidasAnalyticsService'; // DEPRECATED: Migrado a MongoDB en salidasAnalyticsMongoService.ts
-export { getSalidasDetailsByCategory } from './salidasService';
 export * from './balanceService';
-export * from './categoriasService';
-export * from './metodosPagoService';
 
 // ==========================================
 // SERVICIOS MIGRADOS A MONGODB

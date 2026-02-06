@@ -306,8 +306,8 @@ export function getCategoryPermission(categoryName: string): string {
  */
 export async function getAvailableCategoriesForPermissions(): Promise<string[]> {
     try {
-        const { getAllCategorias } = await import('@repo/data-services');
-        const result = await getAllCategorias();
+        const { getAllCategoriasMongo } = await import('@repo/data-services');
+        const result = await getAllCategoriasMongo();
 
         if (result.success && result.categorias) {
             return result.categorias.map(cat => cat.nombre);

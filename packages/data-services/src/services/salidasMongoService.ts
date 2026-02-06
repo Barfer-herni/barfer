@@ -212,6 +212,42 @@ export async function getAllSalidasWithPermissionFilterMongo(): Promise<{
 }
 
 /**
+ * Obtener salidas por nombre de categoría (case insensitive)
+ */
+export async function getSalidasByCategoryMongo(categoria: string): Promise<{
+    success: boolean;
+    salidas?: SalidaMongoData[];
+    total?: number;
+    message?: string;
+    error?: string;
+}> {
+    try {
+        const result = await getAllSalidasMongo();
+        if (!result.success || !result.salidas) {
+            return result;
+        }
+
+        const categoriaLower = categoria.toLowerCase();
+        const filteredSalidas = result.salidas.filter(
+            salida => salida.categoria?.nombre?.toLowerCase().includes(categoriaLower)
+        );
+
+        return {
+            success: true,
+            salidas: filteredSalidas,
+            total: filteredSalidas.length
+        };
+    } catch (error) {
+        console.error('Error in getSalidasByCategoryMongo:', error);
+        return {
+            success: false,
+            message: 'Error al obtener salidas por categoría',
+            error: 'GET_SALIDAS_BY_CATEGORY_MONGO_ERROR'
+        };
+    }
+}
+
+/**
  * Filtros de búsqueda para salidas
  */
 export interface SalidasFilters {

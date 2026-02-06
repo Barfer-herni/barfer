@@ -111,7 +111,21 @@ export async function initializeStockForDate(puntoEnvio: string, date: Date | st
             // CALCULATE Carry-over:
             // We ALWAYS recalculate based on (Inicial + Llevamos - Sales) to ensure 
             // any updates to the previous day's orders are reflected.
-            const stockInicialValue = (prev.stockInicial || 0) + (prev.llevamos || 0) - actualSales;
+
+
+            // console.log('actualSales', actualSales);
+            // console.log('prev.stockInicial', prev.stockInicial);
+            // console.log('prev.llevamos', prev.llevamos);
+            // console.log('prev.peso', prev.peso);
+            // console.log('prev.producto', prev.producto);
+            // console.log('prev.section', prev.section);
+            // console.log('prev.fecha', prev.fecha);
+            // console.log('prev.createdAt', prev.createdAt);
+            // console.log('prev.updatedAt', prev.updatedAt);
+            console.log("prev", prev);
+            // const stockInicialValue = (prev.stockInicial || 0) + (prev.llevamos || 0) - actualSales;
+            console.log('prev.stockFinal', prev.stockFinal);
+            const stockInicialValue = prev.stockFinal;
 
             // Check if record exists for this product 
             const existingMatch = existingStock.find(s =>
