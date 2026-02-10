@@ -1,6 +1,28 @@
 import 'server-only';
 import { getCollection } from '@repo/database';
 import { format } from 'date-fns';
+import type { Order } from '../../types/barfer';
+
+/** Misma lógica que el front: fecha del pedido = deliveryDay en UTC (YYYY-MM-DD) o createdAt en hora Argentina. */
+function orderDateStr(order: Order): string {
+    if (order.deliveryDay != null && order.deliveryDay !== '') {
+        const d = new Date(order.deliveryDay as string | Date);
+        return d.toISOString().substring(0, 10);
+    }
+    const created = new Date(order.createdAt as string | Date);
+    const argDate = new Date(created.getTime() - 3 * 60 * 60 * 1000);
+    return argDate.toISOString().substring(0, 10);
+}
+
+/** Filtra órdenes al día indicado con la MISMA regla que el front (ExpressPageClient ordersOfDay). */
+function filterOrdersForDay(orders: Order[], dateStr: string, puntoEnvio: string): Order[] {
+    return orders.filter(o => {
+        if (!o.puntoEnvio || o.puntoEnvio !== puntoEnvio) return false;
+        if (orderDateStr(o) !== dateStr) return false;
+        if (!o.items || o.items.length === 0) return false;
+        return true;
+    });
+}
 
 /**
  * Initializes stock for a specific date and shipping point.
@@ -16,6 +38,7 @@ export async function initializeStockForDate(puntoEnvio: string, date: Date | st
     error?: string;
 }> {
     try {
+        console.log("DATE", date)
         const stockCollection = await getCollection('stock');
 
         // Normalize date string (YYYY-MM-DD)
@@ -26,29 +49,28 @@ export async function initializeStockForDate(puntoEnvio: string, date: Date | st
             targetDateStr = date.substring(0, 10);
         }
 
-        console.log(`🔄 Check/Init Stock for ${puntoEnvio} on ${targetDateStr}`);
+        console.log(`\n🔄 ========== INITIALIZING STOCK ==========`);
+        console.log(`📍 Punto de envío: ${puntoEnvio}`);
+        console.log(`📅 Target date: ${targetDateStr}`);
 
         // 1. Check if stock exists
         const existingStock = await stockCollection.find({
             puntoEnvio: puntoEnvio,
             fecha: targetDateStr
         }).toArray();
-
+        
+        console.log(`📦 Existing stock records for ${targetDateStr}: ${existingStock.length}`);
         // Get today's date in YYYY-MM-DD format (Argentina time -3h)
         const nowArg = new Date(new Date().getTime() - (3 * 60 * 60 * 1000));
         const todayStr = (nowArg).toISOString().substring(0, 10);
 
-        // We only proceed if it's today or a future date.
-        // Past dates are strictly protected to avoid destroying history.
-        if (targetDateStr < todayStr && existingStock.length > 0) {
-            console.log(`✅ Past date ${targetDateStr}. Skipping re-sync to protect historical data.`);
-            return {
-                success: true,
-                initialized: false,
-                count: existingStock.length,
-                message: 'Historical stock protected'
-            };
-        }
+        console.log(`📅 Date comparison: target=${targetDateStr}, today=${todayStr}`);
+        
+        // ALWAYS recalculate stock values to ensure data accuracy
+        // This is important because orders can be added/modified retroactively
+        console.log(`✅ Proceeding with initialization/recalculation...`);
+
+        console.log("PEPEEE", targetDateStr);
 
         // 2. Find the most recent date with stock for this puntoEnvio
         const recentStock = await stockCollection
@@ -73,6 +95,8 @@ export async function initializeStockForDate(puntoEnvio: string, date: Date | st
         console.log(`📅 Found previous stock from ${lastDateStr}. Carrying over...`);
 
         // 3. Get ALL stock records for that last date
+        console.log("puntoEnvio", puntoEnvio);
+        console.log("lastDateStr", lastDateStr);
         const previousStockRecords = await stockCollection
             .find({
                 puntoEnvio: puntoEnvio,
@@ -86,6 +110,20 @@ export async function initializeStockForDate(puntoEnvio: string, date: Date | st
         const ordersForLastDate = await getExpressOrders(puntoEnvio, lastDateStr, lastDateStr);
 
         console.log(`📦 Found ${ordersForLastDate.length} orders for ${lastDateStr} to calculate true sales.`);
+
+        // 4.5. Get orders for the TARGET date to recalculate pedidosDelDia and stockFinal.
+        // Traemos un rango y filtramos en código con la MISMA lógica que el front (deliveryDay UTC date o createdAt Arg)
+        // para evitar desajustes por timezone o por cómo MongoDB compara fechas.
+        const ordersForTargetDateRaw = await getExpressOrders(puntoEnvio, targetDateStr, targetDateStr);
+        const ordersForTargetDate = filterOrdersForDay(ordersForTargetDateRaw, targetDateStr, puntoEnvio);
+        console.log(`📦 Found ${ordersForTargetDate.length} orders for ${targetDateStr} (raw ${ordersForTargetDateRaw.length}) to recalculate pedidosDelDia and stockFinal.`);
+        console.log('🔍 Orders for target date:', JSON.stringify(ordersForTargetDate.map(o => ({
+            _id: o._id,
+            puntoEnvio: o.puntoEnvio,
+            deliveryDay: o.deliveryDay,
+            createdAt: o.createdAt,
+            items: o.items?.map(i => ({ name: i.name, options: i.options }))
+        })), null, 2));
 
         // 5. Create or Update stock records for the target date
         let updatedCount = 0;
@@ -123,9 +161,36 @@ export async function initializeStockForDate(puntoEnvio: string, date: Date | st
             // console.log('prev.createdAt', prev.createdAt);
             // console.log('prev.updatedAt', prev.updatedAt);
             console.log("prev", prev);
+
+            let fecha = prev.fecha;
+            console.log("fecha", fecha)
+            const date = new Date(fecha);
+            date.setDate(date.getDate() - 1);
+
+            const diaAnterior = date.toISOString().split('T')[0];
+
+
+            console.log("diaAnterior", diaAnterior);
+
             // const stockInicialValue = (prev.stockInicial || 0) + (prev.llevamos || 0) - actualSales;
             console.log('prev.stockFinal', prev.stockFinal);
             const stockInicialValue = prev.stockFinal;
+
+            // Calculate REAL pedidosDelDia for the TARGET date
+            console.log(`\n🔍 Calculating pedidosDelDia for:`, {
+                producto: prev.producto,
+                section: section,
+                peso: prev.peso,
+                ordersCount: ordersForTargetDate.length
+            });
+            
+            const pedidosDelDiaForTarget = calculateSalesFromOrders({
+                product: prev.producto,
+                section: section,
+                weight: prev.peso
+            }, ordersForTargetDate);
+
+            console.log(`📊 Product: ${prev.producto} (${prev.peso}) - pedidosDelDia recalculated: ${pedidosDelDiaForTarget}`);
 
             // Check if record exists for this product 
             const existingMatch = existingStock.find(s =>
@@ -134,24 +199,61 @@ export async function initializeStockForDate(puntoEnvio: string, date: Date | st
             );
 
             if (existingMatch) {
-                // IMPORTANT: ONLY update if there is no manual activity (llevamos: 0)
-                // This protects manual edits made today while allowing correction of starting values.
-                if ((existingMatch.llevamos || 0) === 0) {
-                    await stockCollection.updateOne(
-                        { _id: existingMatch._id },
-                        {
-                            $set: {
-                                stockInicial: stockInicialValue,
-                                stockFinal: stockInicialValue - (existingMatch.pedidosDelDia || 0),
-                                section: section,
-                                updatedAt: new Date()
-                            }
+                // IMPORTANT: Recalculate stockFinal based on current data
+                // Formula: stockInicial + llevamos - pedidosDelDia = stockFinal
+                const recalculatedStockFinal = stockInicialValue + (existingMatch.llevamos || 0) - pedidosDelDiaForTarget;
+
+                console.log(`✏️ UPDATING existing record:`, {
+                    _id: existingMatch._id,
+                    producto: prev.producto,
+                    peso: prev.peso,
+                    OLD_VALUES: {
+                        stockInicial: existingMatch.stockInicial,
+                        llevamos: existingMatch.llevamos,
+                        pedidosDelDia: existingMatch.pedidosDelDia,
+                        stockFinal: existingMatch.stockFinal
+                    },
+                    NEW_VALUES: {
+                        stockInicial: stockInicialValue,
+                        llevamos: existingMatch.llevamos || 0,
+                        pedidosDelDia: pedidosDelDiaForTarget,
+                        stockFinal: recalculatedStockFinal
+                    },
+                    CALCULATION: `${stockInicialValue} + ${existingMatch.llevamos || 0} - ${pedidosDelDiaForTarget} = ${recalculatedStockFinal}`
+                });
+
+                await stockCollection.updateOne(
+                    { _id: existingMatch._id },
+                    {
+                        $set: {
+                            stockInicial: stockInicialValue,
+                            pedidosDelDia: pedidosDelDiaForTarget,
+                            stockFinal: recalculatedStockFinal,
+                            section: section,
+                            updatedAt: new Date()
                         }
-                    );
-                    updatedCount++;
-                }
+                    }
+                );
+                updatedCount++;
             } else {
-                // Create new record
+                // Create new record with recalculated values
+                const newStockFinal = stockInicialValue - pedidosDelDiaForTarget;
+                
+                console.log(`➕ CREATING new record:`, {
+                    producto: prev.producto,
+                    peso: prev.peso,
+                    section: section,
+                    VALUES: {
+                        stockInicial: stockInicialValue,
+                        llevamos: 0,
+                        pedidosDelDia: pedidosDelDiaForTarget,
+                        stockFinal: newStockFinal
+                    },
+                    CALCULATION: `${stockInicialValue} + 0 - ${pedidosDelDiaForTarget} = ${newStockFinal}`,
+                    fecha: targetDateStr,
+                    puntoEnvio: puntoEnvio
+                });
+
                 await stockCollection.insertOne({
                     puntoEnvio: puntoEnvio,
                     section: section,
@@ -159,8 +261,8 @@ export async function initializeStockForDate(puntoEnvio: string, date: Date | st
                     peso: prev.peso,
                     stockInicial: stockInicialValue,
                     llevamos: 0,
-                    pedidosDelDia: 0,
-                    stockFinal: stockInicialValue,
+                    pedidosDelDia: pedidosDelDiaForTarget,
+                    stockFinal: newStockFinal,
                     fecha: targetDateStr,
                     createdAt: new Date(),
                     updatedAt: new Date()
@@ -169,6 +271,10 @@ export async function initializeStockForDate(puntoEnvio: string, date: Date | st
             }
         }
 
+        console.log(`\n✅ ========== INITIALIZATION COMPLETE ==========`);
+        console.log(`📊 Total records updated/created: ${updatedCount}`);
+        console.log(`📅 Synchronized from: ${lastDateStr} to ${targetDateStr}`);
+        
         return {
             success: true,
             initialized: true,

@@ -31,32 +31,33 @@ export async function getExpressOrders(puntoEnvio?: string, from?: string, to?: 
 
         // Filtro por fecha si se proporciona
         if (from && from.trim() !== '' || to && to.trim() !== '') {
-            const dateConditions: any[] = [];
+            // Si solo hay "from", tratar como día único (evitar devolver todos los días futuros)
+            const fromVal = from?.trim() || '';
+            const toVal = to?.trim() || fromVal;
 
             let fromDateUTC: Date | undefined;
             let toDateUTC: Date | undefined;
 
-            if (from && from.trim() !== '') {
-                const [year, month, day] = from.split('-').map(Number);
+            if (fromVal) {
+                const [year, month, day] = fromVal.split('-').map(Number);
                 // 00:00:00 Arg Time = 03:00:00 UTC
                 fromDateUTC = new Date(Date.UTC(year, month - 1, day, 3, 0, 0, 0));
             }
-            if (to && to.trim() !== '') {
-                const [year, month, day] = to.split('-').map(Number);
+            if (toVal) {
+                const [year, month, day] = toVal.split('-').map(Number);
                 // 23:59:59 Arg Time = 02:59:59 UTC of NEXT day
                 toDateUTC = new Date(Date.UTC(year, month - 1, day + 1, 2, 59, 59, 999));
             }
 
-            // Para deliveryDay, buscamos coincidencia exacta en el día (T00:00:00.000Z)
-            // así que usamos el rango UTC del día calendario simplificado (0 a 23:59)
+            // Para deliveryDay: día en UTC (00:00 a 23:59) para alinearse con el front (toISOString().substring(0,10))
             let fromDeliveryUTC: Date | undefined;
             let toDeliveryUTC: Date | undefined;
-            if (from && from.trim() !== '') {
-                const [year, month, day] = from.split('-').map(Number);
+            if (fromVal) {
+                const [year, month, day] = fromVal.split('-').map(Number);
                 fromDeliveryUTC = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
             }
-            if (to && to.trim() !== '') {
-                const [year, month, day] = to.split('-').map(Number);
+            if (toVal) {
+                const [year, month, day] = toVal.split('-').map(Number);
                 toDeliveryUTC = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
             }
 

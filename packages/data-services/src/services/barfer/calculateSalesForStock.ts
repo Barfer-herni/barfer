@@ -11,22 +11,43 @@ export function calculateSalesFromOrders(product: { product: string; section: st
     const sectionUpper = (product.section || '').toUpperCase();
     let productName = (product.product || '').toUpperCase().trim();
 
+    console.log(`\n🔍 [calculateSalesFromOrders] Starting calculation for:`, {
+        originalProduct: product.product,
+        section: product.section,
+        weight: product.weight,
+        ordersCount: orders.length
+    });
+
     // Si el nombre del producto ya contiene la sección al principio (formato de la BD actual),
     // intentamos limpiarlo para el matching contra los items de la orden (que no suelen tenerlo)
     if (sectionUpper && productName.startsWith(sectionUpper)) {
+        const originalProductName = productName;
         productName = productName.substring(sectionUpper.length).trim();
+        console.log(`   🔧 Cleaned product name: "${originalProductName}" -> "${productName}"`);
     }
 
     const productWeight = product.weight ? (product.weight || '').toUpperCase().trim().replace(/\s+/g, '') : null;
+    console.log(`   📦 Normalized weight: ${productWeight}`);
 
-    orders.forEach(order => {
+    orders.forEach((order, orderIndex) => {
         if (!order.items) return;
 
-        order.items.forEach((item: any) => {
+        console.log(`\n   📋 Order ${orderIndex + 1}/${orders.length} (ID: ${order._id}):`, {
+            puntoEnvio: order.puntoEnvio,
+            deliveryDay: order.deliveryDay,
+            itemsCount: order.items?.length || 0
+        });
+
+        order.items.forEach((item: any, itemIndex) => {
             const itemProductBase = (item.name || '').toUpperCase().trim();
             const itemOption = (item.options?.[0]?.name || '').toUpperCase().trim();
             const isBigDogItem = itemProductBase.includes('BIG DOG');
             const isBigDogStock = productName.includes('BIG DOG');
+
+            console.log(`      🔸 Item ${itemIndex + 1}: "${item.name}"`, {
+                options: item.options?.map((o: any) => o.name),
+                isBigDog: isBigDogItem
+            });
 
             // 1. Validación de sección (Perro vs Gato)
             if (!sectionUpper.includes('OTROS')) {
@@ -84,12 +105,9 @@ export function calculateSalesFromOrders(product: { product: string; section: st
                     }
                 }
             } else {
-                // CASO REGULAR: BOX PERRO, BOX GATO, etc.
+                // CASO REGULAR: BOX PERRO, BOX GATO, etc. (misma lógica exacta que ExpressPageClient calculatePedidosDelDia)
                 const itemOptions = (item.options || []).map((opt: any) => (opt.name || '').toUpperCase().trim());
                 const itemMainOption = itemOptions[0] || '';
-                const itemProduct = `${itemProductBase} ${itemMainOption}`.trim();
-                const cleanItemProduct = itemProduct.replace(/\s*\(?\d+\s*KG\)?/gi, '').trim();
-                const cleanProductName = productName.replace(/\s*\(?\d+\s*KG\)?/gi, '').trim();
 
                 // Detectar pesos en el ítem (en nombre u opciones)
                 const itemFullIdent = `${itemProductBase} ${itemOptions.join(' ')}`.toUpperCase();
@@ -100,37 +118,61 @@ export function calculateSalesFromOrders(product: { product: string; section: st
                 const normalizedItemWeight = itemWeightsMatch ? itemWeightsMatch[0].replace(/\s+/g, '') : null;
                 const normalizedStockWeight = stockWeightsMatch ? stockWeightsMatch[0].replace(/\s+/g, '') : (productWeight ? productWeight.replace(/\s+/g, '') : null);
 
-                // 1. Comparación básica de nombre
+                // Construir el nombre del item incluyendo la opción pero SIN el peso (igual que front)
+                const itemProduct = `${itemProductBase} ${itemMainOption}`.trim();
+                const cleanItemProduct = itemProduct.replace(/\s*\(?\d+\s*KG\)?/gi, '').trim();
+                const cleanProductName = productName.replace(/\s*\(?\d+\s*KG\)?/gi, '').trim();
+
+                // Extraer el sabor/tipo del producto del item (POLLO, VACA, etc.) - igual que front
+                let extracted = itemProductBase;
+                extracted = extracted.replace(/^BOX\s+PERRO\s+/i, '');
+                extracted = extracted.replace(/^BOX\s+GATO\s+/i, '');
+                extracted = extracted.replace(/\s*\(?\d+\s*KG\)?/gi, '');
+                const extractedFlavor = extracted.trim();
+
+                // 1. Comparación básica de nombre (mismas condiciones que front)
                 const nameMatch = cleanItemProduct === cleanProductName ||
                     cleanItemProduct.includes(cleanProductName) ||
                     cleanProductName.includes(cleanItemProduct) ||
-                    itemProductBase.includes(cleanProductName);
+                    itemProductBase.includes(cleanProductName) ||
+                    extractedFlavor === cleanProductName ||
+                    cleanProductName === extractedFlavor;
 
-                if (nameMatch) {
-                    // Si el nombre coincide, el peso DEBE coincidir si alguno lo especifica
+                // Cuando el stock tiene peso, exigir que el sabor del ítem sea exactamente el del producto
+                // (extractedFlavor === cleanProductName) para no contar ítems como "POLLO CON VERDURAS" en fila "POLLO 10KG"
+                const strictFlavorMatch = !normalizedStockWeight || extractedFlavor === cleanProductName;
+
+                if (nameMatch && strictFlavorMatch) {
                     if (normalizedStockWeight || normalizedItemWeight) {
-                        if (normalizedStockWeight === normalizedItemWeight) {
-                            isMatch = true;
-                        } else {
-                            // Mismatch de peso
-                            isMatch = false;
-                        }
+                        isMatch = normalizedStockWeight === normalizedItemWeight;
                     } else {
-                        // Ninguno tiene peso, es un match genérico
                         isMatch = true;
                     }
                 }
 
-                // Fallback para HUESOS CARNOSOS y casos de prefijos
-                if (!isMatch) {
-                    let extracted = itemProduct;
-                    extracted = extracted.replace(/^(BARF\s*\/\s*|MEDALLONES\s*\/\s*)/i, '');
-                    extracted = extracted.replace(/^BOX\s+PERRO\s+/i, '');
-                    extracted = extracted.replace(/^BOX\s+GATO\s+/i, '');
-                    extracted = extracted.replace(/\s*\(?\d+\s*KG\)?/gi, '');
-                    extracted = extracted.trim();
+                // Fallback por sabor extraído (igual que front); con peso exige extractedFlavor === cleanProductName
+                if (!isMatch && extractedFlavor) {
+                    const flavorMatch = extractedFlavor === cleanProductName;
+                    if (flavorMatch && (!normalizedStockWeight || flavorMatch)) {
+                        if (normalizedStockWeight || normalizedItemWeight) {
+                            isMatch = normalizedStockWeight === normalizedItemWeight;
+                        } else {
+                            isMatch = true;
+                        }
+                    }
+                }
 
-                    if (extracted === cleanProductName || cleanItemProduct.includes(extracted) || cleanProductName.includes(extracted)) {
+                // Fallback HUESOS CARNOSOS y prefijos (igual que front)
+                if (!isMatch) {
+                    let extractedAlt = itemProduct;
+                    extractedAlt = extractedAlt.replace(/^(BARF\s*\/\s*|MEDALLONES\s*\/\s*)/i, '');
+                    extractedAlt = extractedAlt.replace(/^BOX\s+PERRO\s+/i, '');
+                    extractedAlt = extractedAlt.replace(/^BOX\s+GATO\s+/i, '');
+                    extractedAlt = extractedAlt.replace(/\s*\(?\d+\s*KG\)?/gi, '');
+                    extractedAlt = extractedAlt.trim();
+
+                    const fallbackNameMatch = extractedAlt === cleanProductName || cleanItemProduct.includes(extractedAlt) || cleanProductName.includes(extractedAlt);
+                    if (fallbackNameMatch && (!normalizedStockWeight || extractedAlt === cleanProductName)) {
                         if (normalizedStockWeight || normalizedItemWeight) {
                             isMatch = normalizedStockWeight === normalizedItemWeight;
                         } else {
@@ -143,9 +185,13 @@ export function calculateSalesFromOrders(product: { product: string; section: st
             if (isMatch) {
                 const quantity = item.quantity || item.options?.[0]?.quantity || 1;
                 totalQuantity += quantity;
+                console.log(`         ✅ MATCH! Quantity: ${quantity}, Total so far: ${totalQuantity}`);
+            } else {
+                console.log(`         ❌ No match`);
             }
         });
     });
 
+    console.log(`\n   🎯 FINAL RESULT: ${totalQuantity} units for "${product.product}" (${product.weight || 'no weight'})\n`);
     return totalQuantity;
 }
