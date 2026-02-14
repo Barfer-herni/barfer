@@ -15,8 +15,21 @@ export default async function PricesPage({
     const { locale } = await params;
     const dictionary = await getDictionary(locale);
 
-    // Obtener todos los precios usando la nueva acción de Barfer
-    const result = await getAllPricesAction();
+    // Obtener fecha actual para filtrar
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    console.log('🗓️ [PricesPage] Fecha actual:', { currentMonth, currentYear, now: now.toISOString() });
+
+    // Obtener precios del mes actual
+    const result = await getPricesByMonthAction(currentMonth, currentYear);
+    console.log('📦 [PricesPage] Resultado de getPricesByMonthAction:', {
+        success: result.success,
+        total: result.total,
+        pricesCount: result.prices?.length || 0
+    });
+
     const barferPrices = result.success ? (result.prices || []) : [];
 
     // Transformar los precios de MongoDB (_id) al formato esperado por el componente (id)
@@ -30,6 +43,8 @@ export default async function PricesPage({
         price: Number(price.price),
         isActive: Boolean(price.isActive)
     }));
+
+    console.log('✅ [PricesPage] Precios transformados:', prices.length);
 
     // Obtener permisos del usuario
     const userWithPermissions = await getCurrentUserWithPermissions();

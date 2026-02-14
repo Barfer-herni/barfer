@@ -1,0 +1,234 @@
+[
+  {
+    "section": "PERRO",
+    "product": "BIG DOG POLLO",
+    "weight": "15KG",
+    "priceTypes": ["EFECTIVO", "TRANSFERENCIA", "MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "PERRO",
+    "product": "BIG DOG VACA",
+    "weight": "15KG",
+    "priceTypes": ["EFECTIVO", "TRANSFERENCIA", "MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "PERRO",
+    "product": "VACA",
+    "weight": "10KG",
+    "priceTypes": ["EFECTIVO", "TRANSFERENCIA", "MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "PERRO",
+    "product": "VACA",
+    "weight": "5KG",
+    "priceTypes": ["EFECTIVO", "TRANSFERENCIA", "MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "PERRO",
+    "product": "CERDO",
+    "weight": "10KG",
+    "priceTypes": ["EFECTIVO", "TRANSFERENCIA", "MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "PERRO",
+    "product": "CERDO",
+    "weight": "5KG",
+    "priceTypes": ["EFECTIVO", "TRANSFERENCIA", "MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "PERRO",
+    "product": "CORDERO",
+    "weight": "10KG",
+    "priceTypes": ["EFECTIVO", "TRANSFERENCIA", "MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "PERRO",
+    "product": "CORDERO",
+    "weight": "5KG",
+    "priceTypes": ["EFECTIVO", "TRANSFERENCIA", "MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "PERRO",
+    "product": "POLLO",
+    "weight": "10KG",
+    "priceTypes": ["EFECTIVO", "TRANSFERENCIA", "MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "PERRO",
+    "product": "POLLO",
+    "weight": "5KG",
+    "priceTypes": ["EFECTIVO", "TRANSFERENCIA", "MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "GATO",
+    "product": "VACA",
+    "weight": "5KG",
+    "priceTypes": ["EFECTIVO", "TRANSFERENCIA", "MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "GATO",
+    "product": "CORDERO",
+    "weight": "5KG",
+    "priceTypes": ["EFECTIVO", "TRANSFERENCIA", "MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "GATO",
+    "product": "POLLO",
+    "weight": "5KG",
+    "priceTypes": ["EFECTIVO", "TRANSFERENCIA", "MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "OTROS",
+    "product": "HUESOS CARNOSOS 5KG",
+    "weight": null,
+    "priceTypes": ["EFECTIVO", "TRANSFERENCIA", "MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "OTROS",
+    "product": "BOX DE COMPLEMENTOS",
+    "weight": null,
+    "priceTypes": ["EFECTIVO", "TRANSFERENCIA", "MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "OTROS",
+    "product": "GARRAS",
+    "weight": null,
+    "priceTypes": ["MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "OTROS",
+    "product": "CORNALITOS",
+    "weight": "200GRS",
+    "priceTypes": ["MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "OTROS",
+    "product": "HUESOS RECREATIVOS",
+    "weight": null,
+    "priceTypes": ["MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "OTROS",
+    "product": "CALDO DE HUESOS",
+    "weight": null,
+    "priceTypes": ["MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "RAW",
+    "product": "HIGADO 100GRS",
+    "weight": null,
+    "priceTypes": ["MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "RAW",
+    "product": "HIGADO 40GRS",
+    "weight": null,
+    "priceTypes": ["MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "RAW",
+    "product": "POLLO 100GRS",
+    "weight": null,
+    "priceTypes": ["MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "RAW",
+    "product": "POLLO 40GRS",
+    "weight": null,
+    "priceTypes": ["MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "RAW",
+    "product": "CORNALITOS 30GRS",
+    "weight": null,
+    "priceTypes": ["MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "RAW",
+    "product": "TRAQUEA X1",
+    "weight": null,
+    "priceTypes": ["MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "RAW",
+    "product": "TRAQUEA X2",
+    "weight": null,
+    "priceTypes": ["MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "RAW",
+    "product": "OREJA X1",
+    "weight": null,
+    "priceTypes": ["MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "RAW",
+    "product": "OREJA X50",
+    "weight": null,
+    "priceTypes": ["MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  },
+  {
+    "section": "RAW",
+    "product": "OREJAS X100",
+    "weight": null,
+    "priceTypes": ["MAYORISTA"],
+    "createdAt": "2026-02-14T18:22:00.000Z",
+    "updatedAt": "2026-02-14T18:22:00.000Z"
+  }
+]

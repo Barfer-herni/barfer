@@ -41,14 +41,43 @@ export async function getPricesByMonth(month: number, year: number): Promise<{
     error?: string;
 }> {
     try {
+        console.log('🔍 [getPricesByMonth] Buscando precios para:', { month, year });
         const collection = await getCollection('prices');
 
+        // Calcular el rango de fechas para el mes solicitado
+        // Para el esquema antiguo que usa validFrom
+        const startDate = new Date(year, month - 1, 1); // Primer día del mes
+        const endDate = new Date(month === 12 ? year + 1 : year, month === 12 ? 0 : month, 1); // Primer día del mes siguiente
+
+        console.log('📅 [getPricesByMonth] Rango de fechas para esquema antiguo:', {
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString()
+        });
+
         // Buscar precios que estaban activos en ese mes/año
+        // Soporta AMBOS esquemas:
+        // 1. Nuevo esquema: documentos con campos month/year
+        // 2. Antiguo esquema: documentos con campo validFrom
         const mongoPrices = await collection.find(
             {
-                month,
-                year,
-                isActive: true
+                isActive: true,
+                $or: [
+                    // Nuevo esquema: búsqueda exacta por month/year
+                    {
+                        month,
+                        year
+                    },
+                    // Antiguo esquema: búsqueda por rango de validFrom
+                    // Solo documentos que NO tienen month/year (para evitar duplicados)
+                    {
+                        month: { $exists: false },
+                        year: { $exists: false },
+                        validFrom: {
+                            $gte: startDate,
+                            $lt: endDate
+                        }
+                    }
+                ]
             },
             {
                 sort: {
@@ -60,6 +89,31 @@ export async function getPricesByMonth(month: number, year: number): Promise<{
             }
         ).toArray();
 
+        console.log(`📊 [getPricesByMonth] Encontrados ${mongoPrices.length} precios en la base de datos`);
+
+        // Contar cuántos son de cada esquema
+        const newSchemaCount = mongoPrices.filter(p => p.month !== undefined).length;
+        const oldSchemaCount = mongoPrices.length - newSchemaCount;
+        console.log(`   - Esquema nuevo (month/year): ${newSchemaCount}`);
+        console.log(`   - Esquema antiguo (validFrom): ${oldSchemaCount}`);
+
+        if (mongoPrices.length > 0) {
+            console.log('📝 [getPricesByMonth] Primeros 3 precios:', mongoPrices.slice(0, 3).map(p => ({
+                section: p.section,
+                product: p.product,
+                weight: p.weight,
+                priceType: p.priceType,
+                price: p.price,
+                // Mostrar qué esquema usa
+                schema: p.month !== undefined ? 'nuevo (month/year)' : 'antiguo (validFrom)',
+                effectiveDate: p.effectiveDate,
+                validFrom: p.validFrom,
+                month: p.month,
+                year: p.year,
+                createdAt: p.createdAt
+            })));
+        }
+
         const prices = mongoPrices.map(transformMongoPrice);
 
         return {
@@ -68,7 +122,7 @@ export async function getPricesByMonth(month: number, year: number): Promise<{
             total: prices.length
         };
     } catch (error) {
-        console.error('Error getting prices by month:', error);
+        console.error('❌ [getPricesByMonth] Error getting prices by month:', error);
         return {
             success: false,
             message: `Error al obtener precios de ${month}/${year}`,

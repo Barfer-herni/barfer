@@ -60,7 +60,12 @@ export {
     getPriceStats as getBarferPriceStats,
     initializeBarferPrices,
     initializePricesForPeriod,
-    getProductsForSelect
+    getProductsForSelect,
+    // Template management
+    getProductTemplate,
+    addProductToTemplate,
+    updateTemplateProductPriceTypes,
+    removeProductFromTemplate
 } from './pricesService';
 export { getPricesByMonth, getPriceEvolution, comparePricesPeriods, getMostVolatilePrices, getPriceChangesSummary } from './priceHistoryService';
 export { normalizePricesCapitalization, removeDuplicatePrices } from './normalizePricesCapitalization';

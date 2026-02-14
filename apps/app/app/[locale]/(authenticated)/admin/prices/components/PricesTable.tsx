@@ -280,9 +280,17 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
 
     // Función para cargar precios por fecha
     const loadPricesByDate = async (month: number, year: number) => {
+        console.log('🔄 [PricesTable] loadPricesByDate llamado con:', { month, year });
         setIsLoadingPrices(true);
         try {
             const result = await getPricesByMonthAction(month, year);
+            console.log('📥 [PricesTable] Resultado de getPricesByMonthAction:', {
+                success: result.success,
+                total: result.total,
+                pricesCount: result.prices?.length || 0,
+                message: result.message
+            });
+
             if (result.success) {
                 const transformedPrices = (result.prices || []).map((price: any) => ({
                     id: String(price._id), // Convertir explícitamente a string
@@ -293,6 +301,12 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
                     price: Number(price.price),
                     isActive: Boolean(price.isActive)
                 }));
+
+                console.log('✨ [PricesTable] Precios transformados:', transformedPrices.length);
+                if (transformedPrices.length > 0) {
+                    console.log('📝 [PricesTable] Primeros 3 precios transformados:', transformedPrices.slice(0, 3));
+                }
+
                 setLocalPrices(transformedPrices);
                 // Actualizar los filtros con la nueva fecha sin perder otros filtros
                 setFilters(prev => ({ ...prev, month, year }));
@@ -301,6 +315,7 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
                     description: `Mostrando precios de ${getMonthName(month)} ${year}`,
                 });
             } else {
+                console.log('⚠️ [PricesTable] Error al cargar precios:', result.message);
                 toast({
                     title: "Error",
                     description: result.message || "Error al cargar precios por fecha",
@@ -308,7 +323,7 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
                 });
             }
         } catch (error) {
-            console.error('Error loading prices by date:', error);
+            console.error('❌ [PricesTable] Error loading prices by date:', error);
             toast({
                 title: "Error",
                 description: "Error al cargar los precios por fecha",
@@ -831,10 +846,9 @@ export function PricesTable({ prices, dictionary, userPermissions }: PricesTable
                                                 <SelectValue placeholder="Seleccionar año" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="2025">2025</SelectItem>
-                                                <SelectItem value="2024">2024</SelectItem>
-                                                <SelectItem value="2023">2023</SelectItem>
-                                                <SelectItem value="2022">2022</SelectItem>
+                                                {Array.from({ length: new Date().getFullYear() + 2 - 2022 }, (_, i) => 2022 + i).reverse().map(year => (
+                                                    <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                                                ))}
                                             </SelectContent>
                                         </Select>
                                     </div>

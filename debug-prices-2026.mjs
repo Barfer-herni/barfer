@@ -1,0 +1,67 @@
+import { getCollection } from '@repo/database';
+
+async function debugPrices() {
+    try {
+        console.log('✅ Conectando a MongoDB...');
+        
+        const pricesCollection = await getCollection('prices');
+        
+        // Verificar precios de enero y febrero 2026
+        console.log('\n📊 Verificando precios de Enero 2026:');
+        const enero2026 = await pricesCollection.find({ month: 1, year: 2026 }).toArray();
+        console.log(`Total de precios encontrados: ${enero2026.length}`);
+        
+        if (enero2026.length > 0) {
+            console.log('\nPrimeros 3 documentos:');
+            enero2026.slice(0, 3).forEach((doc, i) => {
+                console.log(`\n${i + 1}. ${doc.section} - ${doc.product} - ${doc.weight || 'sin peso'} - ${doc.priceType}`);
+                console.log(`   Precio: $${doc.price}`);
+                console.log(`   Fecha efectiva: ${doc.effectiveDate}`);
+                console.log(`   Activo: ${doc.isActive}`);
+                console.log(`   Creado: ${doc.createdAt}`);
+            });
+        }
+        
+        console.log('\n📊 Verificando precios de Febrero 2026:');
+        const febrero2026 = await pricesCollection.find({ month: 2, year: 2026 }).toArray();
+        console.log(`Total de precios encontrados: ${febrero2026.length}`);
+        
+        if (febrero2026.length > 0) {
+            console.log('\nPrimeros 3 documentos:');
+            febrero2026.slice(0, 3).forEach((doc, i) => {
+                console.log(`\n${i + 1}. ${doc.section} - ${doc.product} - ${doc.weight || 'sin peso'} - ${doc.priceType}`);
+                console.log(`   Precio: $${doc.price}`);
+                console.log(`   Fecha efectiva: ${doc.effectiveDate}`);
+                console.log(`   Activo: ${doc.isActive}`);
+                console.log(`   Creado: ${doc.createdAt}`);
+            });
+        }
+        
+        // Verificar todos los años y meses disponibles
+        console.log('\n📅 Todos los períodos con precios:');
+        const periods = await pricesCollection.aggregate([
+            {
+                $group: {
+                    _id: { year: '$year', month: '$month' },
+                    count: { $sum: 1 }
+                }
+            },
+            {
+                $sort: { '_id.year': -1, '_id.month': -1 }
+            }
+        ]).toArray();
+        
+        periods.forEach(period => {
+            console.log(`${period._id.year}-${String(period._id.month).padStart(2, '0')}: ${period.count} precios`);
+        });
+        
+        console.log('\n✅ Diagnóstico completado');
+        process.exit(0);
+        
+    } catch (error) {
+        console.error('❌ Error:', error);
+        process.exit(1);
+    }
+}
+
+debugPrices();

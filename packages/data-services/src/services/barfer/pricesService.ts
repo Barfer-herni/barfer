@@ -14,6 +14,17 @@ import type {
     PriceStats
 } from '../../types/barfer';
 
+// Interfaz para productos del template
+interface TemplateProduct {
+    _id?: string;
+    section: PriceSection;
+    product: string;
+    weight?: string;
+    priceTypes: PriceType[];
+    createdAt?: string;
+    updatedAt?: string;
+}
+
 /**
  * Convierte un documento de MongoDB a un objeto Price serializable
  */
@@ -226,6 +237,41 @@ export async function createPrice(data: CreatePriceData): Promise<{
         };
 
         await collection.insertOne(newPrice as any);
+
+        // Verificar si este producto ya existe en el template
+        const templateCollection = await getCollection('template_prices_products');
+        const existingTemplate = await templateCollection.findOne({
+            section: data.section,
+            product: data.product,
+            weight: data.weight || null
+        });
+
+        if (existingTemplate) {
+            // El producto ya existe en el template, verificar si necesitamos agregar este priceType
+            if (!existingTemplate.priceTypes.includes(data.priceType)) {
+                console.log(`📋 Agregando tipo de precio ${data.priceType} al template para ${data.product}`);
+                await templateCollection.updateOne(
+                    {
+                        section: data.section,
+                        product: data.product,
+                        weight: data.weight || null
+                    },
+                    {
+                        $addToSet: { priceTypes: data.priceType },
+                        $set: { updatedAt: now }
+                    }
+                );
+            }
+        } else {
+            // Producto nuevo, agregarlo al template
+            console.log(`📋 Agregando nuevo producto al template: ${data.product}`);
+            await addProductToTemplate(
+                data.section,
+                data.product,
+                data.weight,
+                [data.priceType]
+            );
+        }
 
         // Revalidar la página de precios
         revalidatePath('/admin/prices');
@@ -475,8 +521,9 @@ export async function getProductsForSelect(): Promise<{
             {
                 $match: {
                     isActive: true,
-                    // Solo tomar precios cuya fecha efectiva sea menor o igual a hoy
-                    effectiveDate: { $lte: todayStr }
+                    // Tomar todos los productos del mes y año actual, sin importar si la fecha efectiva es futura
+                    month: new Date().getMonth() + 1,
+                    year: new Date().getFullYear()
                 }
             },
             {
@@ -601,6 +648,9 @@ export async function deleteProductPrices(section: PriceSection, product: string
         }
 
         const result = await collection.deleteMany(filter);
+
+        // También eliminar del template de productos
+        await removeProductFromTemplate(section, product, weight === null ? undefined : weight);
 
         revalidatePath('/admin/prices');
 
@@ -793,6 +843,9 @@ export async function updateProductPriceTypes(
 
         revalidatePath('/admin/prices');
 
+        // Actualizar el template con los nuevos tipos de precio
+        await updateTemplateProductPriceTypes(section, product, weight || undefined, newPriceTypes);
+
         return {
             success: true,
             addedCount,
@@ -966,6 +1019,199 @@ export async function getPriceStats(): Promise<{
 }
 
 /**
+ * Obtener template de productos desde la base de datos
+ */
+export async function getProductTemplate(): Promise<{
+    success: boolean;
+    template: TemplateProduct[];
+    message?: string;
+    error?: string;
+}> {
+    try {
+        const collection = await getCollection('template_prices_products');
+
+        const templates = await collection.find({}).toArray();
+
+        const templateProducts: TemplateProduct[] = templates.map((doc: any) => ({
+            _id: String(doc._id),
+            section: doc.section,
+            product: doc.product,
+            weight: doc.weight,
+            priceTypes: doc.priceTypes,
+            createdAt: doc.createdAt,
+            updatedAt: doc.updatedAt
+        }));
+
+        return {
+            success: true,
+            template: templateProducts
+        };
+    } catch (error) {
+        console.error('Error getting product template:', error);
+        return {
+            success: false,
+            message: 'Error al obtener el template de productos',
+            error: 'GET_PRODUCT_TEMPLATE_ERROR',
+            template: []
+        };
+    }
+}
+
+/**
+ * Agregar producto al template
+ */
+export async function addProductToTemplate(
+    section: PriceSection,
+    product: string,
+    weight: string | undefined,
+    priceTypes: PriceType[]
+): Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+}> {
+    try {
+        const collection = await getCollection('template_prices_products');
+
+        // Verificar si ya existe
+        const existing = await collection.findOne({
+            section,
+            product,
+            weight: weight || null
+        });
+
+        if (existing) {
+            return {
+                success: true,
+                message: 'El producto ya existe en el template'
+            };
+        }
+
+        const now = new Date().toISOString();
+        const newTemplate: any = {
+            section,
+            product,
+            weight: weight || null,
+            priceTypes,
+            createdAt: now,
+            updatedAt: now
+        };
+
+        await collection.insertOne(newTemplate);
+
+        return {
+            success: true,
+            message: 'Producto agregado al template exitosamente'
+        };
+    } catch (error) {
+        console.error('Error adding product to template:', error);
+        return {
+            success: false,
+            message: 'Error al agregar producto al template',
+            error: 'ADD_PRODUCT_TO_TEMPLATE_ERROR'
+        };
+    }
+}
+
+/**
+ * Actualizar tipos de precio en el template
+ */
+export async function updateTemplateProductPriceTypes(
+    section: PriceSection,
+    product: string,
+    weight: string | undefined,
+    priceTypes: PriceType[]
+): Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+}> {
+    try {
+        const collection = await getCollection('template_prices_products');
+
+        const filter: any = {
+            section,
+            product
+        };
+
+        if (weight !== undefined && weight !== null) {
+            filter.weight = weight;
+        } else {
+            filter.weight = null;
+        }
+
+        const result = await collection.updateOne(
+            filter,
+            {
+                $set: {
+                    priceTypes,
+                    updatedAt: new Date().toISOString()
+                }
+            }
+        );
+
+        if (result.matchedCount === 0) {
+            // Si no existe, crearlo
+            return await addProductToTemplate(section, product, weight, priceTypes);
+        }
+
+        return {
+            success: true,
+            message: 'Tipos de precio actualizados en el template'
+        };
+    } catch (error) {
+        console.error('Error updating template product price types:', error);
+        return {
+            success: false,
+            message: 'Error al actualizar tipos de precio en el template',
+            error: 'UPDATE_TEMPLATE_PRICE_TYPES_ERROR'
+        };
+    }
+}
+
+/**
+ * Eliminar producto del template
+ */
+export async function removeProductFromTemplate(
+    section: PriceSection,
+    product: string,
+    weight: string | undefined
+): Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+}> {
+    try {
+        const collection = await getCollection('template_prices_products');
+
+        const filter: any = {
+            section,
+            product
+        };
+
+        if (weight !== undefined && weight !== null) {
+            filter.weight = weight;
+        } else {
+            filter.weight = null;
+        }
+
+        const result = await collection.deleteOne(filter);
+
+        return {
+            success: true,
+            message: `Producto eliminado del template (${result.deletedCount} documentos)`
+        };
+    } catch (error) {
+        console.error('Error removing product from template:', error);
+        return {
+            success: false,
+            message: 'Error al eliminar producto del template',
+            error: 'REMOVE_PRODUCT_FROM_TEMPLATE_ERROR'
+        };
+    }
+}
+
+/**
  * Inicializar precios por defecto para un período específico
  */
 export async function initializePricesForPeriod(month: number, year: number): Promise<{
@@ -991,89 +1237,35 @@ export async function initializePricesForPeriod(month: number, year: number): Pr
             };
         }
 
-        // Productos correctos según la estructura real del usuario
-        const defaultPrices = [
-            // PERRO - En el orden correcto
-            { section: 'PERRO' as PriceSection, product: 'BIG DOG POLLO', weight: '15KG', priceType: 'EFECTIVO' as PriceType, price: 0 },
-            { section: 'PERRO' as PriceSection, product: 'BIG DOG POLLO', weight: '15KG', priceType: 'TRANSFERENCIA' as PriceType, price: 0 },
-            { section: 'PERRO' as PriceSection, product: 'BIG DOG POLLO', weight: '15KG', priceType: 'MAYORISTA' as PriceType, price: 0 },
+        // Obtener template de productos desde la base de datos
+        console.log('📋 [initializePricesForPeriod] Obteniendo template de productos desde DB...');
+        const templateResult = await getProductTemplate();
 
-            { section: 'PERRO' as PriceSection, product: 'BIG DOG VACA', weight: '15KG', priceType: 'EFECTIVO' as PriceType, price: 0 },
-            { section: 'PERRO' as PriceSection, product: 'BIG DOG VACA', weight: '15KG', priceType: 'TRANSFERENCIA' as PriceType, price: 0 },
-            { section: 'PERRO' as PriceSection, product: 'BIG DOG VACA', weight: '15KG', priceType: 'MAYORISTA' as PriceType, price: 0 },
+        if (!templateResult.success || templateResult.template.length === 0) {
+            return {
+                success: false,
+                message: 'No se pudo obtener el template de productos. Asegúrate de que la colección template_prices_products esté poblada.',
+                error: 'NO_TEMPLATE_FOUND',
+                created: 0
+            };
+        }
 
-            { section: 'PERRO' as PriceSection, product: 'VACA', weight: '10KG', priceType: 'EFECTIVO' as PriceType, price: 0 },
-            { section: 'PERRO' as PriceSection, product: 'VACA', weight: '10KG', priceType: 'TRANSFERENCIA' as PriceType, price: 0 },
-            { section: 'PERRO' as PriceSection, product: 'VACA', weight: '10KG', priceType: 'MAYORISTA' as PriceType, price: 0 },
+        console.log(`📋 [initializePricesForPeriod] Template obtenido: ${templateResult.template.length} productos`);
 
-            { section: 'PERRO' as PriceSection, product: 'VACA', weight: '5KG', priceType: 'EFECTIVO' as PriceType, price: 0 },
-            { section: 'PERRO' as PriceSection, product: 'VACA', weight: '5KG', priceType: 'TRANSFERENCIA' as PriceType, price: 0 },
-            { section: 'PERRO' as PriceSection, product: 'VACA', weight: '5KG', priceType: 'MAYORISTA' as PriceType, price: 0 },
+        // Expandir el template: cada producto del template puede tener múltiples priceTypes
+        // Por ejemplo: { section: 'PERRO', product: 'POLLO', weight: '5KG', priceTypes: ['EFECTIVO', 'TRANSFERENCIA', 'MAYORISTA'] }
+        // Se convierte en 3 precios separados
+        const defaultPrices = templateResult.template.flatMap(item =>
+            item.priceTypes.map(priceType => ({
+                section: item.section,
+                product: item.product,
+                weight: item.weight,
+                priceType,
+                price: 0
+            }))
+        );
 
-            { section: 'PERRO' as PriceSection, product: 'CERDO', weight: '10KG', priceType: 'EFECTIVO' as PriceType, price: 0 },
-            { section: 'PERRO' as PriceSection, product: 'CERDO', weight: '10KG', priceType: 'TRANSFERENCIA' as PriceType, price: 0 },
-            { section: 'PERRO' as PriceSection, product: 'CERDO', weight: '10KG', priceType: 'MAYORISTA' as PriceType, price: 0 },
-
-            { section: 'PERRO' as PriceSection, product: 'CERDO', weight: '5KG', priceType: 'EFECTIVO' as PriceType, price: 0 },
-            { section: 'PERRO' as PriceSection, product: 'CERDO', weight: '5KG', priceType: 'TRANSFERENCIA' as PriceType, price: 0 },
-            { section: 'PERRO' as PriceSection, product: 'CERDO', weight: '5KG', priceType: 'MAYORISTA' as PriceType, price: 0 },
-
-            { section: 'PERRO' as PriceSection, product: 'CORDERO', weight: '10KG', priceType: 'EFECTIVO' as PriceType, price: 0 },
-            { section: 'PERRO' as PriceSection, product: 'CORDERO', weight: '10KG', priceType: 'TRANSFERENCIA' as PriceType, price: 0 },
-            { section: 'PERRO' as PriceSection, product: 'CORDERO', weight: '10KG', priceType: 'MAYORISTA' as PriceType, price: 0 },
-
-            { section: 'PERRO' as PriceSection, product: 'CORDERO', weight: '5KG', priceType: 'EFECTIVO' as PriceType, price: 0 },
-            { section: 'PERRO' as PriceSection, product: 'CORDERO', weight: '5KG', priceType: 'TRANSFERENCIA' as PriceType, price: 0 },
-            { section: 'PERRO' as PriceSection, product: 'CORDERO', weight: '5KG', priceType: 'MAYORISTA' as PriceType, price: 0 },
-
-            { section: 'PERRO' as PriceSection, product: 'POLLO', weight: '10KG', priceType: 'EFECTIVO' as PriceType, price: 0 },
-            { section: 'PERRO' as PriceSection, product: 'POLLO', weight: '10KG', priceType: 'TRANSFERENCIA' as PriceType, price: 0 },
-            { section: 'PERRO' as PriceSection, product: 'POLLO', weight: '10KG', priceType: 'MAYORISTA' as PriceType, price: 0 },
-
-            { section: 'PERRO' as PriceSection, product: 'POLLO', weight: '5KG', priceType: 'EFECTIVO' as PriceType, price: 0 },
-            { section: 'PERRO' as PriceSection, product: 'POLLO', weight: '5KG', priceType: 'TRANSFERENCIA' as PriceType, price: 0 },
-            { section: 'PERRO' as PriceSection, product: 'POLLO', weight: '5KG', priceType: 'MAYORISTA' as PriceType, price: 0 },
-
-            // GATO - Solo los productos que realmente tienes
-            { section: 'GATO' as PriceSection, product: 'VACA', weight: '5KG', priceType: 'EFECTIVO' as PriceType, price: 0 },
-            { section: 'GATO' as PriceSection, product: 'VACA', weight: '5KG', priceType: 'TRANSFERENCIA' as PriceType, price: 0 },
-            { section: 'GATO' as PriceSection, product: 'VACA', weight: '5KG', priceType: 'MAYORISTA' as PriceType, price: 0 },
-
-            { section: 'GATO' as PriceSection, product: 'CORDERO', weight: '5KG', priceType: 'EFECTIVO' as PriceType, price: 0 },
-            { section: 'GATO' as PriceSection, product: 'CORDERO', weight: '5KG', priceType: 'TRANSFERENCIA' as PriceType, price: 0 },
-            { section: 'GATO' as PriceSection, product: 'CORDERO', weight: '5KG', priceType: 'MAYORISTA' as PriceType, price: 0 },
-
-            { section: 'GATO' as PriceSection, product: 'POLLO', weight: '5KG', priceType: 'EFECTIVO' as PriceType, price: 0 },
-            { section: 'GATO' as PriceSection, product: 'POLLO', weight: '5KG', priceType: 'TRANSFERENCIA' as PriceType, price: 0 },
-            { section: 'GATO' as PriceSection, product: 'POLLO', weight: '5KG', priceType: 'MAYORISTA' as PriceType, price: 0 },
-
-            // OTROS - Solo los productos reales con los tipos de precio correctos
-            { section: 'OTROS' as PriceSection, product: 'HUESOS CARNOSOS 5KG', weight: undefined, priceType: 'EFECTIVO' as PriceType, price: 0 },
-            { section: 'OTROS' as PriceSection, product: 'HUESOS CARNOSOS 5KG', weight: undefined, priceType: 'TRANSFERENCIA' as PriceType, price: 0 },
-            { section: 'OTROS' as PriceSection, product: 'HUESOS CARNOSOS 5KG', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
-
-            { section: 'OTROS' as PriceSection, product: 'BOX DE COMPLEMENTOS', weight: undefined, priceType: 'EFECTIVO' as PriceType, price: 0 },
-            { section: 'OTROS' as PriceSection, product: 'BOX DE COMPLEMENTOS', weight: undefined, priceType: 'TRANSFERENCIA' as PriceType, price: 0 },
-            { section: 'OTROS' as PriceSection, product: 'BOX DE COMPLEMENTOS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
-
-            // Productos que solo tienen MAYORISTA
-            { section: 'OTROS' as PriceSection, product: 'GARRAS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
-            { section: 'OTROS' as PriceSection, product: 'CORNALITOS', weight: '200GRS', priceType: 'MAYORISTA' as PriceType, price: 0 },
-            { section: 'OTROS' as PriceSection, product: 'HUESOS RECREATIVOS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
-            { section: 'OTROS' as PriceSection, product: 'CALDO DE HUESOS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
-
-            // RAW - Productos solo para mayorista
-            { section: 'RAW' as PriceSection, product: 'HIGADO 100GRS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
-            { section: 'RAW' as PriceSection, product: 'HIGADO 40GRS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
-            { section: 'RAW' as PriceSection, product: 'POLLO 100GRS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
-            { section: 'RAW' as PriceSection, product: 'POLLO 40GRS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
-            { section: 'RAW' as PriceSection, product: 'CORNALITOS 30GRS', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
-            { section: 'RAW' as PriceSection, product: 'TRAQUEA X1', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
-            { section: 'RAW' as PriceSection, product: 'TRAQUEA X2', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
-            { section: 'RAW' as PriceSection, product: 'OREJA X1', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
-            { section: 'RAW' as PriceSection, product: 'OREJA X50', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
-            { section: 'RAW' as PriceSection, product: 'OREJAS X100', weight: undefined, priceType: 'MAYORISTA' as PriceType, price: 0 },
-        ];
+        console.log(`📋 [initializePricesForPeriod] Precios a crear: ${defaultPrices.length}`);
 
         const now = new Date().toISOString();
         const effectiveDate = `${year}-${month.toString().padStart(2, '0')}-01`;
